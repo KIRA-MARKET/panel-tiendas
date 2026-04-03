@@ -1365,6 +1365,18 @@ function generarDiasSust(empAusente,desde,hasta){
   }
   container.innerHTML=html||'<p>El empleado no trabaja en este período</p>';
 }
+function calcularHorasDiarias(alias,fecha){
+  var emps=getEmpleadosTienda();var e=emps[alias];if(!e)return 0;
+  var dow=fecha.getDay();
+  if(dow>=1&&dow<=5){
+    var semAB=getSemanaAB(fecha);
+    var horarios;
+    if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+    else{horarios=getHorariosIS(fecha);}
+    if(horarios&&horarios[alias]){return horarios[alias][1]-horarios[alias][0];}
+  }
+  return e.contrato/5;
+}
 function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
   var emps=getEmpleadosTienda();
   var semAB=getSemanaAB(fecha);var dow=fecha.getDay();
@@ -1385,12 +1397,18 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
     if(!error&&e.restriccion==='solo-mañanas'&&franja!=='mañanas'){error='Solo puede mañanas';}
     if(!error&&e.restriccion==='solo-cierre'&&franja!=='cierre'){error='Solo puede cierre';}
     if(!error&&e.restriccion==='solo-descarga'&&franja!=='descarga'){error='Solo puede descarga';}
-    if(!error&&e.restriccion==='max-15'&&turnoAusente[1]>15){error='No puede salir después de 15:00';}
     if(!error&&estaAusente(alias,fecha)){error='También está ausente';}
-    
+
+    // Calcular horario del sustituto (sus horas diarias, no las del ausente)
+    var horasSust=calcularHorasDiarias(alias,fecha);
+    var entradaSust=turnoAusente[0];
+    var salidaSust=entradaSust+horasSust;
+
+    if(!error&&e.restriccion==='max-15'&&salidaSust>15){error='No puede salir después de 15:00';}
+
     // Verificar solapamiento con otra tienda
     if(!error && e.tienda==='ambas'){
-      var solape=verificarSolapamientoSustituto(alias, fecha, tiendaActual, turnoAusente[0], turnoAusente[1]);
+      var solape=verificarSolapamientoSustituto(alias, fecha, tiendaActual, entradaSust, salidaSust);
       if(solape.solapamiento){
         var otraTienda=solape.tienda==='granvia'?'GV':'IS';
         error='Solape con '+otraTienda+' ('+formatHora(solape.inicio)+'-'+formatHora(solape.fin)+')';
@@ -1405,7 +1423,7 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
         avisoMinimos='⚠️ Deja '+efecto.franja.toUpperCase()+' bajo mín ('+efecto.sinSustituto+'/'+efecto.minimo+')';
       }
     }
-    
+
     var valido=!error;
     if(valido)hayValido=true;
     var selKey=fs;
@@ -1414,7 +1432,7 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
     html+='<div class="candidato-item'+(valido?'':' invalido')+(isSelected?' selected':'')+'" onclick="'+(valido?'seleccionarCandidato(\''+fs+'\',\''+alias+'\')':'')+'">';
     html+='<div class="candidato-avatar" style="background:'+e.color+'">'+alias.charAt(0)+'</div>';
     html+='<div class="candidato-info"><div class="candidato-nombre">'+alias+(avisos?' <span style="color:#ff5252;font-size:9px">'+avisos+'</span>':'')+'</div>';
-    if(valido){html+='<div class="candidato-horario">'+formatHora(turnoAusente[0])+'-'+formatHora(turnoAusente[1])+'</div>';}
+    if(valido){html+='<div class="candidato-horario">'+formatHora(entradaSust)+'-'+formatHora(salidaSust)+' ('+horasSust+'h)</div>';}
     else{html+='<div class="candidato-error">'+error+'</div>';}
     html+='</div><div class="candidato-check">'+(isSelected?'✓':'')+'</div></div>';
   }
@@ -1583,18 +1601,24 @@ function confirmarAusencia(){
       var fdsData=tiendaActual==='granvia'?getFdsGV(f):getFdsIS(f);
       var turno=fdsData[turnoFds]?fdsData[turnoFds][emp]:null;
       if(turno){
-        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:turno[1],turnoFds:turnoFds,tienda:tiendaActual});
+        // Calcular horas del sustituto en FdS
+        var sustEmp=emps[sust];
+        var horasFdsSust=sustEmp&&sustEmp.horasFDS?sustEmp.horasFDS:(turno[1]-turno[0]);
+        var salidaFds=turno[0]+horasFdsSust;
+        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:salidaFds,turnoFds:turnoFds,tienda:tiendaActual});
       }
     } else {
-      // L-V
+      // L-V - usar horas diarias del sustituto
       var semAB=getSemanaAB(f);
       var horarios;
       if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
       else{horarios=getHorariosIS(f);}
       var turno=horarios?horarios[emp]:null;
       if(turno){
-        var franja=tiendaActual==='granvia'?getFranja(turno[0],turno[1]):getFranjaIS(turno[0],turno[1]);
-        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:turno[1],franja:franja,tienda:tiendaActual});
+        var horasSust=calcularHorasDiarias(sust,f);
+        var salidaSust=turno[0]+horasSust;
+        var franja=tiendaActual==='granvia'?getFranja(turno[0],salidaSust):getFranjaIS(turno[0],salidaSust);
+        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:salidaSust,franja:franja,tienda:tiendaActual});
       }
     }
   }
