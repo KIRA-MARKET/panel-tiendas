@@ -1,0 +1,2556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIRA · Gestión de Horarios</title>
+<style>
+:root {
+  --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', Consolas, monospace;
+  --bg: #f5f5f5; --surface: #ffffff; --border: #ddd; --border-light: #eee;
+  --text: #222; --text-secondary: #666; --text-muted: #999;
+  --kira: #1a3c8f; --kira-light: #e8edf8;
+  --descarga: #2c5aa0; --descarga-light: #e6edf5;
+  --mañanas: #2e7d32; --mañanas-light: #e8f5e9;
+  --tardes: #e65100; --tardes-light: #fff3e0;
+  --cierre: #6a1b9a; --cierre-light: #f3e5f5;
+  --ok: #2e7d32; --ok-light: #e8f5e9;
+  --warn: #f57c00; --warn-light: #fff3e0;
+  --err: #c62828; --err-light: #ffebee;
+  --sustituto: #ffd600; --sustituto-dark: #c7a500;
+  --fds-sab-m: #0277bd; --fds-sab-m-light: #e1f5fe;
+  --fds-sab-t: #00695c; --fds-sab-t-light: #e0f2f1;
+  --fds-dom-m: #558b2f; --fds-dom-m-light: #f1f8e9;
+  --fds-dom-t: #d84315; --fds-dom-t-light: #fbe9e7;
+  --radius: 8px; --radius-sm: 4px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-main); background: var(--bg); color: var(--text); font-size: 13px; }
+.header { background: #1a1a2e; color: #fff; padding: 0 20px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 16px; }
+.logo { font-size: 16px; font-weight: 700; }
+.logo span { color: #64b5f6; }
+.store-selector { display: flex; background: rgba(255,255,255,0.1); border-radius: var(--radius-sm); overflow: hidden; }
+.store-btn { padding: 6px 14px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.6); background: transparent; border: none; cursor: pointer; }
+.store-btn.active { background: rgba(255,255,255,0.2); color: #fff; }
+.nav-tabs { display: flex; gap: 4px; }
+.nav-tab { padding: 6px 14px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.6); background: transparent; border: none; border-radius: var(--radius-sm); cursor: pointer; }
+.nav-tab.active { background: var(--kira); color: #fff; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+.btn { padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: var(--radius-sm); border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.btn-primary { background: #e53935; color: #fff; }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-success { background: var(--ok); color: #fff; }
+.btn-danger { background: var(--err); color: #fff; }
+.btn-ghost { background: transparent; color: rgba(255,255,255,0.7); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.main { padding: 16px 20px; max-width: 1600px; margin: 0 auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.month-nav { display: flex; align-items: center; gap: 12px; }
+.month-nav h2 { font-size: 18px; font-weight: 600; min-width: 150px; text-align: center; }
+.month-nav button { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); font-size: 16px; cursor: pointer; }
+.week-view { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 16px; }
+.week-header { display: flex; background: #f0f0f0; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+.week-header .col-sem { width: 50px; padding: 10px 4px; text-align: center; border-right: 1px solid var(--border); }
+.week-header .col-dia { flex: 1; padding: 10px 4px; text-align: center; border-right: 1px solid var(--border); }
+.week-header .col-fds { width: 260px; padding: 10px 4px; text-align: center; }
+.week-row { display: flex; border-bottom: 1px solid var(--border-light); align-items: stretch; }
+.col-sem { width: 50px; padding: 6px 4px; background: #f8f8f8; border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.col-sem .num { font-size: 14px; font-weight: 700; color: var(--kira); }
+.col-dia { flex: 1; min-height: 180px; border-right: 1px solid var(--border-light); padding: 4px; display: flex; flex-direction: column; }
+.dia-num { font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.col-fds { width: 280px; padding: 4px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; }
+.fds-box { border-radius: var(--radius-sm); padding: 4px; border: 2px solid; }
+.fds-box.sab-m { border-color: var(--fds-sab-m); background: var(--fds-sab-m-light); }
+.fds-box.dom-m { border-color: var(--fds-dom-m); background: var(--fds-dom-m-light); }
+.fds-box.sab-t { border-color: var(--fds-sab-t); background: var(--fds-sab-t-light); }
+.fds-box.dom-t { border-color: var(--fds-dom-t); background: var(--fds-dom-t-light); }
+.fds-header { font-size: 9px; font-weight: 700; text-transform: uppercase; text-align: center; margin-bottom: 3px; padding: 2px; border-radius: 2px; color: #fff; }
+.fds-box.sab-m .fds-header { background: var(--fds-sab-m); }
+.fds-box.sab-t .fds-header { background: var(--fds-sab-t); }
+.fds-box.dom-m .fds-header { background: var(--fds-dom-m); }
+.fds-box.dom-t .fds-header { background: var(--fds-dom-t); }
+.franja { margin-bottom: 3px; }
+.franja-label { font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 1px 4px; border-radius: 2px; margin-bottom: 2px; display: inline-block; }
+.franja-label.descarga { background: var(--descarga-light); color: var(--descarga); }
+.franja-label.mañanas { background: var(--mañanas-light); color: var(--mañanas); }
+.franja-label.tardes { background: var(--tardes-light); color: var(--tardes); }
+.franja-label.cierre { background: var(--cierre-light); color: var(--cierre); }
+.franjas-grid-gv { display: flex; flex-direction: column; }
+.franjas-grid-gv .franja { margin-bottom: 2px; }
+.franjas-grid-is { display: grid; grid-template-rows: 1fr 1fr 1fr 1fr; height: 100%; gap: 2px; }
+.franjas-grid-is .franja { margin-bottom: 0; }
+.turno { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; border-radius: 3px; margin-bottom: 1px; font-size: 9px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+.turno:hover { transform: scale(1.02); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.turno.descarga { background: var(--descarga); color: #fff; }
+.turno.mañanas { background: var(--mañanas); color: #fff; }
+.turno.tardes { background: var(--tardes); color: #fff; }
+.turno.cierre { background: var(--cierre); color: #fff; }
+.turno.fds { background: #444; color: #fff; }
+.turno.ausente { opacity: 0.5; text-decoration: line-through; background: var(--err-light) !important; color: var(--err) !important; border: 1px dashed var(--err); }
+.turno.sustituto { background: var(--sustituto) !important; color: #000 !important; font-weight: 700; border: 2px solid var(--sustituto-dark); }
+.turno.modificado { background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%) !important; color: #fff !important; border: 2px solid #c71585 !important; box-shadow: 0 2px 8px rgba(255,105,180,0.5); }
+.turno-nombre { font-weight: 600; }
+.turno-hora { font-family: var(--font-mono); font-size: 8px; }
+.aviso-solapamiento { background: #ff5252; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 8px; font-weight: 700; margin-top: 4px; cursor: pointer; }
+.aviso-solapamiento:hover { background: #d32f2f; }
+.aviso-minimos { background: #ff9800; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 8px; font-weight: 700; margin-top: 4px; cursor: pointer; }
+.aviso-minimos:hover { background: #f57c00; }
+.seccion-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.seccion-header h2 { font-size: 18px; font-weight: 600; }
+.empleados-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.empleado-card { background: var(--surface); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); cursor: pointer; }
+.empleado-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.empleado-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.empleado-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; }
+.empleado-info h3 { font-size: 13px; font-weight: 600; }
+.empleado-info .nombre-completo { font-size: 11px; color: var(--text-secondary); }
+.empleado-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10px; padding-top: 10px; border-top: 1px solid var(--border-light); }
+.empleado-dato label { color: var(--text-muted); }
+.empleado-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.empleado-tag { padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: 600; }
+.empleado-tag.franja { background: var(--kira-light); color: var(--kira); }
+.empleado-tag.compartido { background: var(--warn-light); color: var(--warn); }
+.ausencias-lista { display: flex; flex-direction: column; gap: 8px; }
+.ausencia-card { background: var(--surface); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow); border-left: 4px solid var(--warn); display: flex; justify-content: space-between; align-items: center; }
+.ausencia-card .nombre { font-weight: 600; }
+.ausencia-card .detalle { font-size: 12px; color: var(--text-secondary); }
+.ausencia-card .fechas { font-family: var(--font-mono); font-size: 11px; color: var(--kira); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s; }
+.modal-overlay.active { opacity: 1; visibility: visible; }
+.modal { background: var(--surface); border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.2); width: 100%; max-width: 500px; max-height: 90vh; overflow: hidden; }
+.modal.modal-lg { max-width: 700px; }
+.modal-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-header h3 { font-size: 15px; font-weight: 600; }
+.modal-close { width: 26px; height: 26px; border-radius: 50%; border: none; background: var(--bg); font-size: 14px; cursor: pointer; }
+.modal-body { padding: 18px; max-height: 55vh; overflow-y: auto; }
+.modal-footer { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-secondary); }
+.form-group input, .form-group select { width: 100%; padding: 8px 10px; font-size: 13px; font-family: inherit; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.form-row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+.paso { display: none; }
+.paso.active { display: block; }
+.paso-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-light); }
+.paso-numero { width: 22px; height: 22px; border-radius: 50%; background: var(--kira); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; }
+.paso-titulo { font-size: 13px; font-weight: 600; }
+.resumen-ausencia { background: var(--bg); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 12px; font-size: 12px; }
+.dia-sustitucion { background: var(--bg); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 8px; border-left: 3px solid var(--warn); }
+.dia-sustitucion.cubierto { border-left-color: var(--ok); background: var(--ok-light); }
+.dia-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.dia-fecha { font-weight: 600; font-size: 12px; }
+.dia-turno { font-size: 9px; padding: 2px 6px; border-radius: 3px; color: #fff; }
+.dia-turno.mañanas { background: var(--mañanas); }
+.dia-turno.tardes { background: var(--tardes); }
+.dia-turno.descarga { background: var(--descarga); }
+.dia-turno.cierre { background: var(--cierre); }
+.candidatos-lista { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.candidato-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--surface); border-radius: var(--radius-sm); border: 2px solid var(--border); cursor: pointer; }
+.candidato-item:hover { border-color: var(--kira); }
+.candidato-item.selected { border-color: var(--ok); background: var(--ok-light); }
+.candidato-item.invalido { opacity: 0.4; cursor: not-allowed; border-style: dashed; }
+.candidato-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px; color: #fff; flex-shrink: 0; }
+.candidato-info { flex: 1; }
+.candidato-nombre { font-weight: 600; font-size: 11px; }
+.candidato-horario { font-size: 9px; color: var(--kira); }
+.candidato-error { font-size: 9px; color: var(--err); }
+.candidato-check { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.candidato-item.selected .candidato-check { background: var(--ok); border-color: var(--ok); color: #fff; font-size: 10px; }
+.resumen-final { background: var(--ok-light); border: 2px solid var(--ok); border-radius: var(--radius); padding: 14px; }
+.resumen-final h4 { color: var(--ok); margin-bottom: 8px; font-size: 13px; }
+.resumen-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(46,125,50,0.2); font-size: 11px; }
+.ficha-empleado { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ficha-grupo { padding: 12px; background: var(--bg); border-radius: var(--radius-sm); }
+.ficha-grupo h4 { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+.ficha-campo { margin-bottom: 6px; }
+.ficha-campo label { font-size: 9px; color: var(--text-muted); }
+.ficha-campo span { font-size: 12px; font-weight: 500; display: block; }
+.empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+
+/* Menú contextual empleado */
+.menu-empleado { position: fixed; background: var(--surface); border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.25); z-index: 1100; min-width: 220px; overflow: hidden; display: none; }
+.menu-empleado.active { display: block; }
+.menu-empleado-header { padding: 12px 14px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; }
+.menu-empleado-header .emp-nombre { font-weight: 700; font-size: 13px; }
+.menu-empleado-header .emp-detalle { font-size: 10px; opacity: 0.8; margin-top: 2px; }
+.menu-empleado-body { padding: 8px 0; }
+.menu-empleado-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; font-size: 12px; color: var(--text); transition: background 0.15s; }
+.menu-empleado-item:hover { background: var(--bg); }
+.menu-empleado-item .icon { font-size: 16px; width: 24px; text-align: center; }
+.menu-empleado-item.danger { color: var(--err); }
+.menu-empleado-item.danger:hover { background: var(--err-light); }
+.menu-empleado-sep { height: 1px; background: var(--border-light); margin: 4px 0; }
+
+/* Control de vacaciones y faltas */
+.control-container { display: flex; flex-direction: column; gap: 24px; }
+.control-section { background: var(--surface); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+.control-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.badge-info { background: #e3f2fd; color: #1565c0; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.badge-warning { background: #fff3e0; color: #e65100; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.control-table-wrap { overflow-x: auto; margin-top: 12px; }
+.control-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.control-table th { background: #f5f5f5; padding: 10px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+.control-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
+.control-table tr:hover { background: #fafafa; }
+.control-table .dias-ok { color: #2e7d32; font-weight: 600; }
+.control-table .dias-warning { color: #e65100; font-weight: 600; }
+.control-table .dias-danger { color: #c62828; font-weight: 600; }
+.control-filtros { display: flex; gap: 8px; }
+.control-filtros select { padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; }
+.detalle-btn { background: none; border: none; color: var(--kira); cursor: pointer; font-size: 11px; text-decoration: underline; }
+.falta-justificada { color: #2e7d32; }
+.falta-injustificada { color: #c62828; }
+.btn-delete { background: none; border: none; color: #c62828; cursor: pointer; font-size: 14px; }
+.control-section .btn { margin-bottom: 8px; }
+
+/* Cabecera de impresión */
+.print-header { display: none; }
+
+/* Estilos de impresión */
+/* Dropdown menu */
+.dropdown { position: relative; display: inline-block; }
+.dropdown-menu { display: none; position: absolute; top: 100%; right: 0; background: white; border-radius: var(--radius-sm); box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 160px; z-index: 200; overflow: hidden; }
+.dropdown-menu.show { display: block; }
+.dropdown-menu button { display: block; width: 100%; padding: 10px 14px; text-align: left; border: none; background: none; font-size: 12px; cursor: pointer; }
+.dropdown-menu button:hover { background: #f5f5f5; }
+
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { background: white !important; font-size: 10px !important; }
+  .no-print { display: none !important; }
+  .print-header { display: block !important; text-align: center; margin-bottom: 20px; padding: 15px; border-bottom: 2px solid #1a1a2e; }
+  .print-header h1 { font-size: 18px; margin: 0 0 5px 0; color: #1a1a2e; }
+  .print-header p { margin: 0; color: #666; font-size: 12px; }
+  .main { padding: 0 !important; max-width: 100% !important; }
+  .tab-content { display: none !important; }
+  .tab-content.active { display: block !important; }
+  .calendar-header { margin-bottom: 10px !important; }
+  .month-nav button { display: none !important; }
+  .month-nav h2 { font-size: 16px !important; }
+  .week-view { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
+  .week-row { page-break-inside: avoid; }
+  .col-dia { min-height: 120px !important; }
+  .turno { font-size: 9px !important; padding: 2px 4px !important; margin-bottom: 2px !important; }
+  .turno-nombre { font-size: 9px !important; }
+  .turno-hora { font-size: 8px !important; }
+  .fds-box { padding: 3px !important; }
+  .fds-header { font-size: 8px !important; padding: 2px !important; }
+  .col-fds { width: 200px !important; }
+  .aviso-badge { font-size: 7px !important; padding: 1px 3px !important; }
+  @page { size: landscape; margin: 10mm; }
+}
+</style>
+</head>
+<body>
+<header class="header no-print">
+  <div class="header-left">
+    <div class="logo"><span>KIRA</span> Horarios</div>
+    <div class="store-selector">
+      <button class="store-btn active" id="btn-granvia" onclick="cambiarTienda('granvia')">Gran Vía</button>
+      <button class="store-btn" id="btn-isabel" onclick="cambiarTienda('isabel')">Isabel</button>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" id="tab-btn-calendario" onclick="mostrarTab('calendario')">📅 Calendario</button>
+      <button class="nav-tab" id="tab-btn-empleados" onclick="mostrarTab('empleados')">👥 Empleados</button>
+      <button class="nav-tab" id="tab-btn-ausencias" onclick="mostrarTab('ausencias')">🏖️ Ausencias</button>
+      <button class="nav-tab" id="tab-btn-control" onclick="mostrarTab('control')">📊 Control</button>
+    </nav>
+  </div>
+  <div class="header-right">
+    <span id="sync-status" style="font-size:11px;padding:4px 10px;border-radius:4px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);">⏳ Cargando...</span>
+    <div class="dropdown">
+      <button class="btn btn-secondary" onclick="toggleDropdown('dropdown-export', event)">📄 Exportar ▾</button>
+      <div class="dropdown-menu" id="dropdown-export">
+        <button onclick="exportarPDF('lv')">📅 Lunes a Viernes</button>
+        <button onclick="exportarPDF('fds')">🗓️ Fines de Semana</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalAusencia()">+ Ausencia</button>
+    <button class="btn btn-ghost" onclick="abrirModalEmpleado()">+ Empleado</button>
+  </div>
+</header>
+<div class="print-header" id="print-header">
+  <h1 id="print-titulo">KIRA MARKET - Horarios</h1>
+  <p id="print-subtitulo">Gran Vía - Marzo 2026</p>
+</div>
+<main class="main">
+  <div id="tab-calendario" class="tab-content active">
+    <div class="calendar-header no-print"><div class="month-nav"><button onclick="mesAnterior()">‹</button><h2 id="mes-actual">Marzo 2026</h2><button onclick="mesSiguiente()">›</button></div></div>
+    <div id="calendar-container"></div>
+  </div>
+  <div id="tab-empleados" class="tab-content">
+    <div class="seccion-header"><h2 id="titulo-empleados">Plantilla Gran Vía</h2><button class="btn btn-primary" onclick="abrirModalEmpleado()">+ Nuevo</button></div>
+    <div class="empleados-grid" id="empleados-grid"></div>
+  </div>
+  <div id="tab-ausencias" class="tab-content">
+    <div class="seccion-header"><h2 id="titulo-ausencias">Ausencias Gran Vía</h2><button class="btn btn-primary" onclick="abrirModalAusencia()">+ Nueva</button></div>
+    <div class="ausencias-lista" id="ausencias-lista"></div>
+  </div>
+  <div id="tab-control" class="tab-content">
+    <div class="seccion-header">
+      <h2 id="titulo-control">📊 Control de Vacaciones y Faltas</h2>
+      <div class="control-filtros">
+        <select id="control-year" onchange="renderControl()"></select>
+      </div>
+    </div>
+    <div class="control-container">
+      <div class="control-section">
+        <h3>🏖️ Vacaciones y Permisos <span class="badge-info">Restan días</span></h3>
+        <div class="control-table-wrap">
+          <table class="control-table" id="tabla-vacaciones">
+            <thead><tr><th>Empleado</th><th>Total</th><th>Usados</th><th>Restantes</th><th>Detalle</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="control-section">
+        <h3>📋 Faltas de Asistencia <span class="badge-warning">No restan días</span></h3>
+        <button class="btn btn-sm btn-secondary" onclick="abrirModalFalta()">+ Registrar falta</button>
+        <div class="control-table-wrap">
+          <table class="control-table" id="tabla-faltas">
+            <thead><tr><th>Empleado</th><th>Fecha</th><th>Tipo</th><th>Motivo</th><th>Acciones</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<div class="modal-overlay" id="modal-ausencia">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3>📋 Registrar ausencia</h3><button class="modal-close" onclick="cerrarModal('modal-ausencia')">×</button></div>
+    <div class="modal-body">
+      <div class="paso active" id="paso-1"><div class="paso-header"><span class="paso-numero">1</span><span class="paso-titulo">Empleado</span></div><div class="form-group"><label>Empleado</label><select id="ausencia-empleado"></select></div></div>
+      <div class="paso" id="paso-2"><div class="paso-header"><span class="paso-numero">2</span><span class="paso-titulo">Motivo</span></div><div class="resumen-ausencia" id="resumen-paso2"></div><div class="form-group"><label>Tipo</label><select id="ausencia-tipo"><option value="">--</option><option value="vacaciones">🏖️ Vacaciones</option><option value="baja">🏥 Baja</option><option value="permiso">📅 Permiso</option></select></div></div>
+      <div class="paso" id="paso-3"><div class="paso-header"><span class="paso-numero">3</span><span class="paso-titulo">Fechas</span></div><div class="resumen-ausencia" id="resumen-paso3"></div><div class="form-row"><div class="form-group"><label>Desde</label><input type="date" id="ausencia-desde"></div><div class="form-group"><label>Hasta</label><input type="date" id="ausencia-hasta"></div></div></div>
+      <div class="paso" id="paso-4"><div class="paso-header"><span class="paso-numero">4</span><span class="paso-titulo">Sustitutos</span></div><div class="resumen-ausencia" id="resumen-paso4"></div><div id="dias-sustitucion"></div></div>
+      <div class="paso" id="paso-5"><div class="paso-header"><span class="paso-numero">5</span><span class="paso-titulo">Confirmar</span></div><div class="resumen-final" id="resumen-final"></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" id="btn-anterior" onclick="pasoAnterior()" style="display:none">← Anterior</button><button class="btn btn-secondary" onclick="cerrarModal('modal-ausencia')">Cancelar</button><button class="btn btn-success" id="btn-siguiente" onclick="pasoSiguiente()">Siguiente →</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-empleado">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-empleado-titulo">👤 Empleado</h3><button class="modal-close" onclick="cerrarModal('modal-empleado')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="emp-editando">
+      <div class="form-row"><div class="form-group"><label>Alias</label><input type="text" id="emp-alias"></div><div class="form-group"><label>DNI</label><input type="text" id="emp-dni"></div></div>
+      <div class="form-row"><div class="form-group"><label>Nombre</label><input type="text" id="emp-nombre"></div><div class="form-group"><label>Apellidos</label><input type="text" id="emp-apellidos"></div></div>
+      <div class="form-row"><div class="form-group"><label>Teléfono</label><input type="tel" id="emp-telefono"></div><div class="form-group"><label>Email</label><input type="email" id="emp-email"></div></div>
+      <div class="form-row"><div class="form-group"><label>Fecha alta</label><input type="date" id="emp-fecha-alta"></div><div class="form-group"><label>Tienda</label><select id="emp-tienda" onchange="toggleHorasTienda()"><option value="granvia">Gran Vía</option><option value="isabel">Isabel</option><option value="ambas">Compartido</option></select></div></div>
+      <div class="form-row-3"><div class="form-group"><label>Contrato h/sem</label><input type="number" id="emp-contrato"></div><div class="form-group"><label>Horas L-V</label><input type="number" id="emp-horas-lv" step="0.5"></div><div class="form-group"><label>Horas FdS</label><input type="number" id="emp-horas-fds" step="0.5"></div></div>
+      <div class="form-row"><div class="form-group"><label>Franja</label><select id="emp-franja"><option value="">--</option><option value="descarga">Descarga</option><option value="mañanas">Mañanas</option><option value="tardes">Tardes</option><option value="cierre">Cierre</option><option value="rotativo">Rotativo</option></select></div><div class="form-group"><label>Restricción</label><select id="emp-restriccion"><option value="">Ninguna</option><option value="solo-mañanas">Solo mañanas</option><option value="max-15">Máx 15:00</option><option value="solo-descarga">Solo descarga</option><option value="solo-cierre">Solo cierre</option></select></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-empleado')">Cancelar</button><button class="btn btn-success" onclick="guardarEmpleado()">Guardar</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-ver-empleado">
+  <div class="modal">
+    <div class="modal-header"><h3 id="ver-empleado-titulo">👤 Ficha</h3><button class="modal-close" onclick="cerrarModal('modal-ver-empleado')">×</button></div>
+    <div class="modal-body" id="ver-empleado-body"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-ver-empleado')">Cerrar</button><button class="btn btn-primary" onclick="editarEmpleado()">Editar</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-falta">
+  <div class="modal">
+    <div class="modal-header"><h3>📋 Registrar falta de asistencia</h3><button class="modal-close" onclick="cerrarModal('modal-falta')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Empleado</label><select id="falta-empleado"></select></div>
+      <div class="form-group"><label>Fecha</label><input type="date" id="falta-fecha"></div>
+      <div class="form-group"><label>Tipo</label><select id="falta-tipo"><option value="justificada">✅ Justificada</option><option value="injustificada">❌ Injustificada</option></select></div>
+      <div class="form-group"><label>Motivo</label><textarea id="falta-motivo" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm)"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-falta')">Cancelar</button><button class="btn btn-success" onclick="guardarFalta()">Guardar</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-detalle-vacaciones">
+  <div class="modal">
+    <div class="modal-header"><h3 id="detalle-vac-titulo">📋 Detalle</h3><button class="modal-close" onclick="cerrarModal('modal-detalle-vacaciones')">×</button></div>
+    <div class="modal-body" id="detalle-vac-body"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-detalle-vacaciones')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Menú contextual empleado -->
+<div class="menu-empleado" id="menu-empleado">
+  <div class="menu-empleado-header">
+    <div class="emp-nombre" id="menu-emp-nombre"></div>
+    <div class="emp-detalle" id="menu-emp-detalle"></div>
+  </div>
+  <div class="menu-empleado-body">
+    <div class="menu-empleado-item" onclick="menuModificarHorario()"><span class="icon">⏰</span> Modificar horario hoy</div>
+    <div class="menu-empleado-item" onclick="menuRegistrarAusencia()"><span class="icon">📋</span> Registrar ausencia</div>
+    <div class="menu-empleado-sep"></div>
+    <div class="menu-empleado-item" onclick="menuVerFicha()"><span class="icon">👤</span> Ver ficha empleado</div>
+  </div>
+</div>
+
+<!-- Modal modificar horario puntual -->
+<div class="modal-overlay" id="modal-modificar-horario">
+  <div class="modal">
+    <div class="modal-header"><h3>⏰ Modificar horario puntual</h3><button class="modal-close" onclick="cerrarModal('modal-modificar-horario')">×</button></div>
+    <div class="modal-body">
+      <div class="resumen-ausencia" id="mod-horario-resumen"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Entrada</label>
+          <input type="time" id="mod-entrada" step="900">
+        </div>
+        <div class="form-group">
+          <label>Salida</label>
+          <input type="time" id="mod-salida" step="900">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Motivo (opcional)</label>
+        <input type="text" id="mod-motivo" placeholder="Ej: Cita médica, recoge niños...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-modificar-horario')">Cancelar</button>
+      <button class="btn btn-danger" id="btn-quitar-mod" onclick="quitarModificacion()" style="display:none">Quitar modificación</button>
+      <button class="btn btn-success" onclick="guardarModificacionHorario()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var EMPLEADOS_GV = {
+  EVA:{alias:'EVA',nombre:'Eva',apellidos:'Martínez',dni:'12345678A',telefono:'612001001',email:'eva@kira.com',fechaAlta:'2018-03-15',contrato:40,tienda:'granvia',franja:'mañanas',restriccion:'max-15',color:'#2e7d32'},
+  SARA:{alias:'SARA',nombre:'Sara',apellidos:'López',dni:'23456789B',telefono:'612002002',email:'sara@kira.com',fechaAlta:'2019-06-01',contrato:35,tienda:'granvia',franja:'mañanas',restriccion:'solo-mañanas',color:'#2e7d32'},
+  ELI:{alias:'ELI',nombre:'Elisabeth',apellidos:'Fernández',dni:'34567890C',telefono:'612003003',email:'eli@kira.com',fechaAlta:'2019-09-15',contrato:35,tienda:'granvia',franja:'mañanas',restriccion:'solo-mañanas',color:'#2e7d32'},
+  FRANCIS:{alias:'FRANCIS',nombre:'Francisco',apellidos:'Pérez',dni:'45678901D',telefono:'612004004',email:'francis@kira.com',fechaAlta:'2020-01-10',contrato:35,tienda:'granvia',franja:'cierre',restriccion:'solo-cierre',color:'#6a1b9a'},
+  EDU:{alias:'EDU',nombre:'Eduardo',apellidos:'González',dni:'56789012E',telefono:'612005005',email:'edu@kira.com',fechaAlta:'2020-04-20',contrato:30,tienda:'ambas',franja:'mañanas',restriccion:'max-15',color:'#2e7d32'},
+  DAVID:{alias:'DAVID',nombre:'David',apellidos:'Rodríguez',dni:'67890123F',telefono:'612006006',email:'david@kira.com',fechaAlta:'2020-07-01',contrato:30,tienda:'ambas',franja:'rotativo',restriccion:'',color:'#2c5aa0'},
+  LETI:{alias:'LETI',nombre:'Leticia',apellidos:'Jiménez',dni:'78901234G',telefono:'612007007',email:'leti@kira.com',fechaAlta:'2020-07-01',contrato:30,tienda:'ambas',franja:'rotativo',restriccion:'',color:'#2c5aa0'},
+  SILVIA:{alias:'SILVIA',nombre:'Silvia',apellidos:'Hernández',dni:'89012345H',telefono:'612008008',email:'silvia@kira.com',fechaAlta:'2021-02-15',contrato:30,tienda:'ambas',franja:'tardes',restriccion:'',color:'#e65100'},
+  ALEX:{alias:'ALEX',nombre:'Alejandro',apellidos:'Muñoz',dni:'90123456I',telefono:'612009009',email:'alex@kira.com',fechaAlta:'2021-05-01',contrato:30,tienda:'ambas',franja:'cierre',restriccion:'',color:'#6a1b9a'},
+  ABDEL:{alias:'ABDEL',nombre:'Abdel',apellidos:'Benali',dni:'01234567J',telefono:'612010010',email:'abdel@kira.com',fechaAlta:'2021-09-01',contrato:30,tienda:'ambas',franja:'cierre',restriccion:'',color:'#6a1b9a'},
+  ANTONIO:{alias:'ANTONIO',nombre:'Antonio',apellidos:'Serrano',dni:'11223344K',telefono:'612011011',email:'antonio@kira.com',fechaAlta:'2019-01-15',contrato:25,tienda:'ambas',franja:'descarga',restriccion:'solo-descarga',color:'#2c5aa0'},
+  VANESA:{alias:'VANESA',nombre:'Vanesa',apellidos:'Ortega',dni:'22334455L',telefono:'612012012',email:'vanesa@kira.com',fechaAlta:'2022-03-01',contrato:25,tienda:'ambas',franja:'mañanas',restriccion:'',color:'#2e7d32'},
+  MORILLA:{alias:'MORILLA',nombre:'José',apellidos:'Morilla',dni:'33445566M',telefono:'612013013',email:'morilla@kira.com',fechaAlta:'2022-06-15',contrato:25,tienda:'ambas',franja:'tardes',restriccion:'',color:'#e65100'},
+  ALFREDO:{alias:'ALFREDO',nombre:'Alfredo',apellidos:'García',dni:'44556677N',telefono:'612014014',email:'alfredo@kira.com',fechaAlta:'2023-01-10',contrato:15,tienda:'granvia',franja:'tardes',restriccion:'',color:'#e65100'},
+  ALEXVERA:{alias:'ALEX VERA',nombre:'Alejandro',apellidos:'Vera',dni:'55667788O',telefono:'612015015',email:'alexvera@kira.com',fechaAlta:'2023-03-01',contrato:15,tienda:'granvia',franja:'tardes',restriccion:'',color:'#e65100'}
+};
+var HORARIOS_GV = {
+  A:{LJ:{LETI:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]},V:{LETI:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]}},
+  B:{LJ:{DAVID:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]},V:{DAVID:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]}}
+};
+
+// Mínimos por franja L-V
+var MINIMOS_LV = {
+  granvia: { descarga: 2, mañanas: 3, tardes: 2, cierre: 3 },
+  isabel: { descarga: 2, mañanas: 3, tardes: 2, cierre: 2 }
+};
+
+// Mínimos FdS
+var MINIMOS_FDS = {
+  granvia: { SAB_M: 4, SAB_T: 3, DOM_M: 2, DOM_T: 4 },
+  isabel: { SAB_M: 2, SAB_T: 3, DOM_M: 2, DOM_T: 3 }
+};
+
+// Rotación FDS Gran Vía - cálculo dinámico
+// Descarga A=DAVID, B=LETI, C=EDU - ciclo 3: SAB_M(descarga) -> DOM_T -> SAB_T
+// Rotación 1-7: FRANCIS, ALEX, SILVIA, SARA, MORILLA, VANESA, ABDEL - ciclo 7: SAB_M(2) -> DOM_M(2) -> DOM_T(2) -> SAB_T(1)
+// FIJOS: ANTONIO (sab mañana), ELI (dom mañana), ALFREDO+ALEXVERA (sab/dom tarde)
+var DESCARGA_GV = ['DAVID','LETI','EDU']; // A, B, C
+var ROTACION_GV = ['FRANCIS','ALEX','SILVIA','SARA','MORILLA','VANESA','ABDEL']; // 1-7
+
+function getTurnoRotacion(empIndex, fi) {
+  // empIndex: 0-6 (FRANCIS=0, ALEX=1, etc)
+  // fi: índice de semana desde semana 0 (28feb/1mar 2026)
+  // Patrón: pos 0,1=SAB_M | 2,3=DOM_M | 4,5=DOM_T | 6=SAB_T
+  var pos = (fi + empIndex * 6) % 7;
+  if (pos <= 1) return 'SAB_M';
+  if (pos <= 3) return 'DOM_M';
+  if (pos <= 5) return 'DOM_T';
+  return 'SAB_T';
+}
+
+function getTurnoABC(empIndex, fi) {
+  // empIndex: 0=DAVID(A), 1=LETI(B), 2=EDU(C)
+  // Ciclo 3: SAB_M(descarga) -> DOM_T -> SAB_T
+  var pos = (fi + empIndex * 2) % 3; // desfase de 2 entre cada uno
+  if (pos === 0) return 'SAB_M';
+  if (pos === 1) return 'DOM_T';
+  return 'SAB_T';
+}
+
+function getFdsGV(fecha) {
+  var inicio = new Date(2026, 1, 28); // 28 feb 2026
+  var fi = Math.floor((fecha - inicio) / (7 * 24 * 60 * 60 * 1000));
+  if (fi < 0) fi = ((fi % 21) + 21) % 21;
+  
+  var result = { SAB_M: {}, SAB_T: {}, DOM_M: {}, DOM_T: {} };
+  
+  // FIJOS
+  result.SAB_M['ANTONIO'] = [5, 13];
+  result.DOM_M['ELI'] = [7.25, 14.75];
+  result.SAB_T['ALFREDO'] = [14.75, 22.25];
+  result.SAB_T['ALEXVERA'] = [14.75, 22.25];
+  result.DOM_T['ALFREDO'] = [14.75, 22.25];
+  result.DOM_T['ALEXVERA'] = [14.75, 22.25];
+  
+  // Rotación A, B, C (DAVID, LETI, EDU) - ciclo 3
+  for (var i = 0; i < 3; i++) {
+    var emp = DESCARGA_GV[i];
+    var turno = getTurnoABC(i, fi);
+    if (turno === 'SAB_M') result.SAB_M[emp] = [5, 12.5]; // descarga
+    else if (turno === 'DOM_T') result.DOM_T[emp] = [14.75, 22.25];
+    else result.SAB_T[emp] = [14.75, 22.25];
+  }
+  
+  // Rotación 1-7 (los 7 empleados) - ciclo 7
+  for (var i = 0; i < 7; i++) {
+    var emp = ROTACION_GV[i];
+    var turno = getTurnoRotacion(i, fi);
+    if (turno === 'SAB_M') result.SAB_M[emp] = [7.25, 14.75];
+    else if (turno === 'DOM_M') result.DOM_M[emp] = [7.25, 14.75];
+    else if (turno === 'DOM_T') result.DOM_T[emp] = [14.75, 22.25];
+    else result.SAB_T[emp] = [14.75, 22.25];
+  }
+  
+  return result;
+}
+var MINIMOS_GV = {descarga:2,mañanas:2,tardes:2,cierre:3};
+var EMPLEADOS_IS = {
+  EDU:{alias:'EDU',nombre:'Eduardo',apellidos:'González',dni:'56789012E',telefono:'612005005',email:'edu@kira.com',fechaAlta:'',contrato:12,tienda:'ambas',franja:'mañanas',restriccion:'',color:'#2e7d32'},
+  DAVID:{alias:'DAVID',nombre:'David',apellidos:'Rodríguez',dni:'67890123F',telefono:'612006006',email:'david@kira.com',fechaAlta:'',contrato:12,tienda:'ambas',franja:'rotativo',restriccion:'',color:'#2c5aa0'},
+  LETI:{alias:'LETI',nombre:'Leticia',apellidos:'Jiménez',dni:'78901234G',telefono:'612007007',email:'leti@kira.com',fechaAlta:'',contrato:12,tienda:'ambas',franja:'rotativo',restriccion:'',color:'#2c5aa0'},
+  SILVIA:{alias:'SILVIA',nombre:'Silvia',apellidos:'Hernández',dni:'89012345H',telefono:'612008008',email:'silvia@kira.com',fechaAlta:'',contrato:15,tienda:'ambas',franja:'tardes',restriccion:'',color:'#e65100'},
+  ALEX:{alias:'ALEX',nombre:'Alejandro',apellidos:'Muñoz',dni:'90123456I',telefono:'612009009',email:'alex@kira.com',fechaAlta:'',contrato:15,tienda:'ambas',franja:'cierre',restriccion:'',color:'#6a1b9a'},
+  ABDEL:{alias:'ABDEL',nombre:'Abdel',apellidos:'Benali',dni:'01234567J',telefono:'612010010',email:'abdel@kira.com',fechaAlta:'',contrato:15,tienda:'ambas',franja:'cierre',restriccion:'',color:'#6a1b9a'},
+  ANTONIO:{alias:'ANTONIO',nombre:'Antonio',apellidos:'Serrano',dni:'11223344K',telefono:'612011011',email:'antonio@kira.com',fechaAlta:'',contrato:15,tienda:'ambas',franja:'descarga',restriccion:'solo-descarga',color:'#2c5aa0'},
+  VANESA:{alias:'VANESA',nombre:'Vanesa',apellidos:'Ortega',dni:'22334455L',telefono:'612012012',email:'vanesa@kira.com',fechaAlta:'',contrato:18,tienda:'ambas',franja:'mañanas',restriccion:'',color:'#2e7d32'},
+  MORILLA:{alias:'MORILLA',nombre:'José',apellidos:'Morilla',dni:'33445566M',telefono:'612013013',email:'morilla@kira.com',fechaAlta:'',contrato:18,tienda:'ambas',franja:'tardes',restriccion:'',color:'#e65100'},
+  CAROLINA:{alias:'CAROLINA',nombre:'Carolina',apellidos:'Ruiz',dni:'66778899P',telefono:'612020001',email:'carolina@reypik.com',fechaAlta:'2021-01-15',contrato:30,tienda:'isabel',franja:'mañanas',restriccion:'',color:'#2e7d32'},
+  ALVARO:{alias:'ALVARO',nombre:'Álvaro',apellidos:'Sánchez',dni:'77889900Q',telefono:'612020002',email:'alvaro@reypik.com',fechaAlta:'2021-03-01',contrato:30,tienda:'isabel',franja:'tardes',restriccion:'',color:'#e65100'},
+  CECI:{alias:'CECI',nombre:'Cecilia',apellidos:'Martín',dni:'88990011R',telefono:'612020003',email:'ceci@reypik.com',fechaAlta:'2021-06-01',contrato:30,tienda:'isabel',franja:'cierre',restriccion:'',color:'#6a1b9a'},
+  ANDREA:{alias:'ANDREA',nombre:'Andrea',apellidos:'López',dni:'99001122S',telefono:'612020004',email:'andrea@reypik.com',fechaAlta:'2022-02-15',contrato:23.5,tienda:'isabel',franja:'cierre',restriccion:'',color:'#6a1b9a'},
+  ABEL:{alias:'ABEL VERA',nombre:'Abel',apellidos:'Vera',dni:'00112233T',telefono:'612020005',email:'abel@reypik.com',fechaAlta:'2022-05-01',contrato:19,tienda:'isabel',franja:'cierre',restriccion:'',color:'#6a1b9a'},
+  MARICARMEN:{alias:'MARI CARMEN',nombre:'María Carmen',apellidos:'Ortiz',dni:'11223344U',telefono:'612020006',email:'maricarmen@reypik.com',fechaAlta:'2022-09-01',contrato:15,tienda:'isabel',franja:'mañanas',restriccion:'',color:'#2e7d32'},
+  RUBEN:{alias:'RUBEN',nombre:'Rubén',apellidos:'García',dni:'22334455V',telefono:'612020007',email:'ruben@reypik.com',fechaAlta:'2023-01-15',contrato:15,tienda:'isabel',franja:'tardes',restriccion:'',color:'#e65100'},
+  GONZALO:{alias:'GONZALO',nombre:'Gonzalo',apellidos:'Fernández',dni:'33445566W',telefono:'612020008',email:'gonzalo@reypik.com',fechaAlta:'2023-04-01',contrato:15,tienda:'isabel',franja:'tardes',restriccion:'',color:'#e65100'}
+};
+
+// Rotación Isabel L-V: Carolina/Alvaro/Ceci ciclo 4 semanas
+// Sem 1: Carolina mañana, Alvaro tarde, Ceci cierre
+// Sem 2: Alvaro mañana, Carolina tarde, Ceci cierre
+// Sem 3: Carolina mañana, Ceci tarde, Alvaro cierre
+// Sem 4: Ceci mañana, Carolina tarde, Alvaro cierre
+var ROTACION_IS = [
+  {mañana:'CAROLINA', tarde:'ALVARO', cierre:'CECI'},
+  {mañana:'ALVARO', tarde:'CAROLINA', cierre:'CECI'},
+  {mañana:'CAROLINA', tarde:'CECI', cierre:'ALVARO'},
+  {mañana:'CECI', tarde:'CAROLINA', cierre:'ALVARO'}
+];
+
+function getHorariosIS(fecha) {
+  var dow = fecha.getDay(); // 1=L, 2=M, 3=X, 4=J, 5=V
+  if (dow < 1 || dow > 5) return {};
+  
+  // Calcular semana (ciclo 4) desde 2 marzo 2026 (lunes semana 1)
+  // Usar solo año/mes/día para evitar problemas de zona horaria
+  var inicioYear = 2026, inicioMonth = 2, inicioDay = 2; // 2 marzo 2026
+  var inicio = new Date(inicioYear, inicioMonth - 1, inicioDay);
+  var fechaNorm = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  var diffDias = Math.round((fechaNorm - inicio) / (24 * 60 * 60 * 1000));
+  var semIdx = Math.floor(diffDias / 7) % 4;
+  if (semIdx < 0) semIdx = ((semIdx % 4) + 4) % 4;
+  
+  var rot = ROTACION_IS[semIdx];
+  var horarios = {};
+  
+  // DAVID L,X,V | LETI M,J,V (viernes coinciden ambos)
+  if (dow === 1 || dow === 3 || dow === 5) {
+    horarios['DAVID'] = [11, 15];
+  }
+  if (dow === 2 || dow === 4 || dow === 5) {
+    horarios['LETI'] = [11, 15];
+  }
+  
+  // EDU solo L,X,V a las 6:00
+  if (dow === 1 || dow === 3 || dow === 5) {
+    horarios['EDU'] = [6, 10];
+  }
+  
+  // Fijos todos los días
+  horarios['VANESA'] = (dow === 1 || dow === 3 || dow === 5) ? [6, 10] : [7, 10];
+  horarios['SILVIA'] = [7, 10];
+  horarios['ANTONIO'] = [10, 13];
+  horarios['ABDEL'] = [14.5, 17.5];
+  horarios['ALEX'] = [14.75, 17.75];
+  horarios['MORILLA'] = [18.75, 22.25];
+  
+  // ABEL L,V | ANDREA M,X,J
+  if (dow === 1 || dow === 5) {
+    horarios['ABEL'] = [18.25, 22.25];
+  } else {
+    horarios['ANDREA'] = [18.25, 22.25];
+  }
+  
+  // Rotación Carolina/Alvaro/Ceci
+  horarios[rot.mañana] = [10, 14.5];
+  horarios[rot.tarde] = [15, 19.5];
+  horarios[rot.cierre] = [17.75, 22.25];
+  
+  return horarios;
+}
+
+// Rotación FDS Isabel - ciclo 8 semanas
+// Grupo A (1 turno por FdS): CAROLINA, ALVARO, CECI, ANDREA
+// Grupo B (trabajan S y D): MARICARMEN, ABEL, GONZALO, RUBEN
+var GRUPO_A_IS = ['CAROLINA', 'ALVARO', 'CECI', 'ANDREA'];
+var GRUPO_B_IS = ['MARICARMEN', 'ABEL', 'GONZALO', 'RUBEN'];
+
+// Grupo A: cada semana, cada uno en un turno diferente (ciclo 4, se repite 2 veces = 8)
+var ROTACION_A_IS = [
+  {SAB_M: 'CAROLINA', SAB_T: 'ALVARO', DOM_M: 'CECI', DOM_T: 'ANDREA'},
+  {SAB_M: 'ALVARO', SAB_T: 'CECI', DOM_M: 'ANDREA', DOM_T: 'CAROLINA'},
+  {SAB_M: 'CECI', SAB_T: 'ANDREA', DOM_M: 'CAROLINA', DOM_T: 'ALVARO'},
+  {SAB_M: 'ANDREA', SAB_T: 'CAROLINA', DOM_M: 'ALVARO', DOM_T: 'CECI'},
+  {SAB_M: 'CAROLINA', SAB_T: 'ALVARO', DOM_M: 'CECI', DOM_T: 'ANDREA'},
+  {SAB_M: 'ALVARO', SAB_T: 'CECI', DOM_M: 'ANDREA', DOM_T: 'CAROLINA'},
+  {SAB_M: 'CECI', SAB_T: 'ANDREA', DOM_M: 'CAROLINA', DOM_T: 'ALVARO'},
+  {SAB_M: 'ANDREA', SAB_T: 'CAROLINA', DOM_M: 'ALVARO', DOM_T: 'CECI'}
+];
+
+// Grupo B: cada uno hace 1 mañana + 1 tarde (el otro día)
+// SAB_M=1, SAB_T=3, DOM_M=1, DOM_T=3
+var ROTACION_B_IS = [
+  {SAB_M: ['MARICARMEN'], SAB_T: ['ABEL', 'GONZALO', 'RUBEN'], DOM_M: ['GONZALO'], DOM_T: ['MARICARMEN', 'ABEL', 'RUBEN']},
+  {SAB_M: ['ABEL'], SAB_T: ['MARICARMEN', 'GONZALO', 'RUBEN'], DOM_M: ['RUBEN'], DOM_T: ['MARICARMEN', 'ABEL', 'GONZALO']},
+  {SAB_M: ['GONZALO'], SAB_T: ['MARICARMEN', 'ABEL', 'RUBEN'], DOM_M: ['MARICARMEN'], DOM_T: ['ABEL', 'GONZALO', 'RUBEN']},
+  {SAB_M: ['RUBEN'], SAB_T: ['MARICARMEN', 'ABEL', 'GONZALO'], DOM_M: ['ABEL'], DOM_T: ['MARICARMEN', 'GONZALO', 'RUBEN']},
+  {SAB_M: ['MARICARMEN'], SAB_T: ['ABEL', 'GONZALO', 'RUBEN'], DOM_M: ['RUBEN'], DOM_T: ['MARICARMEN', 'ABEL', 'GONZALO']},
+  {SAB_M: ['ABEL'], SAB_T: ['MARICARMEN', 'GONZALO', 'RUBEN'], DOM_M: ['GONZALO'], DOM_T: ['MARICARMEN', 'ABEL', 'RUBEN']},
+  {SAB_M: ['GONZALO'], SAB_T: ['MARICARMEN', 'ABEL', 'RUBEN'], DOM_M: ['ABEL'], DOM_T: ['MARICARMEN', 'GONZALO', 'RUBEN']},
+  {SAB_M: ['RUBEN'], SAB_T: ['MARICARMEN', 'ABEL', 'GONZALO'], DOM_M: ['MARICARMEN'], DOM_T: ['ABEL', 'GONZALO', 'RUBEN']}
+];
+
+function getFdsIS(fecha) {
+  // Calcular semana (ciclo 8) desde 28 feb 2026
+  var inicio = new Date(2026, 1, 28);
+  var fechaNorm = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  var diffDias = Math.round((fechaNorm - inicio) / (24 * 60 * 60 * 1000));
+  var semIdx = Math.floor(diffDias / 7) % 8;
+  if (semIdx < 0) semIdx = ((semIdx % 8) + 8) % 8;
+  
+  var rotA = ROTACION_A_IS[semIdx];
+  var rotB = ROTACION_B_IS[semIdx];
+  
+  var result = { SAB_M: {}, SAB_T: {}, DOM_M: {}, DOM_T: {} };
+  
+  // Grupo A (1 persona por turno)
+  result.SAB_M[rotA.SAB_M] = [7.25, 14.75];
+  result.SAB_T[rotA.SAB_T] = [14.75, 22.25];
+  result.DOM_M[rotA.DOM_M] = [7.25, 14.75];
+  result.DOM_T[rotA.DOM_T] = [14.75, 22.25];
+  
+  // Grupo B
+  for (var i = 0; i < rotB.SAB_M.length; i++) result.SAB_M[rotB.SAB_M[i]] = [7.25, 14.75];
+  for (var i = 0; i < rotB.SAB_T.length; i++) result.SAB_T[rotB.SAB_T[i]] = [14.75, 22.25];
+  for (var i = 0; i < rotB.DOM_M.length; i++) result.DOM_M[rotB.DOM_M[i]] = [7.25, 14.75];
+  for (var i = 0; i < rotB.DOM_T.length; i++) result.DOM_T[rotB.DOM_T[i]] = [14.75, 22.25];
+  
+  return result;
+}
+var MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+var mesActual=2,añoActual=2026,tiendaActual='granvia';
+var ausenciasGV=[],ausenciasIS=[],sustituciones=[];
+var pasoActual=1,seleccionesDias={},empleadoViendo=null;
+function formatHora(h){var hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+':'+(mm<10?'0':'')+mm;}
+function parseFechaLocal(str){var p=str.split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));}
+function formatFechaLocal(f){var y=f.getFullYear(),m=f.getMonth()+1,d=f.getDate();return y+'-'+(m<10?'0':'')+m+'-'+(d<10?'0':'')+d;}
+function getWeekNumber(d){var date=new Date(d.getTime());date.setHours(0,0,0,0);date.setDate(date.getDate()+3-(date.getDay()+6)%7);var week1=new Date(date.getFullYear(),0,4);return 1+Math.round(((date.getTime()-week1.getTime())/86400000-3+(week1.getDay()+6)%7)/7);}
+function getNumSemana(f){var d=new Date(Date.UTC(f.getFullYear(),f.getMonth(),f.getDate()));var dn=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dn);var ys=new Date(Date.UTC(d.getUTCFullYear(),0,1));return Math.ceil((((d-ys)/86400000)+1)/7);}
+function getSemanaAB(f){
+  var ini=new Date(2026,2,2);
+  var fechaNorm=new Date(f.getFullYear(),f.getMonth(),f.getDate());
+  var diffDias=Math.round((fechaNorm-ini)/(24*60*60*1000));
+  var diffSemanas=Math.floor(diffDias/7);
+  return diffSemanas%2===0?'A':'B';
+}
+function getFdsRotacion(f){var ini=new Date(2026,1,28);var sem=Math.floor((f-ini)/(7*24*60*60*1000));var rot=((sem%3)+3)%3;return rot===0?3:rot;}
+function getFranja(e,s){if(e<7&&s<=13)return'descarga';if(s<=15)return'mañanas';if(e>=16)return'cierre';return'tardes';}
+function getFranjaIS(e,s){
+  // Isabel: Descarga 5-7, Mañanas 9-11, Tardes 14-17, Cierre 17+
+  if(e<8) return 'descarga';
+  if(e>=10 && e<12) return 'mañanas';
+  if(e>=14 && e<17) return 'tardes';
+  if(e>=17) return 'cierre';
+  return 'mañanas';
+}
+
+// Obtener todos los turnos de un empleado en una fecha (incluyendo sustituciones)
+function getTurnosEmpleado(emp, fecha) {
+  var turnos = [];
+  var dow = fecha.getDay();
+  var fs = formatFechaLocal(fecha);
+  
+  if(dow >= 1 && dow <= 5) {
+    // L-V
+    var semAB = getSemanaAB(fecha);
+    var horariosGV = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+    var horariosIS = getHorariosIS(fecha);
+    
+    // Turno base en GV
+    if(horariosGV && horariosGV[emp]) {
+      turnos.push({tienda: 'granvia', inicio: horariosGV[emp][0], fin: horariosGV[emp][1], tipo: 'base'});
+    }
+    // Turno base en IS
+    if(horariosIS && horariosIS[emp]) {
+      turnos.push({tienda: 'isabel', inicio: horariosIS[emp][0], fin: horariosIS[emp][1], tipo: 'base'});
+    }
+  } else {
+    // FdS
+    var fdsGV = getFdsGV(fecha);
+    var fdsIS = getFdsIS(fecha);
+    var turnosKey = dow === 6 ? ['SAB_M', 'SAB_T'] : ['DOM_M', 'DOM_T'];
+    
+    for(var t = 0; t < turnosKey.length; t++) {
+      var key = turnosKey[t];
+      if(fdsGV[key] && fdsGV[key][emp]) {
+        turnos.push({tienda: 'granvia', inicio: fdsGV[key][emp][0], fin: fdsGV[key][emp][1], tipo: 'base', turnoFds: key});
+      }
+      if(fdsIS[key] && fdsIS[key][emp]) {
+        turnos.push({tienda: 'isabel', inicio: fdsIS[key][emp][0], fin: fdsIS[key][emp][1], tipo: 'base', turnoFds: key});
+      }
+    }
+  }
+  
+  // Añadir sustituciones donde este empleado es el sustituto
+  for(var i = 0; i < sustituciones.length; i++) {
+    var sust = sustituciones[i];
+    if(sust.sustituto === emp && sust.fecha === fs) {
+      turnos.push({tienda: sust.tienda, inicio: sust.entrada, fin: sust.salida, tipo: 'sustitucion', sustDe: sust.ausente});
+    }
+  }
+  
+  return turnos;
+}
+
+// Detectar si un empleado tiene solapamiento entre tiendas en una fecha
+function detectarSolapamientoEmpleado(emp, fecha) {
+  var turnos = getTurnosEmpleado(emp, fecha);
+  var turnosGV = turnos.filter(function(t) { return t.tienda === 'granvia'; });
+  var turnosIS = turnos.filter(function(t) { return t.tienda === 'isabel'; });
+  
+  var solapamientos = [];
+  
+  for(var g = 0; g < turnosGV.length; g++) {
+    for(var i = 0; i < turnosIS.length; i++) {
+      var tGV = turnosGV[g];
+      var tIS = turnosIS[i];
+      
+      // Hay solapamiento si no están completamente separados
+      if(!(tGV.fin <= tIS.inicio || tIS.fin <= tGV.inicio)) {
+        solapamientos.push({
+          empleado: emp,
+          gv: formatHora(tGV.inicio) + '-' + formatHora(tGV.fin) + (tGV.tipo === 'sustitucion' ? ' (sust. ' + tGV.sustDe + ')' : ''),
+          is: formatHora(tIS.inicio) + '-' + formatHora(tIS.fin) + (tIS.tipo === 'sustitucion' ? ' (sust. ' + tIS.sustDe + ')' : ''),
+          tipoGV: tGV.tipo,
+          tipoIS: tIS.tipo
+        });
+      }
+    }
+  }
+  
+  return solapamientos;
+}
+
+// Detectar solapamientos entre tiendas para todos los empleados compartidos
+function detectarSolapamientos(fecha) {
+  var solapamientos = [];
+  
+  // Empleados compartidos
+  var compartidos = [];
+  for(var k in EMPLEADOS_GV) {
+    if(EMPLEADOS_GV[k].tienda === 'ambas') compartidos.push(k);
+  }
+  
+  // Verificar cada empleado compartido
+  for(var i = 0; i < compartidos.length; i++) {
+    var solaps = detectarSolapamientoEmpleado(compartidos[i], fecha);
+    solapamientos = solapamientos.concat(solaps);
+  }
+  
+  return solapamientos;
+}
+
+// Verificar si un sustituto tendría solapamiento (para avisar antes de confirmar)
+function verificarSolapamientoSustituto(sustituto, fecha, tienda, entrada, salida) {
+  var turnos = getTurnosEmpleado(sustituto, fecha);
+  var otraTienda = tienda === 'granvia' ? 'isabel' : 'granvia';
+  var turnosOtra = turnos.filter(function(t) { return t.tienda === otraTienda; });
+  
+  for(var i = 0; i < turnosOtra.length; i++) {
+    var t = turnosOtra[i];
+    if(!(salida <= t.inicio || t.fin <= entrada)) {
+      return {
+        solapamiento: true,
+        tienda: otraTienda,
+        inicio: t.inicio,
+        fin: t.fin,
+        tipo: t.tipo,
+        sustDe: t.sustDe
+      };
+    }
+  }
+  return { solapamiento: false };
+}
+
+// Calcular cobertura real por franja en un día (considerando ausencias y sustituciones)
+function calcularCoberturaLV(fecha, tienda) {
+  var dow = fecha.getDay();
+  if(dow < 1 || dow > 5) return null;
+  
+  var semAB = getSemanaAB(fecha);
+  var fs = formatFechaLocal(fecha);
+  var horarios;
+  if(tienda === 'granvia') {
+    horarios = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+  } else {
+    horarios = getHorariosIS(fecha);
+  }
+  
+  var cobertura = { descarga: [], mañanas: [], tardes: [], cierre: [] };
+  
+  // Añadir empleados base (no ausentes)
+  for(var emp in horarios) {
+    var ausente = false;
+    var ausencias = tienda === 'granvia' ? ausenciasGV : ausenciasIS;
+    for(var i = 0; i < ausencias.length; i++) {
+      if(ausencias[i].empleado === emp && ausencias[i].desde <= fs && ausencias[i].hasta >= fs) {
+        ausente = true;
+        break;
+      }
+    }
+    if(!ausente) {
+      var h = horarios[emp];
+      var fr = tienda === 'granvia' ? getFranja(h[0], h[1]) : getFranjaIS(h[0], h[1]);
+      cobertura[fr].push(emp);
+    }
+  }
+  
+  // Restar sustitutos que salen de su turno original
+  for(var i = 0; i < sustituciones.length; i++) {
+    var sust = sustituciones[i];
+    if(sust.fecha === fs && sust.tienda === tienda) {
+      // El sustituto deja su turno original
+      var sustEmp = sust.sustituto;
+      if(horarios[sustEmp]) {
+        var hSust = horarios[sustEmp];
+        var frSust = tienda === 'granvia' ? getFranja(hSust[0], hSust[1]) : getFranjaIS(hSust[0], hSust[1]);
+        var frNuevo = tienda === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
+        // Si cambia de franja, lo quitamos de la original
+        if(frSust !== frNuevo) {
+          var idx = cobertura[frSust].indexOf(sustEmp);
+          if(idx > -1) cobertura[frSust].splice(idx, 1);
+        }
+      }
+      // Añadir sustituto a la franja del ausente
+      var frAusente = tienda === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
+      if(cobertura[frAusente].indexOf(sust.sustituto) === -1) {
+        cobertura[frAusente].push(sust.sustituto);
+      }
+    }
+  }
+  
+  return cobertura;
+}
+
+// Verificar mínimos y devolver alertas
+function verificarMinimosLV(fecha, tienda) {
+  var cobertura = calcularCoberturaLV(fecha, tienda);
+  if(!cobertura) return [];
+  
+  var minimos = MINIMOS_LV[tienda];
+  var alertas = [];
+  
+  for(var fr in minimos) {
+    var actual = cobertura[fr].length;
+    var min = minimos[fr];
+    if(actual < min) {
+      alertas.push({
+        franja: fr,
+        actual: actual,
+        minimo: min,
+        falta: min - actual
+      });
+    }
+  }
+  
+  return alertas;
+}
+
+// Verificar qué pasa si un sustituto deja su turno
+function verificarEfectoSustituto(sustituto, fecha, tienda, franjaDestino) {
+  var semAB = getSemanaAB(fecha);
+  var dow = fecha.getDay();
+  var horarios;
+  if(tienda === 'granvia') {
+    horarios = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+  } else {
+    horarios = getHorariosIS(fecha);
+  }
+  
+  if(!horarios || !horarios[sustituto]) return null;
+  
+  var hSust = horarios[sustituto];
+  var frOrigen = tienda === 'granvia' ? getFranja(hSust[0], hSust[1]) : getFranjaIS(hSust[0], hSust[1]);
+  
+  // Si el sustituto ya está en la misma franja, no hay efecto negativo
+  if(frOrigen === franjaDestino) return null;
+  
+  // Calcular cobertura actual de la franja origen
+  var cobertura = calcularCoberturaLV(fecha, tienda);
+  if(!cobertura) return null;
+  
+  var actualOrigen = cobertura[frOrigen].length;
+  var minOrigen = MINIMOS_LV[tienda][frOrigen];
+  
+  // Si al quitar el sustituto quedamos bajo mínimos
+  if(actualOrigen - 1 < minOrigen) {
+    return {
+      franja: frOrigen,
+      actual: actualOrigen,
+      sinSustituto: actualOrigen - 1,
+      minimo: minOrigen
+    };
+  }
+  
+  return null;
+}
+
+function getAusencias(){return tiendaActual==='granvia'?ausenciasGV:ausenciasIS;}
+function setAusencias(arr){if(tiendaActual==='granvia')ausenciasGV=arr;else ausenciasIS=arr;}
+function estaAusente(n,f){var aus=getAusencias();var fs=formatFechaLocal(f);for(var i=0;i<aus.length;i++)if(aus[i].empleado===n&&aus[i].desde<=fs&&aus[i].hasta>=fs)return true;return false;}
+function getSustituto(f,n){var fs=formatFechaLocal(f);for(var i=0;i<sustituciones.length;i++)if(sustituciones[i].fecha===fs&&sustituciones[i].ausente===n&&sustituciones[i].tienda===tiendaActual)return sustituciones[i];return null;}
+function getEmpleadosTienda(){return tiendaActual==='granvia'?EMPLEADOS_GV:EMPLEADOS_IS;}
+function getTodosEmpleados(){var all={};for(var k in EMPLEADOS_GV)all[k]=EMPLEADOS_GV[k];for(var k in EMPLEADOS_IS)all[k]=EMPLEADOS_IS[k];return all;}
+function mostrarTab(tab){
+  document.getElementById('tab-btn-calendario').classList.toggle('active',tab==='calendario');
+  document.getElementById('tab-btn-empleados').classList.toggle('active',tab==='empleados');
+  document.getElementById('tab-btn-ausencias').classList.toggle('active',tab==='ausencias');
+  document.getElementById('tab-btn-control').classList.toggle('active',tab==='control');
+  document.getElementById('tab-calendario').classList.toggle('active',tab==='calendario');
+  document.getElementById('tab-empleados').classList.toggle('active',tab==='empleados');
+  document.getElementById('tab-ausencias').classList.toggle('active',tab==='ausencias');
+  document.getElementById('tab-control').classList.toggle('active',tab==='control');
+  if(tab==='empleados')renderEmpleados();
+  if(tab==='ausencias')renderAusencias();
+  if(tab==='control')renderControl();
+}
+function cambiarTienda(t){
+  tiendaActual=t;
+  document.getElementById('btn-granvia').classList.toggle('active',t==='granvia');
+  document.getElementById('btn-isabel').classList.toggle('active',t==='isabel');
+  document.getElementById('titulo-empleados').textContent=t==='granvia'?'Plantilla Gran Vía':'Plantilla Isabel';
+  document.getElementById('titulo-ausencias').textContent=t==='granvia'?'Ausencias Gran Vía':'Ausencias Isabel';
+  renderCalendario();renderEmpleados();renderAusencias();
+}
+function mesAnterior(){mesActual--;if(mesActual<0){mesActual=11;añoActual--;}renderCalendario();}
+function mesSiguiente(){mesActual++;if(mesActual>11){mesActual=0;añoActual++;}renderCalendario();}
+function toggleHorasTienda(){}
+function renderCalendario(){
+  document.getElementById('mes-actual').textContent=MESES[mesActual]+' '+añoActual;
+  var container=document.getElementById('calendar-container');
+  var ultimoDia=new Date(añoActual,mesActual+1,0);
+  var inicio=new Date(añoActual,mesActual,1);
+  while(inicio.getDay()!==1)inicio.setDate(inicio.getDate()-1);
+  var html='<div class="week-view"><div class="week-header"><div class="col-sem">Sem</div><div class="col-dia">Lun</div><div class="col-dia">Mar</div><div class="col-dia">Mié</div><div class="col-dia">Jue</div><div class="col-dia">Vie</div><div class="col-fds">Fin de Semana</div></div>';
+  var fecha=new Date(inicio);
+  while(fecha<=ultimoDia||fecha.getDay()!==1){
+    var numSem=getNumSemana(fecha);var semAB=getSemanaAB(fecha);var fdsRot=getFdsRotacion(fecha);
+    html+='<div class="week-row"><div class="col-sem"><div class="num">'+numSem+'</div></div>';
+    for(var d=0;d<5;d++){
+      var dia=new Date(fecha);dia.setDate(dia.getDate()+d);
+      var esDelMes=dia.getMonth()===mesActual;var dow=dia.getDay();
+      var horarios;
+      if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+      else{horarios=getHorariosIS(dia);}
+      var avisos=[];
+      // Solapamientos
+      var solapamientos=detectarSolapamientos(dia);
+      if(solapamientos.length>0){
+        var detalles=solapamientos.map(function(s){return s.empleado+': GV '+s.gv+' / IS '+s.is;}).join('\\n');
+        avisos.push('<div class="aviso-solapamiento" onclick="alert(\'SOLAPAMIENTOS:\\n'+detalles+'\')">⚠️ '+solapamientos.length+' solape'+(solapamientos.length>1?'s':'')+'</div>');
+      }
+      // Mínimos
+      var alertasMin=verificarMinimosLV(dia, tiendaActual);
+      if(alertasMin.length>0){
+        var detMin=alertasMin.map(function(a){return a.franja.toUpperCase()+': '+a.actual+'/'+a.minimo;}).join('\\n');
+        avisos.push('<div class="aviso-minimos" onclick="alert(\'BAJO MÍNIMOS:\\n'+detMin+'\')">🔴 '+alertasMin.length+' bajo mín</div>');
+      }
+      var avisoHtml=avisos.join('');
+      html+='<div class="col-dia" style="'+(esDelMes?'':'opacity:0.4')+'"><div class="dia-num">'+dia.getDate()+'</div>'+renderTurnos(dia,horarios||{})+avisoHtml+'</div>';
+    }
+    var sab=new Date(fecha);sab.setDate(sab.getDate()+5);
+    var dom=new Date(fecha);dom.setDate(dom.getDate()+6);
+    var esDelMesFds=sab.getMonth()===mesActual||dom.getMonth()===mesActual;
+    var fdsData=tiendaActual==='granvia'?getFdsGV(sab):getFdsIS(sab);
+    if(!fdsData)fdsData={SAB_M:{},SAB_T:{},DOM_M:{},DOM_T:{}};
+    var solapFds=detectarSolapamientos(sab).concat(detectarSolapamientos(dom));
+    var avisoFdsHtml='';
+    if(solapFds.length>0){
+      var detallesFds=solapFds.map(function(s){return s.empleado+': GV '+s.gv+' / IS '+s.is;}).join('\\n');
+      avisoFdsHtml='<div class="aviso-solapamiento" onclick="alert(\'SOLAPAMIENTOS FDS:\\n'+detallesFds+'\')" style="grid-column:1/-1">⚠️ '+solapFds.length+' solapamiento'+(solapFds.length>1?'s':'')+'</div>';
+    }
+    html+='<div class="col-fds" style="'+(esDelMesFds?'':'opacity:0.4')+'">';
+    html+='<div class="fds-box sab-m"><div class="fds-header">Sáb '+sab.getDate()+' Mañana</div>'+renderTurnosFds(sab,fdsData.SAB_M||{},'SAB_M')+'</div>';
+    html+='<div class="fds-box dom-m"><div class="fds-header">Dom '+dom.getDate()+' Mañana</div>'+renderTurnosFds(dom,fdsData.DOM_M||{},'DOM_M')+'</div>';
+    html+='<div class="fds-box sab-t"><div class="fds-header">Sáb '+sab.getDate()+' Tarde</div>'+renderTurnosFds(sab,fdsData.SAB_T||{},'SAB_T')+'</div>';
+    html+='<div class="fds-box dom-t"><div class="fds-header">Dom '+dom.getDate()+' Tarde</div>'+renderTurnosFds(dom,fdsData.DOM_T||{},'DOM_T')+'</div>';
+    if(avisoFdsHtml)html+=avisoFdsHtml;
+    html+='</div></div>';
+    fecha.setDate(fecha.getDate()+7);
+    if(fecha>ultimoDia&&fecha.getMonth()!==mesActual)break;
+  }
+  html+='</div>';container.innerHTML=html;
+}
+
+// Verificar si un empleado está haciendo sustitución en otra franja ese día
+function estaSustituyendo(emp, fecha, franjaOriginal) {
+  var fs = formatFechaLocal(fecha);
+  for(var i = 0; i < sustituciones.length; i++) {
+    var sust = sustituciones[i];
+    if(sust.sustituto === emp && sust.fecha === fs && sust.tienda === tiendaActual) {
+      // Calcular la franja de la sustitución
+      var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
+      // Si la sustitución es en otra franja, está ocupado
+      if(frSust !== franjaOriginal) {
+        return { sustituyendo: true, a: sust.ausente, franja: frSust };
+      }
+    }
+  }
+  return { sustituyendo: false };
+}
+
+function renderTurnos(dia,horarios){
+  if(!horarios)return'';
+  
+  // Aplicar modificaciones de horario
+  var horariosAjustados = aplicarModificacionesHorario(horarios, dia);
+  var fs = formatFechaLocal(dia);
+  
+  var franjas={descarga:[],mañanas:[],tardes:[],cierre:[]};
+  for(var n in horariosAjustados){
+    var h=horariosAjustados[n];
+    var fr = tiendaActual==='granvia' ? getFranja(h[0],h[1]) : getFranjaIS(h[0],h[1]);
+    var aus=estaAusente(n,dia);
+    var sust=getSustituto(dia,n);
+    
+    // Verificar si este empleado está sustituyendo en otra franja
+    var sustInfo = estaSustituyendo(n, dia, fr);
+    if(sustInfo.sustituyendo) {
+      // No lo añadimos a su franja original, está en otra
+      continue;
+    }
+    
+    // Verificar si tiene modificación
+    var tieneModificacion = getModificacion(n, fs, '') !== null;
+    
+    franjas[fr].push({nombre:n,e:h[0],s:h[1],ausente:aus,sustData:sust,modificado:tieneModificacion});
+  }
+  
+  // Isabel: grid fijo de 4 franjas alineadas
+  if(tiendaActual==='isabel'){
+    var html='<div class="franjas-grid-is">';
+    var orden=['descarga','mañanas','tardes','cierre'];
+    for(var idx=0; idx<orden.length; idx++){
+      var fr=orden[idx];
+      var t=franjas[fr];
+      html+='<div class="franja"><div class="franja-label '+fr+'">'+fr+'</div>';
+      for(var i=0;i<t.length;i++){
+        var cls='turno '+fr+(t[i].ausente?' ausente':'')+(t[i].modificado?' modificado':'');
+        var dataAttr='data-emp="'+t[i].nombre+'" data-fecha="'+fs+'" data-entrada="'+t[i].e+'" data-salida="'+t[i].s+'" data-franja="'+fr+'"';
+        html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+t[i].nombre+(t[i].modificado?' ✎':'')+'</span><span class="turno-hora">'+formatHora(t[i].e)+'-'+formatHora(t[i].s)+'</span></div>';
+        if(t[i].sustData){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+t[i].sustData.sustituto+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
+      }
+      html+='</div>';
+    }
+    html+='</div>';
+    return html;
+  }
+  
+  // Gran Vía: flex compacto
+  var html='<div class="franjas-grid-gv">';
+  var orden=['descarga','mañanas','tardes','cierre'];
+  for(var idx=0; idx<orden.length; idx++){
+    var fr=orden[idx];
+    var t=franjas[fr];
+    if(t.length===0) continue;
+    html+='<div class="franja"><div class="franja-label '+fr+'">'+fr+'</div>';
+    for(var i=0;i<t.length;i++){
+      var cls='turno '+fr+(t[i].ausente?' ausente':'')+(t[i].modificado?' modificado':'');
+      var dataAttr='data-emp="'+t[i].nombre+'" data-fecha="'+fs+'" data-entrada="'+t[i].e+'" data-salida="'+t[i].s+'" data-franja="'+fr+'"';
+      html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+t[i].nombre+(t[i].modificado?' ✎':'')+'</span><span class="turno-hora">'+formatHora(t[i].e)+'-'+formatHora(t[i].s)+'</span></div>';
+      if(t[i].sustData){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+t[i].sustData.sustituto+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+function renderTurnosFds(dia,horarios,turnoKey){
+  if(!horarios)return'';
+  var html='';
+  var fs=formatFechaLocal(dia);
+  
+  // Aplicar modificaciones de horario FdS
+  var horariosAjustados = aplicarModificacionesFds(horarios, dia, turnoKey);
+  
+  for(var n in horariosAjustados){
+    var h=horariosAjustados[n];
+    var aus=estaAusente(n,dia);
+    var sust=getSustitutoFds(dia,n,turnoKey);
+    
+    // Verificar si este empleado está sustituyendo en otro turno FdS
+    var estaSust=estaSustituyendoFds(n,dia,turnoKey);
+    if(estaSust) continue;
+    
+    // Verificar si tiene modificación
+    var tieneModificacion = getModificacion(n, fs, turnoKey) !== null;
+    
+    var cls='turno fds'+(aus?' ausente':'')+(tieneModificacion?' modificado':'');
+    var dataAttr='data-emp="'+n+'" data-fecha="'+fs+'" data-entrada="'+h[0]+'" data-salida="'+h[1]+'" data-turno-fds="'+turnoKey+'"';
+    html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+n+(tieneModificacion?' ✎':'')+'</span><span class="turno-hora">'+formatHora(h[0])+'-'+formatHora(h[1])+'</span></div>';
+    if(sust){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+sust.sustituto+'</span><span class="turno-hora">'+formatHora(sust.entrada)+'-'+formatHora(sust.salida)+'</span></div>';}
+  }
+  return html;
+}
+
+function getSustitutoFds(f,n,turnoKey){
+  var fs=formatFechaLocal(f);
+  for(var i=0;i<sustituciones.length;i++){
+    if(sustituciones[i].fecha===fs && sustituciones[i].ausente===n && sustituciones[i].turnoFds===turnoKey && sustituciones[i].tienda===tiendaActual){
+      return sustituciones[i];
+    }
+  }
+  return null;
+}
+
+function estaSustituyendoFds(emp,fecha,turnoKeyActual){
+  var fs=formatFechaLocal(fecha);
+  for(var i=0;i<sustituciones.length;i++){
+    var sust=sustituciones[i];
+    if(sust.sustituto===emp && sust.fecha===fs && sust.tienda===tiendaActual && sust.turnoFds && sust.turnoFds!==turnoKeyActual){
+      return true;
+    }
+  }
+  return false;
+}
+function renderEmpleados(){
+  var grid=document.getElementById('empleados-grid');
+  var html='';
+  
+  var emps=getEmpleadosTienda();
+  for(var alias in emps){
+    var e=emps[alias];
+    html+='<div class="empleado-card" onclick="verEmpleado(\''+alias+'\')">';
+    html+='<div class="empleado-header"><div class="empleado-avatar" style="background:'+e.color+'">'+alias.charAt(0)+'</div>';
+    html+='<div class="empleado-info"><h3>'+e.alias+'</h3><span class="nombre-completo">'+e.nombre+' '+e.apellidos+'</span></div></div>';
+    html+='<div class="empleado-datos"><div class="empleado-dato"><label>Horas</label><span>'+e.contrato+'h</span></div><div class="empleado-dato"><label>Teléfono</label><span>'+e.telefono+'</span></div></div>';
+    html+='<div class="empleado-tags"><span class="empleado-tag franja">'+(e.franja||'--')+'</span>';
+    if(e.tienda==='ambas')html+='<span class="empleado-tag compartido">Compartido</span>';
+    html+='</div></div>';
+  }
+  
+  grid.innerHTML=html||'<div class="empty-state"><p>No hay empleados</p></div>';
+}
+function verEmpleado(alias){
+  var emps=getEmpleadosTienda();var e=emps[alias];if(!e)return;
+  empleadoViendo=alias;
+  document.getElementById('ver-empleado-titulo').textContent='👤 '+e.alias;
+  var tiendaTxt={granvia:'Gran Vía',isabel:'Isabel',ambas:'Compartido'};
+  var restrTxt={'solo-mañanas':'Solo mañanas','max-15':'Máx 15:00','solo-descarga':'Solo descarga','solo-cierre':'Solo cierre','':'Ninguna'};
+  var html='<div class="ficha-empleado">';
+  html+='<div class="ficha-grupo"><h4>Personal</h4>';
+  html+='<div class="ficha-campo"><label>Alias</label><span>'+e.alias+'</span></div>';
+  html+='<div class="ficha-campo"><label>Nombre</label><span>'+e.nombre+' '+e.apellidos+'</span></div>';
+  html+='<div class="ficha-campo"><label>DNI</label><span>'+e.dni+'</span></div>';
+  html+='<div class="ficha-campo"><label>Teléfono</label><span>'+e.telefono+'</span></div>';
+  html+='<div class="ficha-campo"><label>Email</label><span>'+e.email+'</span></div></div>';
+  html+='<div class="ficha-grupo"><h4>Laboral</h4>';
+  html+='<div class="ficha-campo"><label>Alta</label><span>'+e.fechaAlta+'</span></div>';
+  html+='<div class="ficha-campo"><label>Contrato</label><span>'+e.contrato+'h/sem</span></div>';
+  html+='<div class="ficha-campo"><label>Tienda</label><span>'+tiendaTxt[e.tienda]+'</span></div>';
+  html+='<div class="ficha-campo"><label>Franja</label><span>'+(e.franja||'--')+'</span></div>';
+  html+='<div class="ficha-campo"><label>Restricción</label><span>'+(restrTxt[e.restriccion]||'Ninguna')+'</span></div>';
+  html+='</div></div>';
+  document.getElementById('ver-empleado-body').innerHTML=html;
+  abrirModal('modal-ver-empleado');
+}
+function editarEmpleado(){
+  var emps=getEmpleadosTienda();var e=emps[empleadoViendo];if(!e){emps=getTodosEmpleados();e=emps[empleadoViendo];}if(!e)return;
+  cerrarModal('modal-ver-empleado');
+  document.getElementById('modal-empleado-titulo').textContent='✏️ Editar '+e.alias;
+  document.getElementById('emp-editando').value=empleadoViendo;
+  document.getElementById('emp-alias').value=e.alias;
+  document.getElementById('emp-nombre').value=e.nombre;
+  document.getElementById('emp-apellidos').value=e.apellidos;
+  document.getElementById('emp-dni').value=e.dni;
+  document.getElementById('emp-telefono').value=e.telefono;
+  document.getElementById('emp-email').value=e.email;
+  document.getElementById('emp-fecha-alta').value=e.fechaAlta;
+  document.getElementById('emp-tienda').value=e.tienda;
+  document.getElementById('emp-contrato').value=e.contrato;
+  document.getElementById('emp-horas-lv').value=e.horasLV;
+  document.getElementById('emp-horas-fds').value=e.horasFDS;
+  document.getElementById('emp-franja').value=e.franja;
+  document.getElementById('emp-restriccion').value=e.restriccion;
+  abrirModal('modal-empleado');
+}
+function renderAusencias(){
+  var lista=document.getElementById('ausencias-lista');
+  var aus=getAusencias();
+  var tipoTxt={vacaciones:'🏖️ Vacaciones',baja:'🏥 Baja',permiso:'📅 Permiso'};
+  var html='';
+  for(var i=0;i<aus.length;i++){var a=aus[i];
+    html+='<div class="ausencia-card"><div><div class="nombre">'+a.empleado+'</div><div class="detalle">'+(tipoTxt[a.tipo]||a.tipo)+'</div><div class="fechas">'+a.desde+' → '+a.hasta+'</div></div>';
+    html+='<button class="btn btn-danger btn-sm" onclick="cancelarAusencia('+i+')">Cancelar</button></div>';
+  }
+  lista.innerHTML=html||'<div class="empty-state"><p>No hay ausencias en '+(tiendaActual==='granvia'?'Gran Vía':'Isabel')+'</p></div>';
+}
+function cancelarAusencia(i){
+  if(!confirm('¿Cancelar esta ausencia?'))return;
+  var aus=getAusencias();var a=aus[i];
+  sustituciones=sustituciones.filter(function(s){return!(s.fecha>=a.desde&&s.fecha<=a.hasta&&s.tienda===tiendaActual);});
+  aus.splice(i,1);setAusencias(aus);
+  renderAusencias();renderCalendario();
+  syncAusencias();
+  syncSustituciones();
+}
+function abrirModal(id){document.getElementById(id).classList.add('active');}
+function cerrarModal(id){document.getElementById(id).classList.remove('active');}
+function abrirModalEmpleado(){
+  document.getElementById('modal-empleado-titulo').textContent='👤 Nuevo empleado';
+  document.getElementById('emp-editando').value='';
+  ['emp-alias','emp-nombre','emp-apellidos','emp-dni','emp-telefono','emp-email','emp-fecha-alta','emp-contrato','emp-horas-lv','emp-horas-fds'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('emp-tienda').value=tiendaActual;
+  document.getElementById('emp-franja').value='';
+  document.getElementById('emp-restriccion').value='';
+  abrirModal('modal-empleado');
+}
+function guardarEmpleado(){
+  var aliasOriginal=document.getElementById('emp-editando').value;
+  var alias=document.getElementById('emp-alias').value.trim().toUpperCase();
+  if(!alias){alert('Falta alias');return;}
+  var tienda=document.getElementById('emp-tienda').value;
+  var nuevoEmp={
+    alias:alias,nombre:document.getElementById('emp-nombre').value.trim(),apellidos:document.getElementById('emp-apellidos').value.trim(),
+    dni:document.getElementById('emp-dni').value.trim(),telefono:document.getElementById('emp-telefono').value.trim(),
+    email:document.getElementById('emp-email').value.trim(),fechaAlta:document.getElementById('emp-fecha-alta').value,
+    contrato:parseFloat(document.getElementById('emp-contrato').value)||30,
+    horasLV:parseFloat(document.getElementById('emp-horas-lv').value)||0,horasFDS:parseFloat(document.getElementById('emp-horas-fds').value)||0,
+    tienda:tienda,franja:document.getElementById('emp-franja').value,restriccion:document.getElementById('emp-restriccion').value,color:'#2e7d32'
+  };
+  if(tienda==='ambas'){
+    // Guardar en el diccionario de la tienda activa
+    var empsActual=tiendaActual==='granvia'?EMPLEADOS_GV:EMPLEADOS_IS;
+    var empsOtra=tiendaActual==='granvia'?EMPLEADOS_IS:EMPLEADOS_GV;
+    if(aliasOriginal&&aliasOriginal!==alias){delete empsActual[aliasOriginal];delete empsOtra[aliasOriginal];}
+    empsActual[alias]=nuevoEmp;
+    // Sincronizar datos personales a la otra tienda, mantener datos laborales de la otra
+    var otra=empsOtra[alias]||{alias:alias,tienda:'ambas',contrato:0,horasLV:0,horasFDS:0,fechaAlta:'',franja:'',restriccion:'',color:'#2e7d32'};
+    otra.alias=alias;otra.nombre=nuevoEmp.nombre;otra.apellidos=nuevoEmp.apellidos;
+    otra.dni=nuevoEmp.dni;otra.telefono=nuevoEmp.telefono;otra.email=nuevoEmp.email;
+    otra.tienda='ambas';
+    empsOtra[alias]=otra;
+  } else {
+    var emps=tienda==='isabel'?EMPLEADOS_IS:EMPLEADOS_GV;
+    if(aliasOriginal&&aliasOriginal!==alias)delete emps[aliasOriginal];
+    emps[alias]=nuevoEmp;
+    // Si antes era compartido, eliminar de la otra tienda
+    var empsOtra2=tienda==='isabel'?EMPLEADOS_GV:EMPLEADOS_IS;
+    if(empsOtra2[aliasOriginal||alias]&&empsOtra2[aliasOriginal||alias].tienda==='ambas')delete empsOtra2[aliasOriginal||alias];
+  }
+  cerrarModal('modal-empleado');renderEmpleados();
+  syncEmpleados();
+}
+function abrirModalAusencia(){
+  pasoActual=1;seleccionesDias={};
+  var select=document.getElementById('ausencia-empleado');
+  var emps=getEmpleadosTienda();
+  var html='<option value="">-- Selecciona --</option>';
+  for(var a in emps)html+='<option value="'+a+'">'+a+' - '+emps[a].nombre+'</option>';
+  select.innerHTML=html;
+  document.getElementById('ausencia-tipo').value='';
+  document.getElementById('ausencia-desde').value='';
+  document.getElementById('ausencia-hasta').value='';
+  actualizarPasos();abrirModal('modal-ausencia');
+}
+function actualizarPasos(){
+  for(var i=1;i<=5;i++)document.getElementById('paso-'+i).classList.toggle('active',i===pasoActual);
+  document.getElementById('btn-anterior').style.display=pasoActual>1?'inline-flex':'none';
+  document.getElementById('btn-siguiente').textContent=pasoActual===5?'Confirmar ✓':'Siguiente →';
+}
+function pasoAnterior(){if(pasoActual>1){pasoActual--;actualizarPasos();}}
+function pasoSiguiente(){
+  var emp=document.getElementById('ausencia-empleado').value;
+  var tipo=document.getElementById('ausencia-tipo').value;
+  var desde=document.getElementById('ausencia-desde').value;
+  var hasta=document.getElementById('ausencia-hasta').value;
+  var tipoTxt={vacaciones:'Vacaciones',baja:'Baja',permiso:'Permiso'};
+  if(pasoActual===1){if(!emp){alert('Selecciona empleado');return;}document.getElementById('resumen-paso2').innerHTML='<strong>'+emp+'</strong>';pasoActual=2;actualizarPasos();}
+  else if(pasoActual===2){if(!tipo){alert('Selecciona motivo');return;}document.getElementById('resumen-paso3').innerHTML='<strong>'+emp+'</strong> · '+tipoTxt[tipo];pasoActual=3;actualizarPasos();}
+  else if(pasoActual===3){if(!desde||!hasta){alert('Selecciona fechas');return;}if(desde>hasta){alert('Fechas incorrectas');return;}document.getElementById('resumen-paso4').innerHTML='<strong>'+emp+'</strong> · '+tipoTxt[tipo]+' · '+desde+' al '+hasta;generarDiasSust(emp,desde,hasta);pasoActual=4;actualizarPasos();}
+  else if(pasoActual===4){generarResumenFinal();pasoActual=5;actualizarPasos();}
+  else if(pasoActual===5){confirmarAusencia();}
+}
+function generarDiasSust(empAusente,desde,hasta){
+  var container=document.getElementById('dias-sustitucion');
+  var emps=getEmpleadosTienda();
+  var empData=emps[empAusente];
+  var html='';
+  var f=parseFechaLocal(desde);var fin=parseFechaLocal(hasta);
+  while(f<=fin){
+    var dow=f.getDay();
+    var fs=formatFechaLocal(f);
+    
+    if(dow>=1&&dow<=5){
+      // L-V
+      var semAB=getSemanaAB(f);
+      var horarios;
+      if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+      else{horarios=getHorariosIS(f);}
+      var turnoAusente=horarios?horarios[empAusente]:null;
+      if(turnoAusente){
+        var franja=tiendaActual==='granvia'?getFranja(turnoAusente[0],turnoAusente[1]):getFranjaIS(turnoAusente[0],turnoAusente[1]);
+        html+='<div class="dia-sustitucion" id="dia-'+fs+'" data-fecha="'+fs+'" data-franja="'+franja+'">';
+        html+='<div class="dia-header"><span class="dia-fecha">'+DIAS[dow]+' '+f.getDate()+'/'+(f.getMonth()+1)+'</span><span class="dia-turno '+franja+'">'+franja.toUpperCase()+' '+formatHora(turnoAusente[0])+'-'+formatHora(turnoAusente[1])+'</span></div>';
+        html+='<div class="candidatos-lista">'+generarCandidatos(f,empAusente,turnoAusente,franja,fs)+'</div>';
+        html+='</div>';
+      }
+    } else if(dow===6||dow===0){
+      // FdS - buscar turnos del empleado
+      var fdsData=tiendaActual==='granvia'?getFdsGV(f):getFdsIS(f);
+      var turnos=dow===6?['SAB_M','SAB_T']:['DOM_M','DOM_T'];
+      for(var t=0;t<turnos.length;t++){
+        var turnoKey=turnos[t];
+        if(fdsData[turnoKey]&&fdsData[turnoKey][empAusente]){
+          var turnoAusente=fdsData[turnoKey][empAusente];
+          var franjaFds=turnoKey.indexOf('_M')>-1?'mañanas':'tardes';
+          html+='<div class="dia-sustitucion" id="dia-'+fs+'-'+turnoKey+'" data-fecha="'+fs+'" data-franja="'+franjaFds+'" data-turnofds="'+turnoKey+'">';
+          html+='<div class="dia-header"><span class="dia-fecha">'+DIAS[dow]+' '+f.getDate()+'/'+(f.getMonth()+1)+'</span><span class="dia-turno fds">'+turnoKey.replace('_',' ')+' '+formatHora(turnoAusente[0])+'-'+formatHora(turnoAusente[1])+'</span></div>';
+          html+='<div class="candidatos-lista">'+generarCandidatosFds(f,empAusente,turnoAusente,turnoKey,fs)+'</div>';
+          html+='</div>';
+        }
+      }
+    }
+    f.setDate(f.getDate()+1);
+  }
+  container.innerHTML=html||'<p>El empleado no trabaja en este período</p>';
+}
+function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
+  var emps=getEmpleadosTienda();
+  var semAB=getSemanaAB(fecha);var dow=fecha.getDay();
+  var horarios;
+  if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+  else{horarios=getHorariosIS(fecha);}
+  var html='';var hayValido=false;
+  for(var alias in emps){
+    if(alias===empAusente)continue;
+    var e=emps[alias];
+    var yaTrabaja=horarios&&horarios[alias];
+    var error='';
+    var avisoSolape='';
+    if(yaTrabaja){
+      var suFranja=getFranja(yaTrabaja[0],yaTrabaja[1]);
+      if(suFranja===franja){error='Ya trabaja en '+franja;}
+    }
+    if(!error&&e.restriccion==='solo-mañanas'&&franja!=='mañanas'){error='Solo puede mañanas';}
+    if(!error&&e.restriccion==='solo-cierre'&&franja!=='cierre'){error='Solo puede cierre';}
+    if(!error&&e.restriccion==='solo-descarga'&&franja!=='descarga'){error='Solo puede descarga';}
+    if(!error&&e.restriccion==='max-15'&&turnoAusente[1]>15){error='No puede salir después de 15:00';}
+    if(!error&&estaAusente(alias,fecha)){error='También está ausente';}
+    
+    // Verificar solapamiento con otra tienda
+    if(!error && e.tienda==='ambas'){
+      var solape=verificarSolapamientoSustituto(alias, fecha, tiendaActual, turnoAusente[0], turnoAusente[1]);
+      if(solape.solapamiento){
+        var otraTienda=solape.tienda==='granvia'?'GV':'IS';
+        avisoSolape='⚠️ Solape con '+otraTienda+' ('+formatHora(solape.inicio)+'-'+formatHora(solape.fin)+')';
+      }
+    }
+    
+    // Verificar si deja su turno bajo mínimos
+    var avisoMinimos='';
+    if(!error && yaTrabaja){
+      var efecto=verificarEfectoSustituto(alias, fecha, tiendaActual, franja);
+      if(efecto){
+        avisoMinimos='⚠️ Deja '+efecto.franja.toUpperCase()+' bajo mín ('+efecto.sinSustituto+'/'+efecto.minimo+')';
+      }
+    }
+    
+    var valido=!error;
+    if(valido)hayValido=true;
+    var selKey=fs;
+    var isSelected=seleccionesDias[selKey]===alias;
+    var avisos = [avisoSolape, avisoMinimos].filter(function(a){return a;}).join(' ');
+    html+='<div class="candidato-item'+(valido?'':' invalido')+(isSelected?' selected':'')+'" onclick="'+(valido?'seleccionarCandidato(\''+fs+'\',\''+alias+'\')':'')+'">';
+    html+='<div class="candidato-avatar" style="background:'+e.color+'">'+alias.charAt(0)+'</div>';
+    html+='<div class="candidato-info"><div class="candidato-nombre">'+alias+(avisos?' <span style="color:#ff5252;font-size:9px">'+avisos+'</span>':'')+'</div>';
+    if(valido){html+='<div class="candidato-horario">'+formatHora(turnoAusente[0])+'-'+formatHora(turnoAusente[1])+'</div>';}
+    else{html+='<div class="candidato-error">'+error+'</div>';}
+    html+='</div><div class="candidato-check">'+(isSelected?'✓':'')+'</div></div>';
+  }
+  if(!hayValido){html='<p style="color:#c62828;font-size:11px">⚠️ No hay sustitutos disponibles para este turno</p>'+html;}
+  return html;
+}
+
+function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
+  var emps=getEmpleadosTienda();
+  var fdsData=tiendaActual==='granvia'?getFdsGV(fecha):getFdsIS(fecha);
+  var html='';var hayValido=false;
+  var selKey=fs+'-'+turnoKey;
+  
+  for(var alias in emps){
+    if(alias===empAusente)continue;
+    var e=emps[alias];
+    var error='';
+    var avisoSolape='';
+    
+    // Verificar si ya trabaja en este turno FdS
+    var yaTrabaja=fdsData[turnoKey]&&fdsData[turnoKey][alias];
+    if(yaTrabaja){error='Ya trabaja en este turno';}
+    
+    // Verificar ausencia
+    if(!error&&estaAusente(alias,fecha)){error='También está ausente';}
+    
+    // Verificar solapamiento con otra tienda
+    if(!error && e.tienda==='ambas'){
+      var solape=verificarSolapamientoSustituto(alias, fecha, tiendaActual, turnoAusente[0], turnoAusente[1]);
+      if(solape.solapamiento){
+        var otraTienda=solape.tienda==='granvia'?'GV':'IS';
+        avisoSolape='⚠️ Solape con '+otraTienda+' ('+formatHora(solape.inicio)+'-'+formatHora(solape.fin)+')';
+      }
+    }
+    
+    // Verificar si deja algún turno FdS bajo mínimos (sábado Y domingo)
+    var avisoMinimos='';
+    var dow=fecha.getDay();
+    var sab,dom;
+    if(dow===6){
+      sab=fecha;
+      dom=new Date(fecha);dom.setDate(dom.getDate()+1);
+    } else {
+      dom=fecha;
+      sab=new Date(fecha);sab.setDate(sab.getDate()-1);
+    }
+    var fdsSab=tiendaActual==='granvia'?getFdsGV(sab):getFdsIS(sab);
+    var fdsDom=tiendaActual==='granvia'?getFdsGV(dom):getFdsIS(dom);
+    
+    var todosLosTurnos=[
+      {key:'SAB_M',data:fdsSab},
+      {key:'SAB_T',data:fdsSab},
+      {key:'DOM_M',data:fdsDom},
+      {key:'DOM_T',data:fdsDom}
+    ];
+    
+    for(var ot=0;ot<todosLosTurnos.length;ot++){
+      var turnoInfo=todosLosTurnos[ot];
+      var otroTurno=turnoInfo.key;
+      var fdsOtro=turnoInfo.data;
+      // No verificar el turno que va a cubrir
+      if(otroTurno===turnoKey) continue;
+      if(fdsOtro[otroTurno] && fdsOtro[otroTurno][alias]){
+        var minimos=MINIMOS_FDS[tiendaActual];
+        var actual=Object.keys(fdsOtro[otroTurno]).length;
+        if(actual-1<minimos[otroTurno]){
+          avisoMinimos='⚠️ Deja '+otroTurno+' bajo mín ('+(actual-1)+'/'+minimos[otroTurno]+')';
+          break;
+        }
+      }
+    }
+    
+    var valido=!error;
+    if(valido)hayValido=true;
+    var isSelected=seleccionesDias[selKey]===alias;
+    var avisos = [avisoSolape, avisoMinimos].filter(function(a){return a;}).join(' ');
+    html+='<div class="candidato-item'+(valido?'':' invalido')+(isSelected?' selected':'')+'" onclick="'+(valido?'seleccionarCandidatoFds(\''+fs+'\',\''+turnoKey+'\',\''+alias+'\')':'')+'">';
+    html+='<div class="candidato-avatar" style="background:'+e.color+'">'+alias.charAt(0)+'</div>';
+    html+='<div class="candidato-info"><div class="candidato-nombre">'+alias+(avisos?' <span style="color:#ff5252;font-size:9px">'+avisos+'</span>':'')+'</div>';
+    if(valido){html+='<div class="candidato-horario">'+formatHora(turnoAusente[0])+'-'+formatHora(turnoAusente[1])+'</div>';}
+    else{html+='<div class="candidato-error">'+error+'</div>';}
+    html+='</div><div class="candidato-check">'+(isSelected?'✓':'')+'</div></div>';
+  }
+  if(!hayValido){html='<p style="color:#c62828;font-size:11px">⚠️ No hay sustitutos disponibles para este turno</p>'+html;}
+  return html;
+}
+
+function seleccionarCandidato(fecha,alias){
+  if(seleccionesDias[fecha]===alias){delete seleccionesDias[fecha];}
+  else{seleccionesDias[fecha]=alias;}
+  var emp=document.getElementById('ausencia-empleado').value;
+  var desde=document.getElementById('ausencia-desde').value;
+  var hasta=document.getElementById('ausencia-hasta').value;
+  generarDiasSust(emp,desde,hasta);
+}
+
+function seleccionarCandidatoFds(fecha,turnoKey,alias){
+  var selKey=fecha+'-'+turnoKey;
+  if(seleccionesDias[selKey]===alias){delete seleccionesDias[selKey];}
+  else{seleccionesDias[selKey]=alias;}
+  var emp=document.getElementById('ausencia-empleado').value;
+  var desde=document.getElementById('ausencia-desde').value;
+  var hasta=document.getElementById('ausencia-hasta').value;
+  generarDiasSust(emp,desde,hasta);
+}
+function generarResumenFinal(){
+  var emp=document.getElementById('ausencia-empleado').value;
+  var tipo=document.getElementById('ausencia-tipo').value;
+  var desde=document.getElementById('ausencia-desde').value;
+  var hasta=document.getElementById('ausencia-hasta').value;
+  var tipoTxt={vacaciones:'Vacaciones',baja:'Baja',permiso:'Permiso'};
+  var html='<h4>✓ Resumen de ausencia</h4>';
+  html+='<div class="resumen-item"><span>Empleado</span><strong>'+emp+'</strong></div>';
+  html+='<div class="resumen-item"><span>Motivo</span><strong>'+tipoTxt[tipo]+'</strong></div>';
+  html+='<div class="resumen-item"><span>Período</span><strong>'+desde+' al '+hasta+'</strong></div>';
+  var numSust=Object.keys(seleccionesDias).length;
+  html+='<div class="resumen-item"><span>Sustituciones</span><strong>'+numSust+' turno(s) cubiertos</strong></div>';
+  for(var key in seleccionesDias){
+    var parts=key.split('-');
+    var fechaStr=parts.length>3?parts[0]+'-'+parts[1]+'-'+parts[2]:key;
+    var turnoFds=parts.length>3?parts[3]:null;
+    html+='<div class="resumen-item"><span>'+fechaStr+(turnoFds?' ('+turnoFds+')':'')+'</span><strong>→ '+seleccionesDias[key]+'</strong></div>';
+  }
+  document.getElementById('resumen-final').innerHTML=html;
+}
+function confirmarAusencia(){
+  var emp=document.getElementById('ausencia-empleado').value;
+  var tipo=document.getElementById('ausencia-tipo').value;
+  var desde=document.getElementById('ausencia-desde').value;
+  var hasta=document.getElementById('ausencia-hasta').value;
+  var aus=getAusencias();
+  aus.push({empleado:emp,tipo:tipo,desde:desde,hasta:hasta});
+  setAusencias(aus);
+  var emps=getEmpleadosTienda();
+  
+  for(var key in seleccionesDias){
+    var sust=seleccionesDias[key];
+    var parts=key.split('-');
+    var fechaStr,turnoFds=null;
+    
+    if(parts.length>3){
+      // FdS: formato "2026-03-28-SAB_M"
+      fechaStr=parts[0]+'-'+parts[1]+'-'+parts[2];
+      turnoFds=parts[3];
+    } else {
+      fechaStr=key;
+    }
+    
+    var f=parseFechaLocal(fechaStr);
+    var dow=f.getDay();
+    
+    if(turnoFds){
+      // FdS
+      var fdsData=tiendaActual==='granvia'?getFdsGV(f):getFdsIS(f);
+      var turno=fdsData[turnoFds]?fdsData[turnoFds][emp]:null;
+      if(turno){
+        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:turno[1],turnoFds:turnoFds,tienda:tiendaActual});
+      }
+    } else {
+      // L-V
+      var semAB=getSemanaAB(f);
+      var horarios;
+      if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+      else{horarios=getHorariosIS(f);}
+      var turno=horarios?horarios[emp]:null;
+      if(turno){
+        var franja=tiendaActual==='granvia'?getFranja(turno[0],turno[1]):getFranjaIS(turno[0],turno[1]);
+        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:turno[1],franja:franja,tienda:tiendaActual});
+      }
+    }
+  }
+  cerrarModal('modal-ausencia');renderCalendario();renderAusencias();
+  syncAusencias();
+  syncSustituciones();
+}
+
+// ==================== CONTROL DE VACACIONES Y FALTAS ====================
+var DIAS_VACACIONES_ANUALES = 30;
+var TIPOS_RESTAN_DIAS = ['vacaciones', 'permiso', 'asuntos']; // tipos que restan días
+
+// Faltas de asistencia (no restan vacaciones)
+var faltasGV = [];
+var faltasIS = [];
+
+function getFaltas() {
+  return tiendaActual === 'granvia' ? faltasGV : faltasIS;
+}
+function setFaltas(arr) {
+  if (tiendaActual === 'granvia') faltasGV = arr;
+  else faltasIS = arr;
+}
+
+function initControlYear() {
+  var select = document.getElementById('control-year');
+  var currentYear = new Date().getFullYear();
+  select.innerHTML = '';
+  for (var y = currentYear - 2; y <= currentYear + 1; y++) {
+    var opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    if (y === currentYear) opt.selected = true;
+    select.appendChild(opt);
+  }
+}
+
+function contarDiasAusencia(desde, hasta) {
+  var count = 0;
+  var f = parseFechaLocal(desde);
+  var fin = parseFechaLocal(hasta);
+  while (f <= fin) {
+    count++;
+    f.setDate(f.getDate() + 1);
+  }
+  return count;
+}
+
+function calcularVacacionesEmpleado(alias, year) {
+  var ausencias = getAusencias();
+  var total = DIAS_VACACIONES_ANUALES;
+  var usados = 0;
+  var detalle = [];
+  
+  for (var i = 0; i < ausencias.length; i++) {
+    var aus = ausencias[i];
+    if (aus.empleado !== alias) continue;
+    if (TIPOS_RESTAN_DIAS.indexOf(aus.tipo) === -1) continue;
+    
+    // Verificar si está en el año seleccionado
+    var yearDesde = parseInt(aus.desde.substring(0, 4));
+    var yearHasta = parseInt(aus.hasta.substring(0, 4));
+    if (yearDesde !== year && yearHasta !== year) continue;
+    
+    // Ajustar fechas al año si cruza años
+    var desde = aus.desde;
+    var hasta = aus.hasta;
+    if (yearDesde < year) desde = year + '-01-01';
+    if (yearHasta > year) hasta = year + '-12-31';
+    
+    var dias = contarDiasAusencia(desde, hasta);
+    usados += dias;
+    detalle.push({
+      tipo: aus.tipo,
+      desde: aus.desde,
+      hasta: aus.hasta,
+      dias: dias
+    });
+  }
+  
+  return {
+    total: total,
+    usados: usados,
+    restantes: total - usados,
+    detalle: detalle
+  };
+}
+
+function renderControl() {
+  var year = parseInt(document.getElementById('control-year').value);
+  renderTablaVacaciones(year);
+  renderTablaFaltas(year);
+}
+
+function renderTablaVacaciones(year) {
+  var tbody = document.querySelector('#tabla-vacaciones tbody');
+  var emps = getEmpleadosTienda();
+  var html = '';
+  
+  for (var alias in emps) {
+    var vac = calcularVacacionesEmpleado(alias, year);
+    var clsRestantes = 'dias-ok';
+    if (vac.restantes <= 10) clsRestantes = 'dias-warning';
+    if (vac.restantes <= 0) clsRestantes = 'dias-danger';
+    
+    html += '<tr>';
+    html += '<td><strong>' + alias + '</strong></td>';
+    html += '<td>' + vac.total + '</td>';
+    html += '<td>' + vac.usados + '</td>';
+    html += '<td class="' + clsRestantes + '">' + vac.restantes + '</td>';
+    html += '<td>';
+    if (vac.detalle.length > 0) {
+      html += '<button class="detalle-btn" onclick="verDetalleVacaciones(\'' + alias + '\',' + year + ')">Ver ' + vac.detalle.length + ' registro(s)</button>';
+    } else {
+      html += '<span style="color:#999;font-size:11px">Sin registros</span>';
+    }
+    html += '</td>';
+    html += '</tr>';
+  }
+  
+  tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center;color:#999">No hay empleados</td></tr>';
+}
+
+function verDetalleVacaciones(alias, year) {
+  var vac = calcularVacacionesEmpleado(alias, year);
+  var tipoTxt = {vacaciones: '🏖️ Vacaciones', permiso: '📅 Permiso', asuntos: '📋 Asuntos propios'};
+  
+  document.getElementById('detalle-vac-titulo').textContent = '📋 Detalle ' + alias + ' (' + year + ')';
+  
+  var html = '<table class="control-table"><thead><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th></tr></thead><tbody>';
+  for (var i = 0; i < vac.detalle.length; i++) {
+    var d = vac.detalle[i];
+    html += '<tr><td>' + (tipoTxt[d.tipo] || d.tipo) + '</td><td>' + d.desde + '</td><td>' + d.hasta + '</td><td>' + d.dias + '</td></tr>';
+  }
+  html += '</tbody></table>';
+  html += '<div style="margin-top:16px;padding:12px;background:#f5f5f5;border-radius:6px">';
+  html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Total anual:</span><strong>' + vac.total + ' días</strong></div>';
+  html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Usados:</span><strong>' + vac.usados + ' días</strong></div>';
+  html += '<div style="display:flex;justify-content:space-between"><span>Restantes:</span><strong style="color:' + (vac.restantes <= 0 ? '#c62828' : '#2e7d32') + '">' + vac.restantes + ' días</strong></div>';
+  html += '</div>';
+  
+  document.getElementById('detalle-vac-body').innerHTML = html;
+  abrirModal('modal-detalle-vacaciones');
+}
+
+function renderTablaFaltas(year) {
+  var tbody = document.querySelector('#tabla-faltas tbody');
+  var faltas = getFaltas();
+  var html = '';
+  
+  var faltasYear = faltas.filter(function(f) {
+    return parseInt(f.fecha.substring(0, 4)) === year;
+  });
+  
+  faltasYear.sort(function(a, b) {
+    return b.fecha.localeCompare(a.fecha);
+  });
+  
+  for (var i = 0; i < faltasYear.length; i++) {
+    var f = faltasYear[i];
+    var tipoClass = f.tipo === 'justificada' ? 'falta-justificada' : 'falta-injustificada';
+    var tipoTxt = f.tipo === 'justificada' ? '✅ Justificada' : '❌ Injustificada';
+    
+    html += '<tr>';
+    html += '<td><strong>' + f.empleado + '</strong></td>';
+    html += '<td>' + f.fecha + '</td>';
+    html += '<td class="' + tipoClass + '">' + tipoTxt + '</td>';
+    html += '<td>' + (f.motivo || '-') + '</td>';
+    html += '<td><button class="btn-delete" onclick="eliminarFalta(' + i + ')" title="Eliminar">🗑️</button></td>';
+    html += '</tr>';
+  }
+  
+  tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center;color:#999">No hay faltas registradas</td></tr>';
+}
+
+function abrirModalFalta() {
+  var select = document.getElementById('falta-empleado');
+  var emps = getEmpleadosTienda();
+  select.innerHTML = '<option value="">-- Seleccionar --</option>';
+  for (var alias in emps) {
+    select.innerHTML += '<option value="' + alias + '">' + alias + '</option>';
+  }
+  document.getElementById('falta-fecha').value = '';
+  document.getElementById('falta-tipo').value = 'justificada';
+  document.getElementById('falta-motivo').value = '';
+  abrirModal('modal-falta');
+}
+
+function guardarFalta() {
+  var empleado = document.getElementById('falta-empleado').value;
+  var fecha = document.getElementById('falta-fecha').value;
+  var tipo = document.getElementById('falta-tipo').value;
+  var motivo = document.getElementById('falta-motivo').value;
+  
+  if (!empleado || !fecha) {
+    alert('Selecciona empleado y fecha');
+    return;
+  }
+  
+  var faltas = getFaltas();
+  faltas.push({
+    empleado: empleado,
+    fecha: fecha,
+    tipo: tipo,
+    motivo: motivo,
+    tienda: tiendaActual
+  });
+  setFaltas(faltas);
+  
+  cerrarModal('modal-falta');
+  renderControl();
+  syncFaltas();
+}
+
+function eliminarFalta(index) {
+  if (!confirm('¿Eliminar esta falta?')) return;
+  var faltas = getFaltas();
+  var year = parseInt(document.getElementById('control-year').value);
+  
+  // Filtrar por año para obtener el índice real
+  var faltasYear = [];
+  var realIndices = [];
+  for (var i = 0; i < faltas.length; i++) {
+    if (parseInt(faltas[i].fecha.substring(0, 4)) === year) {
+      faltasYear.push(faltas[i]);
+      realIndices.push(i);
+    }
+  }
+  
+  // Ordenar igual que en renderTablaFaltas
+  var sorted = faltasYear.map(function(f, i) { return {f: f, ri: realIndices[i]}; });
+  sorted.sort(function(a, b) { return b.f.fecha.localeCompare(a.f.fecha); });
+  
+  var realIndex = sorted[index].ri;
+  faltas.splice(realIndex, 1);
+  setFaltas(faltas);
+  renderControl();
+  syncFaltas();
+}
+
+// Añadir "asuntos" como tipo de ausencia
+function actualizarTiposAusencia() {
+  var select = document.getElementById('ausencia-tipo');
+  if (select && !select.querySelector('option[value="asuntos"]')) {
+    var opt = document.createElement('option');
+    opt.value = 'asuntos';
+    opt.textContent = '📋 Asuntos propios';
+    select.appendChild(opt);
+  }
+}
+
+// ==================== MENÚ CONTEXTUAL EMPLEADO ====================
+var menuEmpleadoActual = null; // Guarda datos del turno seleccionado
+var modalModificacionDatos = null; // Datos para el modal de modificación
+var modificacionesHorario = []; // Array de modificaciones puntuales
+
+function abrirMenuEmpleado(event, elem) {
+  event.stopPropagation();
+  
+  var emp = elem.dataset.emp;
+  var fecha = elem.dataset.fecha;
+  var entrada = parseFloat(elem.dataset.entrada);
+  var salida = parseFloat(elem.dataset.salida);
+  var franja = elem.dataset.franja || '';
+  var turnoFds = elem.dataset.turnoFds || '';
+  
+  menuEmpleadoActual = {
+    empleado: emp,
+    fecha: fecha,
+    entrada: entrada,
+    salida: salida,
+    franja: franja,
+    turnoFds: turnoFds
+  };
+  
+  var menu = document.getElementById('menu-empleado');
+  document.getElementById('menu-emp-nombre').textContent = emp;
+  
+  var fechaObj = parseFechaLocal(fecha);
+  var diaSem = DIAS[fechaObj.getDay()];
+  var detalle = diaSem + ' ' + fechaObj.getDate() + ' · ' + formatHora(entrada) + '-' + formatHora(salida);
+  if (turnoFds) detalle += ' (' + turnoFds.replace('_', ' ') + ')';
+  document.getElementById('menu-emp-detalle').textContent = detalle;
+  
+  // Posicionar menú
+  var rect = elem.getBoundingClientRect();
+  var menuW = 220;
+  var menuH = 160;
+  var left = rect.right + 5;
+  var top = rect.top;
+  
+  // Ajustar si se sale de pantalla
+  if (left + menuW > window.innerWidth) left = rect.left - menuW - 5;
+  if (top + menuH > window.innerHeight) top = window.innerHeight - menuH - 10;
+  if (top < 10) top = 10;
+  
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.classList.add('active');
+}
+
+function cerrarMenuEmpleado() {
+  document.getElementById('menu-empleado').classList.remove('active');
+}
+
+// Cerrar menú al hacer click fuera
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.menu-empleado') && !e.target.closest('.turno')) {
+    cerrarMenuEmpleado();
+    menuEmpleadoActual = null;
+  }
+});
+
+function menuModificarHorario() {
+  if (!menuEmpleadoActual) return;
+  var m = menuEmpleadoActual;
+  modalModificacionDatos = m; // Guardar para el modal
+  cerrarMenuEmpleado();
+  
+  var fechaObj = parseFechaLocal(m.fecha);
+  var diaSem = DIAS[fechaObj.getDay()];
+  
+  // Mostrar resumen
+  var resumen = '<strong>' + m.empleado + '</strong> · ' + diaSem + ' ' + fechaObj.getDate() + '/' + (fechaObj.getMonth()+1);
+  resumen += '<br>Horario actual: <strong>' + formatHora(m.entrada) + ' - ' + formatHora(m.salida) + '</strong>';
+  document.getElementById('mod-horario-resumen').innerHTML = resumen;
+  
+  // Rellenar campos con horario actual
+  document.getElementById('mod-entrada').value = horaDecimalAHHMM(m.entrada);
+  document.getElementById('mod-salida').value = horaDecimalAHHMM(m.salida);
+  document.getElementById('mod-motivo').value = '';
+  
+  // Comprobar si ya hay modificación para mostrar botón quitar
+  var modExistente = getModificacion(m.empleado, m.fecha, m.turnoFds);
+  document.getElementById('btn-quitar-mod').style.display = modExistente ? 'inline-flex' : 'none';
+  if (modExistente) {
+    document.getElementById('mod-entrada').value = horaDecimalAHHMM(modExistente.nuevaEntrada);
+    document.getElementById('mod-salida').value = horaDecimalAHHMM(modExistente.nuevaSalida);
+    document.getElementById('mod-motivo').value = modExistente.motivo || '';
+  }
+  
+  abrirModal('modal-modificar-horario');
+}
+
+function horaDecimalAHHMM(decimal) {
+  var h = Math.floor(decimal);
+  var m = Math.round((decimal - h) * 60);
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+
+function horaHHMMaDecimal(hhmm) {
+  var partes = hhmm.split(':');
+  return parseInt(partes[0]) + parseInt(partes[1]) / 60;
+}
+
+function getModificacion(emp, fecha, turnoFds) {
+  for (var i = 0; i < modificacionesHorario.length; i++) {
+    var mod = modificacionesHorario[i];
+    if (mod.empleado === emp && mod.fecha === fecha && mod.tienda === tiendaActual) {
+      if (turnoFds) {
+        if (mod.turnoFds === turnoFds) return mod;
+      } else {
+        if (!mod.turnoFds) return mod;
+      }
+    }
+  }
+  return null;
+}
+
+function guardarModificacionHorario() {
+  if (!modalModificacionDatos) return;
+  
+  var m = modalModificacionDatos;
+  var nuevaEntrada = horaHHMMaDecimal(document.getElementById('mod-entrada').value);
+  var nuevaSalida = horaHHMMaDecimal(document.getElementById('mod-salida').value);
+  var motivo = document.getElementById('mod-motivo').value.trim();
+  
+  // Validar
+  if (nuevaSalida <= nuevaEntrada) {
+    alert('La hora de salida debe ser posterior a la de entrada');
+    return;
+  }
+  
+  // Quitar modificación anterior si existe
+  quitarModificacionSilencioso(m.empleado, m.fecha, m.turnoFds);
+  
+  // Añadir nueva modificación
+  modificacionesHorario.push({
+    empleado: m.empleado,
+    fecha: m.fecha,
+    tienda: tiendaActual,
+    turnoFds: m.turnoFds || '',
+    entradaOriginal: m.entrada,
+    salidaOriginal: m.salida,
+    nuevaEntrada: nuevaEntrada,
+    nuevaSalida: nuevaSalida,
+    motivo: motivo
+  });
+  
+  modalModificacionDatos = null;
+  cerrarModal('modal-modificar-horario');
+  renderCalendario();
+  syncModificaciones();
+}
+
+function quitarModificacionSilencioso(emp, fecha, turnoFds) {
+  for (var i = modificacionesHorario.length - 1; i >= 0; i--) {
+    var mod = modificacionesHorario[i];
+    if (mod.empleado === emp && mod.fecha === fecha && mod.tienda === tiendaActual) {
+      if (turnoFds) {
+        if (mod.turnoFds === turnoFds) {
+          modificacionesHorario.splice(i, 1);
+          return;
+        }
+      } else {
+        if (!mod.turnoFds) {
+          modificacionesHorario.splice(i, 1);
+          return;
+        }
+      }
+    }
+  }
+}
+
+function quitarModificacion() {
+  if (!modalModificacionDatos) return;
+  var m = modalModificacionDatos;
+  quitarModificacionSilencioso(m.empleado, m.fecha, m.turnoFds);
+  modalModificacionDatos = null;
+  cerrarModal('modal-modificar-horario');
+  renderCalendario();
+  syncModificaciones();
+}
+
+function menuRegistrarAusencia() {
+  if (!menuEmpleadoActual) return;
+  var m = menuEmpleadoActual;
+  cerrarMenuEmpleado();
+  
+  // Usar la función existente para abrir el modal
+  pasoActual=1;seleccionesDias={};
+  var select=document.getElementById('ausencia-empleado');
+  var emps=getEmpleadosTienda();
+  var html='<option value="">-- Selecciona --</option>';
+  for(var a in emps)html+='<option value="'+a+'">'+a+' - '+emps[a].nombre+'</option>';
+  select.innerHTML=html;
+  document.getElementById('ausencia-tipo').value='';
+  
+  // Pre-seleccionar empleado y fechas
+  select.value = m.empleado;
+  document.getElementById('ausencia-desde').value = m.fecha;
+  document.getElementById('ausencia-hasta').value = m.fecha;
+  
+  actualizarPasos();
+  abrirModal('modal-ausencia');
+}
+
+function menuVerFicha() {
+  if (!menuEmpleadoActual) return;
+  var emp = menuEmpleadoActual.empleado;
+  cerrarMenuEmpleado();
+  verEmpleado(emp);
+}
+
+// Aplicar modificaciones a los horarios
+function aplicarModificacionesHorario(horarios, fecha) {
+  var fs = formatFechaLocal(fecha);
+  var resultado = {};
+  
+  for (var emp in horarios) {
+    resultado[emp] = horarios[emp].slice(); // Copia
+    
+    // Buscar modificación
+    var mod = getModificacion(emp, fs, '');
+    if (mod) {
+      resultado[emp] = [mod.nuevaEntrada, mod.nuevaSalida];
+    }
+  }
+  
+  return resultado;
+}
+
+function aplicarModificacionesFds(horarios, fecha, turnoKey) {
+  var fs = formatFechaLocal(fecha);
+  var resultado = {};
+  
+  for (var emp in horarios) {
+    resultado[emp] = horarios[emp].slice(); // Copia
+    
+    // Buscar modificación
+    var mod = getModificacion(emp, fs, turnoKey);
+    if (mod) {
+      resultado[emp] = [mod.nuevaEntrada, mod.nuevaSalida];
+    }
+  }
+  
+  return resultado;
+}
+
+// ==================== IMPRIMIR Y EXPORTAR PDF ====================
+function actualizarPrintHeader() {
+  var tiendaNombre = tiendaActual === 'granvia' ? 'KIRA MARKET - Gran Vía' : 'REYPIK MARKET - Isabel';
+  var mesNombre = document.getElementById('mes-actual').textContent;
+  document.getElementById('print-titulo').textContent = tiendaNombre + ' - Horarios';
+  document.getElementById('print-subtitulo').textContent = mesNombre;
+}
+
+function toggleDropdown(id, event) {
+  if (event) event.stopPropagation();
+  // Cerrar otros dropdowns
+  document.querySelectorAll('.dropdown-menu').forEach(function(d) {
+    if (d.id !== id) d.classList.remove('show');
+  });
+  document.getElementById(id).classList.toggle('show');
+}
+
+// Cerrar dropdowns al hacer click fuera
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown-menu').forEach(function(d) {
+      d.classList.remove('show');
+    });
+  }
+});
+
+function generarCalendarioLV() {
+  var html = '';
+  var fecha = new Date(añoActual, mesActual, 1);
+  var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  
+  // Cabecera
+  html += '<div class="week-view"><div class="week-header">';
+  html += '<div class="col-sem">Sem</div>';
+  html += '<div class="col-dia">Lunes</div><div class="col-dia">Martes</div><div class="col-dia">Miércoles</div><div class="col-dia">Jueves</div><div class="col-dia">Viernes</div>';
+  html += '</div><div class="week-body">';
+  
+  // Ir al primer lunes
+  while (fecha.getDay() !== 1) fecha.setDate(fecha.getDate() - 1);
+  var ultimoDia = new Date(añoActual, mesActual + 1, 0);
+  
+  while (fecha <= ultimoDia || fecha.getMonth() === mesActual) {
+    var semNum = getWeekNumber(fecha);
+    var semAB = getSemanaAB(fecha);
+    
+    html += '<div class="week-row">';
+    html += '<div class="col-sem"><span class="num">' + semNum + '</span><span class="letra">' + semAB + '</span></div>';
+    
+    // L-V
+    for (var d = 0; d < 5; d++) {
+      var dia = new Date(fecha);
+      dia.setDate(dia.getDate() + d);
+      var esDelMes = dia.getMonth() === mesActual;
+      
+      html += '<div class="col-dia" style="' + (esDelMes ? '' : 'opacity:0.4') + '">';
+      html += '<div class="dia-num">' + dia.getDate() + ' ' + MESES[dia.getMonth()].substring(0,3) + '</div>';
+      
+      if (esDelMes) {
+        var horarios;
+        if (tiendaActual === 'granvia') {
+          horarios = HORARIOS_GV[semAB][d === 4 ? 'V' : 'LJ'];
+        } else {
+          horarios = getHorariosIS(dia);
+        }
+        html += renderTurnosParaPDF(dia, horarios);
+      }
+      html += '</div>';
+    }
+    
+    html += '</div>';
+    fecha.setDate(fecha.getDate() + 7);
+    if (fecha > ultimoDia && fecha.getMonth() !== mesActual) break;
+  }
+  
+  html += '</div></div>';
+  return html;
+}
+
+function generarCalendarioFdS() {
+  var html = '';
+  var fecha = new Date(añoActual, mesActual, 1);
+  var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  
+  // Ir al primer sábado
+  while (fecha.getDay() !== 6) fecha.setDate(fecha.getDate() + 1);
+  var ultimoDia = new Date(añoActual, mesActual + 1, 0);
+  
+  // Contar semanas primero
+  var numSemanas = 0;
+  var fechaTemp = new Date(fecha);
+  while (fechaTemp <= ultimoDia || fechaTemp.getMonth() === mesActual) {
+    var sabTemp = new Date(fechaTemp);
+    var domTemp = new Date(fechaTemp); domTemp.setDate(domTemp.getDate() + 1);
+    if (sabTemp.getMonth() === mesActual || domTemp.getMonth() === mesActual) {
+      numSemanas++;
+    }
+    fechaTemp.setDate(fechaTemp.getDate() + 7);
+  }
+  
+  // Cabecera con grid dinámico
+  html += '<div class="fds-grid" style="grid-template-columns: repeat(' + numSemanas + ', 1fr);">';
+  
+  var count = 0;
+  while (fecha <= ultimoDia || fecha.getMonth() === mesActual) {
+    var sab = new Date(fecha);
+    var dom = new Date(fecha); dom.setDate(dom.getDate() + 1);
+    var esDelMes = sab.getMonth() === mesActual || dom.getMonth() === mesActual;
+    
+    if (!esDelMes) {
+      fecha.setDate(fecha.getDate() + 7);
+      continue;
+    }
+    
+    var fdsData = tiendaActual === 'granvia' ? getFdsGV(sab) : getFdsIS(sab);
+    
+    html += '<div class="fds-card">';
+    html += '<div class="fds-card-header">Semana ' + getWeekNumber(sab) + '</div>';
+    html += '<div class="fds-card-body">';
+    
+    // Sábado Mañana
+    html += '<div class="fds-turno sab-m"><div class="fds-turno-header">SAB ' + sab.getDate() + ' Mañana</div>';
+    html += renderTurnosFdsParaPDF(sab, fdsData.SAB_M || {});
+    html += '</div>';
+    
+    // Domingo Mañana
+    html += '<div class="fds-turno dom-m"><div class="fds-turno-header">DOM ' + dom.getDate() + ' Mañana</div>';
+    html += renderTurnosFdsParaPDF(dom, fdsData.DOM_M || {});
+    html += '</div>';
+    
+    // Sábado Tarde
+    html += '<div class="fds-turno sab-t"><div class="fds-turno-header">SAB ' + sab.getDate() + ' Tarde</div>';
+    html += renderTurnosFdsParaPDF(sab, fdsData.SAB_T || {});
+    html += '</div>';
+    
+    // Domingo Tarde
+    html += '<div class="fds-turno dom-t"><div class="fds-turno-header">DOM ' + dom.getDate() + ' Tarde</div>';
+    html += renderTurnosFdsParaPDF(dom, fdsData.DOM_T || {});
+    html += '</div>';
+    
+    html += '</div></div>';
+    
+    fecha.setDate(fecha.getDate() + 7);
+    count++;
+  }
+  
+  html += '</div>';
+  return html;
+}
+
+function renderTurnosParaPDF(dia, horarios) {
+  if (!horarios) return '';
+  var html = '<div class="turnos-wrap">';
+  var franjas = {descarga: [], mañanas: [], tardes: [], cierre: []};
+  
+  for (var n in horarios) {
+    var h = horarios[n];
+    var franja = tiendaActual === 'granvia' ? getFranja(h[0], h[1]) : getFranjaIS(h[0], h[1]);
+    var aus = estaAusente(n, dia);
+    var sust = getSustituto(dia, n);
+    franjas[franja].push({nombre: n, h: h, aus: aus, sust: sust});
+  }
+  
+  for (var f in franjas) {
+    if (franjas[f].length > 0) {
+      for (var i = 0; i < franjas[f].length; i++) {
+        var t = franjas[f][i];
+        html += '<div class="turno ' + f + (t.aus ? ' ausente' : '') + '">';
+        html += '<span class="turno-nombre">' + t.nombre + '</span>';
+        html += '<span class="turno-hora">' + formatHora(t.h[0]) + '-' + formatHora(t.h[1]) + '</span>';
+        html += '</div>';
+        if (t.sust) {
+          html += '<div class="turno sustituto">';
+          html += '<span class="turno-nombre">→ ' + t.sust.sustituto + '</span>';
+          html += '<span class="turno-hora">' + formatHora(t.sust.entrada) + '-' + formatHora(t.sust.salida) + '</span>';
+          html += '</div>';
+        }
+      }
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderTurnosFdsParaPDF(dia, horarios) {
+  if (!horarios) return '';
+  var html = '';
+  for (var n in horarios) {
+    var h = horarios[n];
+    var aus = estaAusente(n, dia);
+    html += '<div class="turno fds' + (aus ? ' ausente' : '') + '">';
+    html += '<span class="turno-nombre">' + n + '</span>';
+    html += '<span class="turno-hora">' + formatHora(h[0]) + '-' + formatHora(h[1]) + '</span>';
+    html += '</div>';
+  }
+  return html;
+}
+
+function exportarPDF(modo) {
+  document.querySelectorAll('.dropdown-menu').forEach(function(d) { d.classList.remove('show'); });
+  mostrarTab('calendario');
+  
+  var tiendaNombre = tiendaActual === 'granvia' ? 'KIRA MARKET - Gran Vía' : 'REYPIK MARKET - Isabel';
+  var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var mesNombre = MESES[mesActual] + ' ' + añoActual;
+  var modoTxt = modo === 'lv' ? 'Lunes a Viernes' : 'Fines de Semana';
+  
+  var calendario = modo === 'lv' ? generarCalendarioLV() : generarCalendarioFdS();
+  
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Horarios ' + mesNombre + ' - ' + modoTxt + '</title>';
+  html += '<style>';
+  html += '* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }';
+  
+  if (modo === 'lv') {
+    html += 'html, body { width: 100%; min-height: 100%; }';
+    html += 'body { padding: 10px; background: #f5f5f5; }';
+  } else {
+    // FdS: ocupar toda la altura con contenedor flex
+    html += 'html { height: 100%; }';
+    html += 'body { height: 100%; padding: 10px; background: #f5f5f5; display: flex; flex-direction: column; margin: 0; }';
+    html += '.fds-container { flex: 1; display: flex; flex-direction: column; min-height: 0; }';
+  }
+  
+  // Cabecera
+  html += '.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 8px 15px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }';
+  html += '.header h1 { font-size: 16px; font-weight: 700; }';
+  html += '.header .tienda { font-size: 18px; font-weight: 700; letter-spacing: 1px; }';
+  html += '.header .info { display: flex; gap: 15px; align-items: center; }';
+  html += '.header .mes { font-size: 12px; opacity: 0.9; }';
+  html += '.header .modo { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 4px; font-size: 10px; }';
+  
+  if (modo === 'lv') {
+    // Estilos L-V compactos
+    html += '.week-view { background: #fff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 6px; }';
+    html += '.week-header { display: flex; background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%); border-bottom: 2px solid #dee2e6; font-weight: 600; font-size: 9px; text-transform: uppercase; }';
+    html += '.week-header .col-sem { width: 30px; padding: 6px 2px; text-align: center; border-right: 1px solid #dee2e6; color: #e53935; }';
+    html += '.week-header .col-dia { flex: 1; padding: 6px 2px; text-align: center; border-right: 1px solid #dee2e6; color: #495057; }';
+    html += '.week-body { }';
+    html += '.week-row { display: flex; border-bottom: 1px solid #e9ecef; }';
+    html += '.col-sem { width: 30px; padding: 3px 2px; background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%); border-right: 1px solid #dee2e6; display: flex; flex-direction: column; align-items: center; justify-content: center; }';
+    html += '.col-sem .num { font-size: 12px; font-weight: 700; color: #e53935; }';
+    html += '.col-sem .letra { font-size: 9px; color: #6c757d; font-weight: 600; }';
+    html += '.col-dia { flex: 1; border-right: 1px solid #f0f0f0; padding: 2px 3px; }';
+    html += '.dia-num { font-size: 8px; font-weight: 600; color: #868e96; margin-bottom: 2px; }';
+  } else {
+    // Estilos FdS - grid dinámico que ocupa todo el ancho
+    html += '.fds-grid { display: grid; gap: 10px; width: 100%; }';
+    html += '.fds-card { background: #fff; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; }';
+    html += '.fds-card-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 10px 12px; font-weight: 600; font-size: 14px; text-align: center; }';
+    html += '.fds-card-body { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; padding: 10px; flex: 1; }';
+    html += '.fds-turno { border-radius: 6px; padding: 8px; display: flex; flex-direction: column; }';
+    html += '.fds-turno.sab-m { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 2px solid #1976d2; }';
+    html += '.fds-turno.dom-m { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 2px solid #388e3c; }';
+    html += '.fds-turno.sab-t { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #f57c00; }';
+    html += '.fds-turno.dom-t { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border: 2px solid #7b1fa2; }';
+    html += '.fds-turno-header { font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,0.1); }';
+  }
+  
+  // Turnos - compactos para L-V, más grandes para FdS
+  if (modo === 'lv') {
+    html += '.turno { padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; }';
+    html += '.turno-nombre { font-weight: 600; color: #212529; }';
+    html += '.turno-hora { color: #6c757d; font-size: 7px; }';
+  } else {
+    html += '.turno { padding: 4px 6px; border-radius: 4px; margin-bottom: 3px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; }';
+    html += '.turno-nombre { font-weight: 600; color: #212529; }';
+    html += '.turno-hora { color: #6c757d; font-size: 9px; }';
+  }
+  html += '.turno.descarga { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left: 2px solid #1976d2; }';
+  html += '.turno.mañanas { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left: 2px solid #388e3c; }';
+  html += '.turno.tardes { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 2px solid #f57c00; }';
+  html += '.turno.cierre { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border-left: 2px solid #7b1fa2; }';
+  html += '.turno.fds { background: rgba(255,255,255,0.7); border-left: 2px solid #c2185b; }';
+  html += '.turno.ausente { opacity: 0.4; text-decoration: line-through; }';
+  html += '.turno.sustituto { background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); border-left: 2px solid #ffa000; }';
+  
+  // Leyenda compacta
+  html += '.leyenda { display: flex; gap: 15px; justify-content: center; margin-top: 8px; padding: 8px; background: white; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }';
+  html += '.leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #495057; }';
+  html += '.leyenda-color { width: 14px; height: 14px; border-radius: 3px; }';
+  
+  // Print styles - A3 vertical para L-V, A3 horizontal para FdS
+  if (modo === 'lv') {
+    html += '@media print { @page { size: A3 portrait; margin: 3mm; } }';
+  } else {
+    // A3 landscape: 420x297mm - usar max-width para evitar segunda página
+    html += '@media print { @page { size: A3 landscape; margin: 5mm; } body { max-height: 287mm; max-width: 410mm; overflow: hidden; transform: scale(1.18); transform-origin: top left; } }';
+  }
+  
+  html += '</style></head><body>';
+  
+  // Cabecera con empresa, tienda y fecha
+  var nombreEmpresa = tiendaActual === 'granvia' ? 'KIRA MARKET S.L.' : 'REYPIK MARKET S.L.';
+  var nombreTienda = tiendaActual === 'granvia' ? 'GRAN VÍA' : 'ISABEL LA CATÓLICA';
+  
+  html += '<div class="header">';
+  html += '<h1>' + nombreEmpresa + '</h1>';
+  html += '<div class="tienda">' + nombreTienda + '</div>';
+  html += '<div class="info"><div class="mes">' + mesNombre + '</div>';
+  html += '<div class="modo">' + modoTxt + '</div></div>';
+  html += '</div>';
+  
+  // Calendario
+  html += calendario;
+  
+  // Leyenda
+  html += '<div class="leyenda">';
+  if (modo === 'lv') {
+    html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#e3f2fd,#bbdefb);border-left:4px solid #1976d2"></div>Descarga</div>';
+    html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border-left:4px solid #388e3c"></div>Mañanas</div>';
+    html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-left:4px solid #f57c00"></div>Tardes</div>';
+    html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#f3e5f5,#e1bee7);border-left:4px solid #7b1fa2"></div>Cierre</div>';
+  } else {
+    html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#e3f2fd,#bbdefb);border:2px solid #1976d2"></div>Sáb Mañana</div>';
+    html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border:2px solid #388e3c"></div>Dom Mañana</div>';
+    html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#fff3e0,#ffe0b2);border:2px solid #f57c00"></div>Sáb Tarde</div>';
+    html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#f3e5f5,#e1bee7);border:2px solid #7b1fa2"></div>Dom Tarde</div>';
+  }
+  html += '<div class="leyenda-item"><div class="leyenda-color" style="background:linear-gradient(135deg,#fff8e1,#ffecb3);border-left:4px solid #ffa000"></div>Sustituto</div>';
+  html += '</div>';
+  
+  html += '</div>'; // cierra leyenda
+  
+  html += '</body></html>';
+  
+  var ventana = window.open('', '_blank');
+  ventana.document.write(html);
+  ventana.document.close();
+  
+  // Abrir diálogo de imprimir después de cargar
+  setTimeout(function() {
+    ventana.print();
+  }, 500);
+}
+
+// ==================== GOOGLE SHEETS SYNC ====================
+var SHEETS_API = 'https://script.google.com/macros/s/AKfycbyRV1GwDbPwzyK7JH6_5gcsJ_2U1JDIh3KlvEuCaK0xicndXxuuEBBze-mDdt9z1T0/exec';
+
+function syncStatus(msg, tipo) {
+  var el = document.getElementById('sync-status');
+  if (tipo === 'ok') { el.style.background = '#2e7d32'; el.style.color = '#fff'; }
+  else if (tipo === 'error') { el.style.background = '#c62828'; el.style.color = '#fff'; }
+  else { el.style.background = 'rgba(255,255,255,0.1)'; el.style.color = 'rgba(255,255,255,0.5)'; }
+  el.textContent = msg;
+}
+
+function cargarDesdeSheets() {
+  syncStatus('⏳ Cargando...', 'loading');
+  fetch(SHEETS_API + '?action=readAll')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { syncStatus('❌ ' + data.error, 'error'); return; }
+      // Empleados
+      if (data.empleadosGV && data.empleadosGV.length > 0) {
+        EMPLEADOS_GV = {};
+        for (var i = 0; i < data.empleadosGV.length; i++) {
+          var e = data.empleadosGV[i];
+          EMPLEADOS_GV[e.alias] = e;
+        }
+      }
+      if (data.empleadosIS && data.empleadosIS.length > 0) {
+        EMPLEADOS_IS = {};
+        for (var i = 0; i < data.empleadosIS.length; i++) {
+          var e = data.empleadosIS[i];
+          EMPLEADOS_IS[e.alias] = e;
+        }
+      }
+      // Horarios GV
+      if (data.horariosGV && data.horariosGV.length > 0) {
+        HORARIOS_GV = {A:{LJ:{},V:{}},B:{LJ:{},V:{}}};
+        for (var i = 0; i < data.horariosGV.length; i++) {
+          var h = data.horariosGV[i];
+          HORARIOS_GV[h.semana][h.dia][h.empleado] = [h.entrada, h.salida];
+        }
+      }
+      // Ausencias
+      if (data.ausencias) {
+        ausenciasGV = [];
+        ausenciasIS = [];
+        for (var i = 0; i < data.ausencias.length; i++) {
+          var a = data.ausencias[i];
+          var obj = {empleado:a.empleado, tipo:a.tipo, desde:a.desde, hasta:a.hasta, motivo:a.motivo||''};
+          if (a.tienda === 'granvia') ausenciasGV.push(obj);
+          else ausenciasIS.push(obj);
+        }
+      }
+      // Sustituciones
+      if (data.sustituciones) {
+        sustituciones = [];
+        for (var i = 0; i < data.sustituciones.length; i++) {
+          var s = data.sustituciones[i];
+          sustituciones.push({fecha:s.fecha,ausente:s.ausente,sustituto:s.sustituto,entrada:s.entrada,salida:s.salida,franja:s.franja||'',turnoFds:s.turnoFds||'',tienda:s.tienda});
+        }
+      }
+      // Modificaciones
+      if (data.modificaciones) {
+        modificacionesHorario = [];
+        for (var i = 0; i < data.modificaciones.length; i++) {
+          var m = data.modificaciones[i];
+          modificacionesHorario.push({empleado:m.empleado,fecha:m.fecha,tienda:m.tienda,turnoFds:m.turnoFds||'',entradaOriginal:m.entradaOriginal,salidaOriginal:m.salidaOriginal,nuevaEntrada:m.nuevaEntrada,nuevaSalida:m.nuevaSalida,motivo:m.motivo||''});
+        }
+      }
+      // Faltas
+      if (data.faltas) {
+        faltasGV = [];
+        faltasIS = [];
+        for (var i = 0; i < data.faltas.length; i++) {
+          var f = data.faltas[i];
+          var obj = {empleado:f.empleado, fecha:f.fecha, tipo:f.tipo, motivo:f.motivo||'', tienda:f.tienda};
+          if (f.tienda === 'granvia') faltasGV.push(obj);
+          else faltasIS.push(obj);
+        }
+      }
+      renderCalendario();
+      renderEmpleados();
+      renderAusencias();
+      syncStatus('✓ Sincronizado', 'ok');
+    })
+    .catch(function(err) {
+      syncStatus('❌ Sin conexion', 'error');
+      console.error('Error cargando Sheets:', err);
+    });
+}
+
+function guardarEnSheets(hoja, headers, rows) {
+  syncStatus('💾 Guardando...', 'loading');
+  fetch(SHEETS_API + '?action=save', {
+    method: 'POST',
+    body: JSON.stringify({sheet: hoja, headers: headers, rows: rows})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) { syncStatus('❌ ' + data.error, 'error'); return; }
+    syncStatus('✓ Guardado', 'ok');
+  })
+  .catch(function(err) {
+    syncStatus('❌ Error al guardar', 'error');
+    console.error('Error guardando Sheets:', err);
+  });
+}
+
+function syncEmpleados() {
+  var h = ['alias','nombre','apellidos','dni','telefono','email','fechaAlta','contrato','tienda','franja','restriccion','color','horasLV','horasFDS'];
+  var rowsGV = [];
+  for (var k in EMPLEADOS_GV) { rowsGV.push(EMPLEADOS_GV[k]); }
+  guardarEnSheets('empleadosGV', h, rowsGV);
+  var rowsIS = [];
+  for (var k in EMPLEADOS_IS) { rowsIS.push(EMPLEADOS_IS[k]); }
+  guardarEnSheets('empleadosIS', h, rowsIS);
+}
+
+function syncAusencias() {
+  var h = ['tienda','empleado','tipo','desde','hasta','motivo'];
+  var rows = [];
+  for (var i = 0; i < ausenciasGV.length; i++) {
+    var a = ausenciasGV[i];
+    rows.push({tienda:'granvia',empleado:a.empleado,tipo:a.tipo,desde:a.desde,hasta:a.hasta,motivo:a.motivo||''});
+  }
+  for (var i = 0; i < ausenciasIS.length; i++) {
+    var a = ausenciasIS[i];
+    rows.push({tienda:'isabel',empleado:a.empleado,tipo:a.tipo,desde:a.desde,hasta:a.hasta,motivo:a.motivo||''});
+  }
+  guardarEnSheets('ausencias', h, rows);
+}
+
+function syncSustituciones() {
+  var h = ['tienda','fecha','ausente','sustituto','entrada','salida','franja','turnoFds'];
+  guardarEnSheets('sustituciones', h, sustituciones);
+}
+
+function syncModificaciones() {
+  var h = ['tienda','empleado','fecha','turnoFds','entradaOriginal','salidaOriginal','nuevaEntrada','nuevaSalida','motivo'];
+  guardarEnSheets('modificaciones', h, modificacionesHorario);
+}
+
+function syncFaltas() {
+  var h = ['tienda','empleado','fecha','tipo','motivo'];
+  var rows = [];
+  for (var i = 0; i < faltasGV.length; i++) { rows.push(faltasGV[i]); }
+  for (var i = 0; i < faltasIS.length; i++) { rows.push(faltasIS[i]); }
+  guardarEnSheets('faltas', h, rows);
+}
+
+// Inicializar
+initControlYear();
+actualizarTiposAusencia();
+cargarDesdeSheets();
+</script></body></html>
