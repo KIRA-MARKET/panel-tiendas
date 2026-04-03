@@ -518,7 +518,6 @@ function getFdsGV(fecha) {
   
   return result;
 }
-var MINIMOS_GV = {descarga:2,mañanas:2,tardes:2,cierre:3};
 var EMPLEADOS_IS = {
   EDU:{alias:'EDU',nombre:'Eduardo',apellidos:'González',dni:'56789012E',telefono:'612005005',email:'edu@kira.com',fechaAlta:'',contrato:12,tienda:'ambas',franja:'mañanas',restriccion:'',color:'#2e7d32'},
   DAVID:{alias:'DAVID',nombre:'David',apellidos:'Rodríguez',dni:'67890123F',telefono:'612006006',email:'david@kira.com',fechaAlta:'',contrato:12,tienda:'ambas',franja:'rotativo',restriccion:'',color:'#2c5aa0'},
@@ -555,9 +554,9 @@ function getHorariosIS(fecha) {
   var dow = fecha.getDay(); // 1=L, 2=M, 3=X, 4=J, 5=V
   if (dow < 1 || dow > 5) return {};
   
-  // Calcular semana (ciclo 4) desde 2 marzo 2026 (lunes semana 1)
+  // Calcular semana (ciclo 4) desde 28 feb 2026 (alineado con FdS)
   // Usar solo año/mes/día para evitar problemas de zona horaria
-  var inicioYear = 2026, inicioMonth = 2, inicioDay = 2; // 2 marzo 2026
+  var inicioYear = 2026, inicioMonth = 2, inicioDay = 28; // 28 feb 2026
   var inicio = new Date(inicioYear, inicioMonth - 1, inicioDay);
   var fechaNorm = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
   var diffDias = Math.round((fechaNorm - inicio) / (24 * 60 * 60 * 1000));
@@ -672,7 +671,7 @@ function formatFechaLocal(f){var y=f.getFullYear(),m=f.getMonth()+1,d=f.getDate(
 function getWeekNumber(d){var date=new Date(d.getTime());date.setHours(0,0,0,0);date.setDate(date.getDate()+3-(date.getDay()+6)%7);var week1=new Date(date.getFullYear(),0,4);return 1+Math.round(((date.getTime()-week1.getTime())/86400000-3+(week1.getDay()+6)%7)/7);}
 function getNumSemana(f){var d=new Date(Date.UTC(f.getFullYear(),f.getMonth(),f.getDate()));var dn=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dn);var ys=new Date(Date.UTC(d.getUTCFullYear(),0,1));return Math.ceil((((d-ys)/86400000)+1)/7);}
 function getSemanaAB(f){
-  var ini=new Date(2026,2,2);
+  var ini=new Date(2026,1,28);
   var fechaNorm=new Date(f.getFullYear(),f.getMonth(),f.getDate());
   var diffDias=Math.round((fechaNorm-ini)/(24*60*60*1000));
   var diffSemanas=Math.floor(diffDias/7);
@@ -681,11 +680,11 @@ function getSemanaAB(f){
 function getFdsRotacion(f){var ini=new Date(2026,1,28);var sem=Math.floor((f-ini)/(7*24*60*60*1000));var rot=((sem%3)+3)%3;return rot===0?3:rot;}
 function getFranja(e,s){if(e<7&&s<=13)return'descarga';if(s<=15)return'mañanas';if(e>=16)return'cierre';return'tardes';}
 function getFranjaIS(e,s){
-  // Isabel: Descarga 5-7, Mañanas 9-11, Tardes 14-17, Cierre 17+
+  // Isabel: Descarga <8, Mañanas 8-14, Tardes 14-17.5, Cierre 17.5+
   if(e<8) return 'descarga';
-  if(e>=10 && e<12) return 'mañanas';
-  if(e>=14 && e<17) return 'tardes';
-  if(e>=17) return 'cierre';
+  if(s<=14.5) return 'mañanas';
+  if(e>=17.5) return 'cierre';
+  if(e>=14) return 'tardes';
   return 'mañanas';
 }
 
@@ -700,28 +699,44 @@ function getTurnosEmpleado(emp, fecha) {
     var semAB = getSemanaAB(fecha);
     var horariosGV = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
     var horariosIS = getHorariosIS(fecha);
-    
-    // Turno base en GV
+
+    // Turno base en GV (con modificaciones aplicadas)
     if(horariosGV && horariosGV[emp]) {
-      turnos.push({tienda: 'granvia', inicio: horariosGV[emp][0], fin: horariosGV[emp][1], tipo: 'base'});
+      var inicioGV=horariosGV[emp][0], finGV=horariosGV[emp][1];
+      var modGV=null;
+      for(var m=0;m<modificacionesHorario.length;m++){var mx=modificacionesHorario[m];if(mx.empleado===emp&&mx.fecha===fs&&mx.tienda==='granvia'&&!mx.turnoFds){modGV=mx;break;}}
+      if(modGV){inicioGV=modGV.nuevaEntrada;finGV=modGV.nuevaSalida;}
+      turnos.push({tienda: 'granvia', inicio: inicioGV, fin: finGV, tipo: 'base'});
     }
-    // Turno base en IS
+    // Turno base en IS (con modificaciones aplicadas)
     if(horariosIS && horariosIS[emp]) {
-      turnos.push({tienda: 'isabel', inicio: horariosIS[emp][0], fin: horariosIS[emp][1], tipo: 'base'});
+      var inicioIS=horariosIS[emp][0], finIS=horariosIS[emp][1];
+      var modIS=null;
+      for(var m=0;m<modificacionesHorario.length;m++){var mx=modificacionesHorario[m];if(mx.empleado===emp&&mx.fecha===fs&&mx.tienda==='isabel'&&!mx.turnoFds){modIS=mx;break;}}
+      if(modIS){inicioIS=modIS.nuevaEntrada;finIS=modIS.nuevaSalida;}
+      turnos.push({tienda: 'isabel', inicio: inicioIS, fin: finIS, tipo: 'base'});
     }
   } else {
     // FdS
     var fdsGV = getFdsGV(fecha);
     var fdsIS = getFdsIS(fecha);
     var turnosKey = dow === 6 ? ['SAB_M', 'SAB_T'] : ['DOM_M', 'DOM_T'];
-    
+
     for(var t = 0; t < turnosKey.length; t++) {
       var key = turnosKey[t];
       if(fdsGV[key] && fdsGV[key][emp]) {
-        turnos.push({tienda: 'granvia', inicio: fdsGV[key][emp][0], fin: fdsGV[key][emp][1], tipo: 'base', turnoFds: key});
+        var iniF=fdsGV[key][emp][0], finF=fdsGV[key][emp][1];
+        var modF=null;
+        for(var m=0;m<modificacionesHorario.length;m++){var mx=modificacionesHorario[m];if(mx.empleado===emp&&mx.fecha===fs&&mx.tienda==='granvia'&&mx.turnoFds===key){modF=mx;break;}}
+        if(modF){iniF=modF.nuevaEntrada;finF=modF.nuevaSalida;}
+        turnos.push({tienda: 'granvia', inicio: iniF, fin: finF, tipo: 'base', turnoFds: key});
       }
       if(fdsIS[key] && fdsIS[key][emp]) {
-        turnos.push({tienda: 'isabel', inicio: fdsIS[key][emp][0], fin: fdsIS[key][emp][1], tipo: 'base', turnoFds: key});
+        var iniF2=fdsIS[key][emp][0], finF2=fdsIS[key][emp][1];
+        var modF2=null;
+        for(var m=0;m<modificacionesHorario.length;m++){var mx=modificacionesHorario[m];if(mx.empleado===emp&&mx.fecha===fs&&mx.tienda==='isabel'&&mx.turnoFds===key){modF2=mx;break;}}
+        if(modF2){iniF2=modF2.nuevaEntrada;finF2=modF2.nuevaSalida;}
+        turnos.push({tienda: 'isabel', inicio: iniF2, fin: finF2, tipo: 'base', turnoFds: key});
       }
     }
   }
@@ -770,11 +785,11 @@ function detectarSolapamientoEmpleado(emp, fecha) {
 function detectarSolapamientos(fecha) {
   var solapamientos = [];
   
-  // Empleados compartidos
+  // Empleados compartidos (buscar en ambos diccionarios sin duplicar)
   var compartidos = [];
-  for(var k in EMPLEADOS_GV) {
-    if(EMPLEADOS_GV[k].tienda === 'ambas') compartidos.push(k);
-  }
+  var yaVisto = {};
+  for(var k in EMPLEADOS_GV) { if(EMPLEADOS_GV[k].tienda === 'ambas' && !yaVisto[k]) { compartidos.push(k); yaVisto[k]=true; } }
+  for(var k in EMPLEADOS_IS) { if(EMPLEADOS_IS[k].tienda === 'ambas' && !yaVisto[k]) { compartidos.push(k); yaVisto[k]=true; } }
   
   // Verificar cada empleado compartido
   for(var i = 0; i < compartidos.length; i++) {
@@ -1378,10 +1393,10 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
       var solape=verificarSolapamientoSustituto(alias, fecha, tiendaActual, turnoAusente[0], turnoAusente[1]);
       if(solape.solapamiento){
         var otraTienda=solape.tienda==='granvia'?'GV':'IS';
-        avisoSolape='⚠️ Solape con '+otraTienda+' ('+formatHora(solape.inicio)+'-'+formatHora(solape.fin)+')';
+        error='Solape con '+otraTienda+' ('+formatHora(solape.inicio)+'-'+formatHora(solape.fin)+')';
       }
     }
-    
+
     // Verificar si deja su turno bajo mínimos
     var avisoMinimos='';
     if(!error && yaTrabaja){
@@ -1431,10 +1446,10 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
       var solape=verificarSolapamientoSustituto(alias, fecha, tiendaActual, turnoAusente[0], turnoAusente[1]);
       if(solape.solapamiento){
         var otraTienda=solape.tienda==='granvia'?'GV':'IS';
-        avisoSolape='⚠️ Solape con '+otraTienda+' ('+formatHora(solape.inicio)+'-'+formatHora(solape.fin)+')';
+        error='Solape con '+otraTienda+' ('+formatHora(solape.inicio)+'-'+formatHora(solape.fin)+')';
       }
     }
-    
+
     // Verificar si deja algún turno FdS bajo mínimos (sábado Y domingo)
     var avisoMinimos='';
     var dow=fecha.getDay();
@@ -1530,6 +1545,18 @@ function confirmarAusencia(){
   var tipo=document.getElementById('ausencia-tipo').value;
   var desde=document.getElementById('ausencia-desde').value;
   var hasta=document.getElementById('ausencia-hasta').value;
+
+  // Validar que no supere días de vacaciones
+  if(TIPOS_RESTAN_DIAS.indexOf(tipo)!==-1){
+    var year=parseInt(desde.substring(0,4));
+    var vac=calcularVacacionesEmpleado(emp,year);
+    var diasNuevos=contarDiasAusencia(desde,hasta);
+    if(vac.restantes-diasNuevos<0){
+      alert('⚠️ '+emp+' solo tiene '+vac.restantes+' días disponibles y estás pidiendo '+diasNuevos+'. No se puede registrar.');
+      return;
+    }
+  }
+
   var aus=getAusencias();
   aus.push({empleado:emp,tipo:tipo,desde:desde,hasta:hasta});
   setAusencias(aus);
@@ -1768,6 +1795,15 @@ function guardarFalta() {
   }
   
   var faltas = getFaltas();
+
+  // Verificar duplicado
+  for(var i=0;i<faltas.length;i++){
+    if(faltas[i].empleado===empleado && faltas[i].fecha===fecha){
+      alert('Ya existe una falta registrada para '+empleado+' en esa fecha');
+      return;
+    }
+  }
+
   faltas.push({
     empleado: empleado,
     fecha: fecha,
