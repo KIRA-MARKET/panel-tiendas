@@ -102,6 +102,9 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
 .aviso-minimos:hover { background: #f57c00; }
 .aviso-sin-cubrir { background: #e53935; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 8px; font-weight: 700; margin-top: 4px; cursor: pointer; animation: centelleo 1s infinite; box-shadow: 0 0 4px rgba(229,57,53,0.6); }
 .aviso-sin-cubrir:hover { background: #c62828; box-shadow: 0 0 8px rgba(229,57,53,0.9); }
+.aviso-sin-cubrir.ok-minimos { background: #ff9800; animation: centelleo-suave 2s infinite; box-shadow: 0 0 4px rgba(255,152,0,0.4); }
+.aviso-sin-cubrir.ok-minimos:hover { background: #f57c00; box-shadow: 0 0 8px rgba(255,152,0,0.7); }
+@keyframes centelleo-suave { 0%,100%{opacity:1} 50%{opacity:0.7} }
 @keyframes centelleo { 0%,100%{opacity:1;box-shadow:0 0 4px rgba(229,57,53,0.6)} 50%{opacity:0.5;box-shadow:0 0 12px rgba(229,57,53,1)} }
 .seccion-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .seccion-header h2 { font-size: 18px; font-weight: 600; }
@@ -247,7 +250,45 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
   .col-fds { width: 200px !important; }
   .aviso-badge { font-size: 7px !important; padding: 1px 3px !important; }
   @page { size: landscape; margin: 10mm; }
+  .tooltip-horas { display: none !important; }
 }
+
+/* Tooltip de horas semanales - solo visible en pantalla */
+.turno-nombre { position: relative; }
+.tooltip-horas {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 500;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  line-height: 1.4;
+}
+.tooltip-horas::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1a1a2e;
+}
+.turno:hover .tooltip-horas { display: block; }
+.tooltip-ok { color: #81c784; }
+.tooltip-warn { color: #ffb74d; }
+.tooltip-danger { color: #ef5350; }
+.horas-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 3px; vertical-align: middle; }
+.horas-dot.ok { background: #4caf50; }
+.horas-dot.warn { background: #ff9800; }
+.horas-dot.danger { background: #f44336; }
 </style>
 </head>
 <body>
@@ -449,8 +490,8 @@ var EMPLEADOS_GV = {
   'ALEX VERA':{alias:'ALEX VERA',nombre:'Alejandro',apellidos:'Vera',dni:'55667788O',telefono:'612015015',email:'alexvera@kira.com',fechaAlta:'2023-03-01',contrato:15,tienda:'granvia',franja:'tardes',restriccion:'',color:'#e65100'}
 };
 var HORARIOS_GV = {
-  A:{LJ:{LETI:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]},V:{LETI:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]}},
-  B:{LJ:{DAVID:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]},V:{DAVID:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]}}
+  A:{LJ:{LETI:[6,10.5],ANTONIO:[6,9.25],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]},V:{LETI:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]}},
+  B:{LJ:{DAVID:[6,10.5],ANTONIO:[6,9.25],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]},V:{DAVID:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]}}
 };
 
 // Mínimos por franja L-V
@@ -493,39 +534,75 @@ function getTurnoABC(empIndex, fi) {
 }
 
 function getFdsGV(fecha) {
-  var inicio = new Date(2026, 1, 28); // 28 feb 2026
-  var fi = Math.floor((fecha - inicio) / (7 * 24 * 60 * 60 * 1000));
+  var inicioFecha = SHEETS_FDS_GV && SHEETS_FDS_GV.fecha_inicio ? parseFechaLocal(SHEETS_FDS_GV.fecha_inicio) : new Date(2026, 1, 28);
+  var fi = Math.floor((fecha - inicioFecha) / (7 * 24 * 60 * 60 * 1000));
   if (fi < 0) fi = ((fi % 21) + 21) % 21;
-  
+
   var result = { SAB_M: {}, SAB_T: {}, DOM_M: {}, DOM_T: {} };
-  
-  // FIJOS
-  result.SAB_M['ANTONIO'] = [5, 13];
-  result.DOM_M['ELI'] = [7.25, 14.75];
-  result.SAB_T['ALFREDO'] = [14.75, 22.25];
-  result.SAB_T['ALEX VERA'] = [14.75, 22.25];
-  result.DOM_T['ALFREDO'] = [14.75, 22.25];
-  result.DOM_T['ALEX VERA'] = [14.75, 22.25];
-  
-  // Rotación A, B, C (DAVID, LETI, EDU) - ciclo 3
-  for (var i = 0; i < 3; i++) {
-    var emp = DESCARGA_GV[i];
-    var turno = getTurnoABC(i, fi);
-    if (turno === 'SAB_M') result.SAB_M[emp] = [5, 12.5]; // descarga
-    else if (turno === 'DOM_T') result.DOM_T[emp] = [14.75, 22.25];
-    else result.SAB_T[emp] = [14.75, 22.25];
+
+  if (SHEETS_FDS_GV) {
+    // Fijos desde Sheets
+    for (var i = 0; i < SHEETS_FDS_GV.fijos.length; i++) {
+      var f = SHEETS_FDS_GV.fijos[i];
+      result[f.turno][f.emp] = [f.entrada, f.salida];
+    }
+    // Descarga ABC
+    var dOrden = SHEETS_FDS_GV.descarga.orden.length > 0 ? SHEETS_FDS_GV.descarga.orden : DESCARGA_GV;
+    var dH = SHEETS_FDS_GV.descarga.horarios;
+    for (var i = 0; i < dOrden.length; i++) {
+      var turno = getTurnoABC(i, fi);
+      var h = dH[turno] || [14.75, 22.25];
+      result[turno][dOrden[i]] = h;
+    }
+    // Rotación 7
+    var rOrden = SHEETS_FDS_GV.rotacion7.orden.length > 0 ? SHEETS_FDS_GV.rotacion7.orden : ROTACION_GV;
+    var rH = SHEETS_FDS_GV.rotacion7.horarios;
+    for (var i = 0; i < rOrden.length; i++) {
+      var turno = getTurnoRotacion(i, fi);
+      var h = rH[turno] || [14.75, 22.25];
+      result[turno][rOrden[i]] = h;
+    }
+  } else {
+    // Fallback hardcoded
+    result.SAB_M['ANTONIO'] = [5, 12.5];
+    result.DOM_M['ELI'] = [7.25, 14.75];
+    result.SAB_T['ALFREDO'] = [14.75, 22.25];
+    result.SAB_T['ALEX VERA'] = [14.75, 22.25];
+    result.DOM_T['ALFREDO'] = [14.75, 22.25];
+    result.DOM_T['ALEX VERA'] = [14.75, 22.25];
+    for (var i = 0; i < 3; i++) {
+      var emp = DESCARGA_GV[i]; var turno = getTurnoABC(i, fi);
+      if (turno === 'SAB_M') result.SAB_M[emp] = [5, 12.5];
+      else if (turno === 'DOM_T') result.DOM_T[emp] = [14.75, 22.25];
+      else result.SAB_T[emp] = [14.75, 22.25];
+    }
+    for (var i = 0; i < 7; i++) {
+      var emp = ROTACION_GV[i]; var turno = getTurnoRotacion(i, fi);
+      if (turno === 'SAB_M') result.SAB_M[emp] = [7.25, 14.75];
+      else if (turno === 'DOM_M') result.DOM_M[emp] = [7.25, 14.75];
+      else if (turno === 'DOM_T') result.DOM_T[emp] = [14.75, 22.25];
+      else result.SAB_T[emp] = [14.75, 22.25];
+    }
   }
-  
-  // Rotación 1-7 (los 7 empleados) - ciclo 7
-  for (var i = 0; i < 7; i++) {
-    var emp = ROTACION_GV[i];
-    var turno = getTurnoRotacion(i, fi);
-    if (turno === 'SAB_M') result.SAB_M[emp] = [7.25, 14.75];
-    else if (turno === 'DOM_M') result.DOM_M[emp] = [7.25, 14.75];
-    else if (turno === 'DOM_T') result.DOM_T[emp] = [14.75, 22.25];
-    else result.SAB_T[emp] = [14.75, 22.25];
+
+  // Regla de equilibrio: si SAB_T=3 (mínimo) y DOM_M=3 (excedente), mover 1 de DOM_M a SAB_T
+  var countSABT = Object.keys(result.SAB_T).length;
+  var countDOMM = Object.keys(result.DOM_M).length;
+  var minSABT = MINIMOS_FDS.granvia ? MINIMOS_FDS.granvia.SAB_T : 3;
+  var minDOMM = MINIMOS_FDS.granvia ? MINIMOS_FDS.granvia.DOM_M : 2;
+  if (countSABT <= minSABT && countDOMM > minDOMM) {
+    // Buscar un empleado movible de DOM_M (no fijo como ELI)
+    var fijosDOM = ['ELI']; // Empleados fijos que no se mueven
+    for (var emp in result.DOM_M) {
+      if (fijosDOM.indexOf(emp) === -1) {
+        // Mover este empleado a SAB_T
+        result.SAB_T[emp] = [14.75, 22.25];
+        delete result.DOM_M[emp];
+        break; // Solo mover uno
+      }
+    }
   }
-  
+
   return result;
 }
 var EMPLEADOS_IS = {
@@ -561,49 +638,53 @@ var ROTACION_IS = [
 ];
 
 function getHorariosIS(fecha) {
-  var dow = fecha.getDay(); // 1=L, 2=M, 3=X, 4=J, 5=V
+  var dow = fecha.getDay();
   if (dow < 1 || dow > 5) return {};
-  
-  // Ciclo 4 semanas basado en número de semana ISO
+
+  // --- Desde Sheets ---
+  if (SHEETS_HORARIOS_IS) {
+    var horarios = {};
+    var fijos = SHEETS_HORARIOS_IS.fijos;
+    for (var i = 0; i < fijos.length; i++) {
+      if (matchDia(fijos[i].dia, dow)) {
+        horarios[fijos[i].empleado] = [fijos[i].entrada, fijos[i].salida];
+      }
+    }
+    var rot = SHEETS_HORARIOS_IS.rotacion;
+    var numSem = getNumSemana(fecha);
+    var cicloLen = Object.keys(rot).length;
+    if (cicloLen > 0) {
+      var semIdx = ((numSem - 1) % cicloLen);
+      var semKey = 'sem' + (semIdx + 1);
+      var semData = rot[semKey];
+      if (semData) {
+        for (var rol in semData) {
+          var r = semData[rol];
+          horarios[r.emp] = [r.entrada, r.salida];
+        }
+      }
+    }
+    return horarios;
+  }
+
+  // --- Fallback hardcoded ---
   var numSem = getNumSemana(fecha);
   var semIdx = (numSem - 1) % 4;
-  
   var rot = ROTACION_IS[semIdx];
   var horarios = {};
-  
-  // DAVID L,X,V | LETI M,J,V (viernes coinciden ambos)
-  if (dow === 1 || dow === 3 || dow === 5) {
-    horarios['DAVID'] = [11, 15];
-  }
-  if (dow === 2 || dow === 4 || dow === 5) {
-    horarios['LETI'] = [11, 15];
-  }
-  
-  // EDU solo L,X,V a las 6:00
-  if (dow === 1 || dow === 3 || dow === 5) {
-    horarios['EDU'] = [6, 10];
-  }
-  
-  // Fijos todos los días
+  if (dow === 1 || dow === 3 || dow === 5) horarios['DAVID'] = [11, 15];
+  if (dow === 2 || dow === 4 || dow === 5) horarios['LETI'] = [11, 15];
+  if (dow === 1 || dow === 3 || dow === 5) horarios['EDU'] = [6, 10];
   horarios['VANESA'] = (dow === 1 || dow === 3 || dow === 5) ? [6, 10] : [7, 10];
   horarios['SILVIA'] = [7, 10];
   horarios['ANTONIO'] = [10, 13];
   horarios['ABDEL'] = [14.5, 17.5];
   horarios['ALEX'] = [14.75, 17.75];
-  horarios['MORILLA'] = [18.75, 22.25];
-  
-  // ABEL L,V | ANDREA M,X,J
-  if (dow === 1 || dow === 5) {
-    horarios['ABEL'] = [18.25, 22.25];
-  } else {
-    horarios['ANDREA'] = [18.25, 22.25];
-  }
-  
-  // Rotación Carolina/Alvaro/Ceci
+  horarios['MORILLA'] = (dow === 5) ? [18.25, 22.25] : [18.75, 22.25];
+  if (dow === 1) { horarios['ABEL'] = [18.25, 22.25]; } else { horarios['ANDREA'] = [18.25, 22.25]; }
   horarios[rot.mañana] = [10, 14.5];
   horarios[rot.tarde] = [15, 19.5];
   horarios[rot.cierre] = [17.75, 22.25];
-  
   return horarios;
 }
 
@@ -639,30 +720,69 @@ var ROTACION_B_IS = [
 ];
 
 function getFdsIS(fecha) {
-  // Calcular semana (ciclo 8) desde 28 feb 2026
-  var inicio = new Date(2026, 1, 28);
+  var inicioFecha = SHEETS_FDS_IS && SHEETS_FDS_IS.fecha_inicio ? parseFechaLocal(SHEETS_FDS_IS.fecha_inicio) : new Date(2026, 1, 28);
   var fechaNorm = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-  var diffDias = Math.round((fechaNorm - inicio) / (24 * 60 * 60 * 1000));
+  var diffDias = Math.round((fechaNorm - inicioFecha) / (24 * 60 * 60 * 1000));
+
+  if (SHEETS_FDS_IS) {
+    var gA = SHEETS_FDS_IS.grupoA;
+    var gB = SHEETS_FDS_IS.grupoB;
+    var cicloA = Object.keys(gA.semanas).length || 8;
+    var cicloB = Object.keys(gB.semanas).length || 8;
+    var semIdxA = Math.floor(diffDias / 7) % cicloA;
+    if (semIdxA < 0) semIdxA = ((semIdxA % cicloA) + cicloA) % cicloA;
+    var semIdxB = Math.floor(diffDias / 7) % cicloB;
+    if (semIdxB < 0) semIdxB = ((semIdxB % cicloB) + cicloB) % cicloB;
+
+    var result = { SAB_M: {}, SAB_T: {}, DOM_M: {}, DOM_T: {} };
+    var hM_A = gA.horario_m || [7.25, 14.75];
+    var hT_A = gA.horario_t || [14.75, 22.25];
+    var hM_B = gB.horario_m || [7.25, 14.75];
+    var hT_B = gB.horario_t || [14.75, 22.25];
+
+    // Grupo A
+    var semA = gA.semanas['sem' + (semIdxA + 1)];
+    if (semA) {
+      var turnos = ['SAB_M','SAB_T','DOM_M','DOM_T'];
+      for (var t = 0; t < 4; t++) {
+        var emp = semA[turnos[t]];
+        if (emp) {
+          var h = (turnos[t].indexOf('_M') !== -1) ? hM_A : hT_A;
+          if (typeof emp === 'string') result[turnos[t]][emp] = h;
+        }
+      }
+    }
+
+    // Grupo B
+    var semB = gB.semanas['sem' + (semIdxB + 1)];
+    if (semB) {
+      var turnos = ['SAB_M','SAB_T','DOM_M','DOM_T'];
+      for (var t = 0; t < 4; t++) {
+        var emps = semB[turnos[t]];
+        if (emps) {
+          var h = (turnos[t].indexOf('_M') !== -1) ? hM_B : hT_B;
+          if (typeof emps === 'string') { result[turnos[t]][emps] = h; }
+          else if (Array.isArray(emps)) { for (var e = 0; e < emps.length; e++) result[turnos[t]][emps[e]] = h; }
+        }
+      }
+    }
+    return result;
+  }
+
+  // Fallback hardcoded
   var semIdx = Math.floor(diffDias / 7) % 8;
   if (semIdx < 0) semIdx = ((semIdx % 8) + 8) % 8;
-  
   var rotA = ROTACION_A_IS[semIdx];
   var rotB = ROTACION_B_IS[semIdx];
-  
   var result = { SAB_M: {}, SAB_T: {}, DOM_M: {}, DOM_T: {} };
-  
-  // Grupo A (1 persona por turno)
   result.SAB_M[rotA.SAB_M] = [7.25, 14.75];
   result.SAB_T[rotA.SAB_T] = [14.75, 22.25];
   result.DOM_M[rotA.DOM_M] = [7.25, 14.75];
   result.DOM_T[rotA.DOM_T] = [14.75, 22.25];
-  
-  // Grupo B
   for (var i = 0; i < rotB.SAB_M.length; i++) result.SAB_M[rotB.SAB_M[i]] = [7.25, 14.75];
   for (var i = 0; i < rotB.SAB_T.length; i++) result.SAB_T[rotB.SAB_T[i]] = [14.75, 22.25];
   for (var i = 0; i < rotB.DOM_M.length; i++) result.DOM_M[rotB.DOM_M[i]] = [7.25, 14.75];
   for (var i = 0; i < rotB.DOM_T.length; i++) result.DOM_T[rotB.DOM_T[i]] = [14.75, 22.25];
-  
   return result;
 }
 var MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -670,6 +790,91 @@ var DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 var mesActual=2,añoActual=2026,tiendaActual='granvia';
 var ausenciasGV=[],ausenciasIS=[],sustituciones=[];
 var pasoActual=1,seleccionesDias={},empleadoViendo=null;
+
+// ==================== DATOS DESDE SHEETS (null = usar hardcoded) ====================
+var SHEETS_HORARIOS_IS = null;
+var SHEETS_FDS_GV = null;
+var SHEETS_FDS_IS = null;
+
+function matchDia(codigo, dow) {
+  var map = {'LV':[1,2,3,4,5],'L':[1],'M':[2],'X':[3],'J':[4],'V':[5],'LJ':[1,2,3,4],'LX':[1,3],'LXV':[1,3,5],'MJ':[2,4],'MJV':[2,4,5],'MXJ':[2,3,4],'MXJV':[2,3,4,5]};
+  var dias = map[codigo];
+  return dias ? dias.indexOf(dow) !== -1 : false;
+}
+
+function parseHorariosIS(rows) {
+  var fijos = [], rotacion = {};
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (r.tipo === 'fijo' || r.tipo === 'compartido') {
+      fijos.push({dia: r.dia, empleado: r.empleado, entrada: r.entrada, salida: r.salida});
+    } else if (r.tipo === 'rotacion') {
+      var semKey = r.dia;
+      if (!rotacion[semKey]) rotacion[semKey] = {};
+      var rol = r.notas || '';
+      rotacion[semKey][rol] = {emp: r.empleado, entrada: r.entrada || 0, salida: r.salida || 0};
+    }
+  }
+  return {fijos: fijos, rotacion: rotacion};
+}
+
+function parseRotacionesFdS(rows) {
+  var gv = {fijos: [], descarga: {orden:[], horarios:{}}, rotacion7: {orden:[], horarios:{}}, fecha_inicio: null, minimos_lv: null, minimos_fds: null};
+  var is = {grupoA: {orden:[], semanas:{}, horario_m:null, horario_t:null}, grupoB: {orden:[], semanas:{}, horario_m:null, horario_t:null}, fecha_inicio: null, minimos_lv: null, minimos_fds: null};
+
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var t = r.tienda, tipo = r.tipo, param = r.parametro, val = r.valor;
+
+    if (t === 'granvia') {
+      if (tipo === 'fijo') {
+        var p = val.split('|');
+        gv.fijos.push({emp: param, turno: p[0], entrada: parseFloat(p[1]), salida: parseFloat(p[2])});
+      } else if (tipo === 'descarga_abc') {
+        if (param === 'orden') gv.descarga.orden = val.split(',');
+        else { var p = val.split('|'); gv.descarga.horarios[param.replace('_horario','')] = [parseFloat(p[0]), parseFloat(p[1])]; }
+      } else if (tipo === 'rotacion_7') {
+        if (param === 'orden') gv.rotacion7.orden = val.split(',');
+        else { var p = val.split('|'); gv.rotacion7.horarios[param.replace('_horario','')] = [parseFloat(p[0]), parseFloat(p[1])]; }
+      } else if (tipo === 'config' && param === 'fecha_inicio') {
+        gv.fecha_inicio = val;
+      } else if (tipo === 'minimos_lv') {
+        gv.minimos_lv = {}; var pairs = val.split('|');
+        for (var p = 0; p < pairs.length; p++) { var kv = pairs[p].split(':'); gv.minimos_lv[kv[0]] = parseInt(kv[1]); }
+      } else if (tipo === 'minimos_fds') {
+        gv.minimos_fds = {}; var pairs = val.split('|');
+        for (var p = 0; p < pairs.length; p++) { var kv = pairs[p].split(':'); gv.minimos_fds[kv[0]] = parseInt(kv[1]); }
+      }
+    } else if (t === 'isabel') {
+      if (tipo === 'grupoA' || tipo === 'grupoB') {
+        var grupo = tipo === 'grupoA' ? is.grupoA : is.grupoB;
+        if (param === 'orden') { grupo.orden = val.split(','); }
+        else if (param === 'horario_m') { var p = val.split('|'); grupo.horario_m = [parseFloat(p[0]), parseFloat(p[1])]; }
+        else if (param === 'horario_t') { var p = val.split('|'); grupo.horario_t = [parseFloat(p[0]), parseFloat(p[1])]; }
+        else if (param.indexOf('sem') === 0) {
+          // Parse sem1, sem2, etc: "SAB_M:EMP|SAB_T:EMP,EMP|..."
+          var turnos = val.split('|');
+          var semData = {};
+          for (var s = 0; s < turnos.length; s++) {
+            var kv = turnos[s].split(':');
+            semData[kv[0]] = kv[1].indexOf(',') !== -1 ? kv[1].split(',') : kv[1];
+          }
+          grupo.semanas[param] = semData;
+        }
+      } else if (tipo === 'config' && param === 'fecha_inicio') {
+        is.fecha_inicio = val;
+      } else if (tipo === 'minimos_lv') {
+        is.minimos_lv = {}; var pairs = val.split('|');
+        for (var p = 0; p < pairs.length; p++) { var kv = pairs[p].split(':'); is.minimos_lv[kv[0]] = parseInt(kv[1]); }
+      } else if (tipo === 'minimos_fds') {
+        is.minimos_fds = {}; var pairs = val.split('|');
+        for (var p = 0; p < pairs.length; p++) { var kv = pairs[p].split(':'); is.minimos_fds[kv[0]] = parseInt(kv[1]); }
+      }
+    }
+  }
+  return {granvia: gv, isabel: is};
+}
+
 function formatHora(h){var hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+':'+(mm<10?'0':'')+mm;}
 function formatFechaES(str){if(!str||str.indexOf('-')===-1)return str;var p=str.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 function parseFechaLocal(str){var p=str.split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));}
@@ -979,6 +1184,7 @@ function mesAnterior(){mesActual--;if(mesActual<0){mesActual=11;añoActual--;}re
 function mesSiguiente(){mesActual++;if(mesActual>11){mesActual=0;añoActual++;}renderCalendario();}
 function toggleHorasTienda(){}
 function renderCalendario(){
+  invalidarCacheHoras();
   document.getElementById('mes-actual').textContent=MESES[mesActual]+' '+añoActual;
   var container=document.getElementById('calendar-container');
   var ultimoDia=new Date(añoActual,mesActual+1,0);
@@ -1014,7 +1220,9 @@ function renderCalendario(){
         var botonesHtml='';
         for(var sc=0;sc<sinCubrir.length;sc++){
           var tc=sinCubrir[sc];
-          botonesHtml+='<div class="aviso-sin-cubrir" onclick="abrirAsignarSustituto(\''+formatFechaLocal(dia)+'\',\''+tc.emp+'\',null)">🔴 '+tc.emp+' sin cubrir ('+tc.franja+')</div>';
+          var clsSc=tc.bajoMinimos?'aviso-sin-cubrir':'aviso-sin-cubrir ok-minimos';
+          var iconSc=tc.bajoMinimos?'🔴':'🟠';
+          botonesHtml+='<div class="'+clsSc+'" onclick="abrirAsignarSustituto(\''+formatFechaLocal(dia)+'\',\''+tc.emp+'\',null)">'+iconSc+' '+tc.emp+' sin cubrir ('+tc.franja+')</div>';
         }
         avisos.push(botonesHtml);
       }
@@ -1038,7 +1246,9 @@ function renderCalendario(){
     for(var sc=0;sc<sinCubrirFds.length;sc++){
       var tc=sinCubrirFds[sc];
       var fSc=sc<sinCubrirSab.length?sab:dom;
-      avisoFdsHtml+='<div class="aviso-sin-cubrir" style="grid-column:1/-1" onclick="abrirAsignarSustituto(\''+formatFechaLocal(fSc)+'\',\''+tc.emp+'\',\''+tc.turnoFds+'\')">🔴 '+tc.emp+' sin cubrir ('+tc.turnoFds.replace('_',' ')+')</div>';
+      var clsSc=tc.bajoMinimos?'aviso-sin-cubrir':'aviso-sin-cubrir ok-minimos';
+      var iconSc=tc.bajoMinimos?'🔴':'🟠';
+      avisoFdsHtml+='<div class="'+clsSc+'" style="grid-column:1/-1" onclick="abrirAsignarSustituto(\''+formatFechaLocal(fSc)+'\',\''+tc.emp+'\',\''+tc.turnoFds+'\')">'+iconSc+' '+tc.emp+' sin cubrir ('+tc.turnoFds.replace('_',' ')+')</div>';
     }
     html+='<div class="col-fds" style="'+(esDelMesFds?'':'opacity:0.4')+'">';
     html+='<div class="fds-box sab-m"><div class="fds-header">Sáb '+sab.getDate()+' Mañana</div>'+renderTurnosFds(sab,fdsData.SAB_M||{},'SAB_M')+'</div>';
@@ -1059,15 +1269,181 @@ function estaSustituyendo(emp, fecha, franjaOriginal) {
   for(var i = 0; i < sustituciones.length; i++) {
     var sust = sustituciones[i];
     if(sust.sustituto === emp && sust.fecha === fs && sust.tienda === tiendaActual) {
-      // Calcular la franja de la sustitución
       var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
-      // Si la sustitución es en otra franja, está ocupado
-      if(frSust !== franjaOriginal) {
-        return { sustituyendo: true, a: sust.ausente, franja: frSust };
-      }
+      return { sustituyendo: true, a: sust.ausente, franja: frSust };
     }
   }
   return { sustituyendo: false };
+}
+
+// ==================== RECUENTO HORAS SEMANALES ====================
+var _cacheHorasSemanales = {};
+var _cacheHorasSemanaleMes = -1;
+var _cacheHorasSemanaleAño = -1;
+
+function invalidarCacheHoras() {
+  _cacheHorasSemanales = {};
+}
+
+function calcularHorasSemanales(emp, fechaLunes) {
+  var cacheKey = emp + '_' + formatFechaLocal(fechaLunes);
+  if (_cacheHorasSemanaleMes === mesActual && _cacheHorasSemanaleAño === añoActual && _cacheHorasSemanales[cacheKey]) {
+    return _cacheHorasSemanales[cacheKey];
+  }
+  if (_cacheHorasSemanaleMes !== mesActual || _cacheHorasSemanaleAño !== añoActual) {
+    _cacheHorasSemanales = {};
+    _cacheHorasSemanaleMes = mesActual;
+    _cacheHorasSemanaleAño = añoActual;
+  }
+
+  var totalGV = 0, totalIS = 0;
+
+  // L-V (5 días desde el lunes)
+  for (var d = 0; d < 5; d++) {
+    var dia = new Date(fechaLunes);
+    dia.setDate(dia.getDate() + d);
+    var fs = formatFechaLocal(dia);
+    var dow = dia.getDay();
+
+    // Horas en Gran Vía L-V
+    var semAB = getSemanaAB(dia);
+    var horariosGV = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+    if (horariosGV && horariosGV[emp]) {
+      var hGV = aplicarModificacionesHorario(horariosGV, dia);
+      if (hGV[emp] && !estaAusente(emp, dia)) {
+        totalGV += hGV[emp][1] - hGV[emp][0];
+      }
+    }
+
+    // Horas en Isabel L-V
+    var horariosIS = getHorariosIS(dia);
+    if (horariosIS && horariosIS[emp]) {
+      var hIS = aplicarModificacionesHorario(horariosIS, dia);
+      if (hIS[emp] && !estaAusente(emp, dia)) {
+        totalIS += hIS[emp][1] - hIS[emp][0];
+      }
+    }
+
+  }
+
+  // FdS (sábado y domingo)
+  var sab = new Date(fechaLunes);
+  sab.setDate(sab.getDate() + 5);
+  var dom = new Date(fechaLunes);
+  dom.setDate(dom.getDate() + 6);
+
+  // FdS Gran Vía
+  var fdsGV = getFdsGV(sab);
+  if (fdsGV) {
+    var turnosFds = ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T'];
+    var diasFds = [sab, sab, dom, dom];
+    for (var t = 0; t < 4; t++) {
+      var turnoData = fdsGV[turnosFds[t]];
+      if (turnoData && turnoData[emp] && !estaAusente(emp, diasFds[t])) {
+        totalGV += turnoData[emp][1] - turnoData[emp][0];
+      }
+    }
+  }
+
+  // FdS Isabel
+  var fdsIS = getFdsIS(sab);
+  if (fdsIS) {
+    var turnosFds = ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T'];
+    var diasFds = [sab, sab, dom, dom];
+    for (var t = 0; t < 4; t++) {
+      var turnoData = fdsIS[turnosFds[t]];
+      if (turnoData && turnoData[emp] && !estaAusente(emp, diasFds[t])) {
+        totalIS += turnoData[emp][1] - turnoData[emp][0];
+      }
+    }
+  }
+
+  // Obtener contratos separados por empresa
+  var empDataGV = EMPLEADOS_GV[emp];
+  var empDataIS = EMPLEADOS_IS[emp];
+  var contratoGV = empDataGV ? (empDataGV.contrato || 0) : 0;
+  var contratoIS = empDataIS ? (empDataIS.contrato || 0) : 0;
+
+  // Sustituciones separadas por tienda
+  var sustGV = 0, sustIS = 0;
+  var fLunes = formatFechaLocal(fechaLunes);
+  var fDomingo = formatFechaLocal(new Date(fechaLunes.getFullYear(), fechaLunes.getMonth(), fechaLunes.getDate() + 6));
+  for (var i = 0; i < sustituciones.length; i++) {
+    var s = sustituciones[i];
+    if (s.sustituto === emp) {
+      if (s.fecha >= fLunes && s.fecha <= fDomingo) {
+        if (s.tienda === 'granvia') sustGV += s.salida - s.entrada;
+        else if (s.tienda === 'isabel') sustIS += s.salida - s.entrada;
+      }
+    }
+  }
+  var totalSust = sustGV + sustIS;
+
+  var totalRealGV = totalGV + sustGV;
+  var totalRealIS = totalIS + sustIS;
+  var diffGV = totalRealGV - contratoGV;
+  var diffIS = totalRealIS - contratoIS;
+
+  var result = {
+    gv: Math.round(totalGV * 100) / 100,
+    is: Math.round(totalIS * 100) / 100,
+    sustGV: Math.round(sustGV * 100) / 100,
+    sustIS: Math.round(sustIS * 100) / 100,
+    totalGV: Math.round(totalRealGV * 100) / 100,
+    totalIS: Math.round(totalRealIS * 100) / 100,
+    contratoGV: contratoGV,
+    contratoIS: contratoIS,
+    diffGV: Math.round(diffGV * 100) / 100,
+    diffIS: Math.round(diffIS * 100) / 100,
+    sust: Math.round(totalSust * 100) / 100,
+    total: Math.round((totalRealGV + totalRealIS) * 100) / 100
+  };
+
+  _cacheHorasSemanales[cacheKey] = result;
+  return result;
+}
+
+function getLunesDeSemana(fecha) {
+  var d = new Date(fecha);
+  var dow = d.getDay();
+  var diff = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function generarTooltipHoras(emp, fecha) {
+  var lunes = getLunesDeSemana(fecha);
+  var h = calcularHorasSemanales(emp, lunes);
+  var lines = '<b>' + emp + '</b> — Semana';
+
+  // Mostrar GV si tiene contrato o horas
+  if (h.contratoGV > 0 || h.totalGV > 0) {
+    var clsGV = h.diffGV > 0 ? 'tooltip-danger' : 'tooltip-ok';
+    lines += '<br><span class="' + clsGV + '">KIRA: ' + h.totalGV + 'h / ' + h.contratoGV + 'h';
+    if (h.diffGV > 0) lines += ' (⚠️+' + h.diffGV + 'h)';
+    else if (h.diffGV === 0) lines += ' ✓';
+    else lines += ' (' + h.diffGV + 'h)';
+    lines += '</span>';
+    if (h.sustGV > 0) lines += ' <span class="tooltip-warn">(sust: +' + h.sustGV + 'h)</span>';
+  }
+
+  // Mostrar IS si tiene contrato o horas
+  if (h.contratoIS > 0 || h.totalIS > 0) {
+    var clsIS = h.diffIS > 0 ? 'tooltip-danger' : 'tooltip-ok';
+    lines += '<br><span class="' + clsIS + '">REYPIK: ' + h.totalIS + 'h / ' + h.contratoIS + 'h';
+    if (h.diffIS > 0) lines += ' (⚠️+' + h.diffIS + 'h)';
+    else if (h.diffIS === 0) lines += ' ✓';
+    else lines += ' (' + h.diffIS + 'h)';
+    lines += '</span>';
+    if (h.sustIS > 0) lines += ' <span class="tooltip-warn">(sust: +' + h.sustIS + 'h)</span>';
+  }
+
+  // Determinar estado del punto indicador
+  var dotClass = 'ok';
+  if ((h.contratoGV > 0 && h.diffGV > 0) || (h.contratoIS > 0 && h.diffIS > 0)) dotClass = 'danger';
+  else if ((h.contratoGV > 0 && h.diffGV < 0) || (h.contratoIS > 0 && h.diffIS < 0)) dotClass = 'warn';
+
+  return '<span class="horas-dot ' + dotClass + ' no-print"></span><span class="tooltip-horas no-print">' + lines + '</span>';
 }
 
 function renderTurnos(dia,horarios){
@@ -1108,15 +1484,15 @@ function renderTurnos(dia,horarios){
       for(var i=0;i<t.length;i++){
         var cls='turno '+fr+(t[i].ausente?' ausente':'')+(t[i].modificado?' modificado':'');
         var dataAttr='data-emp="'+t[i].nombre+'" data-fecha="'+fs+'" data-entrada="'+t[i].e+'" data-salida="'+t[i].s+'" data-franja="'+fr+'"';
-        html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+t[i].nombre+(t[i].modificado?' ✎':'')+'</span><span class="turno-hora">'+formatHora(t[i].e)+'-'+formatHora(t[i].s)+'</span></div>';
-        if(t[i].sustData){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+t[i].sustData.sustituto+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
+        html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+t[i].nombre+(t[i].modificado?' ✎':'')+generarTooltipHoras(t[i].nombre,dia)+'</span><span class="turno-hora">'+formatHora(t[i].e)+'-'+formatHora(t[i].s)+'</span></div>';
+        if(t[i].sustData){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+t[i].sustData.sustituto+generarTooltipHoras(t[i].sustData.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
       }
       html+='</div>';
     }
     html+='</div>';
     return html;
   }
-  
+
   // Gran Vía: flex compacto
   var html='<div class="franjas-grid-gv">';
   var orden=['descarga','mañanas','tardes','cierre'];
@@ -1128,8 +1504,8 @@ function renderTurnos(dia,horarios){
     for(var i=0;i<t.length;i++){
       var cls='turno '+fr+(t[i].ausente?' ausente':'')+(t[i].modificado?' modificado':'');
       var dataAttr='data-emp="'+t[i].nombre+'" data-fecha="'+fs+'" data-entrada="'+t[i].e+'" data-salida="'+t[i].s+'" data-franja="'+fr+'"';
-      html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+t[i].nombre+(t[i].modificado?' ✎':'')+'</span><span class="turno-hora">'+formatHora(t[i].e)+'-'+formatHora(t[i].s)+'</span></div>';
-      if(t[i].sustData){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+t[i].sustData.sustituto+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
+      html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+t[i].nombre+(t[i].modificado?' ✎':'')+generarTooltipHoras(t[i].nombre,dia)+'</span><span class="turno-hora">'+formatHora(t[i].e)+'-'+formatHora(t[i].s)+'</span></div>';
+      if(t[i].sustData){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+t[i].sustData.sustituto+generarTooltipHoras(t[i].sustData.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
     }
     html+='</div>';
   }
@@ -1158,8 +1534,8 @@ function renderTurnosFds(dia,horarios,turnoKey){
     
     var cls='turno fds'+(aus?' ausente':'')+(tieneModificacion?' modificado':'');
     var dataAttr='data-emp="'+n+'" data-fecha="'+fs+'" data-entrada="'+h[0]+'" data-salida="'+h[1]+'" data-turno-fds="'+turnoKey+'"';
-    html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+n+(tieneModificacion?' ✎':'')+'</span><span class="turno-hora">'+formatHora(h[0])+'-'+formatHora(h[1])+'</span></div>';
-    if(sust){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+sust.sustituto+'</span><span class="turno-hora">'+formatHora(sust.entrada)+'-'+formatHora(sust.salida)+'</span></div>';}
+    html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+n+(tieneModificacion?' ✎':'')+generarTooltipHoras(n,dia)+'</span><span class="turno-hora">'+formatHora(h[0])+'-'+formatHora(h[1])+'</span></div>';
+    if(sust){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+sust.sustituto+generarTooltipHoras(sust.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(sust.entrada)+'-'+formatHora(sust.salida)+'</span></div>';}
   }
   return html;
 }
@@ -1248,13 +1624,152 @@ function editarEmpleado(){
 function renderAusencias(){
   var lista=document.getElementById('ausencias-lista');
   var aus=getAusencias();
+  // Ordenar cronológicamente por fecha de inicio
+  var indices=[];
+  for(var i=0;i<aus.length;i++) indices.push(i);
+  indices.sort(function(a,b){ return aus[a].desde < aus[b].desde ? -1 : aus[a].desde > aus[b].desde ? 1 : 0; });
+
   var tipoTxt={vacaciones:'🏖️ Vacaciones',baja:'🏥 Baja',permiso:'📅 Permiso'};
   var html='';
-  for(var i=0;i<aus.length;i++){var a=aus[i];
-    html+='<div class="ausencia-card"><div><div class="nombre">'+a.empleado+'</div><div class="detalle">'+(tipoTxt[a.tipo]||a.tipo)+'</div><div class="fechas">'+formatFechaES(a.desde)+' → '+formatFechaES(a.hasta)+'</div></div>';
+  for(var j=0;j<indices.length;j++){var i=indices[j];var a=aus[i];
+    // Buscar sustituciones de esta ausencia
+    var sustsAus=[];
+    for(var s=0;s<sustituciones.length;s++){
+      var su=sustituciones[s];
+      if(su.ausente===a.empleado && su.fecha>=a.desde && su.fecha<=a.hasta && su.tienda===tiendaActual){
+        sustsAus.push(su);
+      }
+    }
+    html+='<div class="ausencia-card"><div><div class="nombre">'+a.empleado+'</div><div class="detalle">'+(tipoTxt[a.tipo]||a.tipo)+'</div><div class="fechas">'+formatFechaES(a.desde)+' → '+formatFechaES(a.hasta)+'</div>';
+    // Mostrar sustitutos asignados con opción de editar
+    if(sustsAus.length>0){
+      html+='<div style="margin-top:4px;font-size:11px;color:#666">';
+      var sustResumen={};
+      for(var s=0;s<sustsAus.length;s++){
+        var key=sustsAus[s].sustituto;
+        if(!sustResumen[key]) sustResumen[key]=0;
+        sustResumen[key]++;
+      }
+      for(var nombre in sustResumen){
+        html+='<span style="margin-right:6px">→ '+nombre+' ('+sustResumen[nombre]+'d)</span>';
+      }
+      html+='<button class="btn btn-sm" style="font-size:10px;padding:2px 6px;background:#ff9800;color:#fff" onclick="editarSustitutosAusencia('+i+')">✎ Editar</button>';
+      html+='</div>';
+    } else {
+      html+='<div style="margin-top:4px;font-size:11px;color:#999">Sin sustituto asignado</div>';
+    }
+    html+='</div>';
     html+='<button class="btn btn-danger btn-sm" onclick="cancelarAusencia('+i+')">Cancelar</button></div>';
   }
   lista.innerHTML=html||'<div class="empty-state"><p>No hay ausencias en '+(tiendaActual==='granvia'?'Gran Vía':'Isabel')+'</p></div>';
+}
+
+function editarSustitutosAusencia(ausIdx){
+  var aus=getAusencias();
+  var a=aus[ausIdx];
+
+  // Generar lista de días laborables en el rango
+  var dias=[];
+  var d=parseFechaLocal(a.desde);
+  var fin=parseFechaLocal(a.hasta);
+  while(d<=fin){
+    var dow=d.getDay();
+    if(dow>=1 && dow<=5){ // L-V
+      var fs=formatFechaLocal(d);
+      // Buscar sustitución existente para este día
+      var sustExistente=null;
+      for(var i=0;i<sustituciones.length;i++){
+        var s=sustituciones[i];
+        if(s.ausente===a.empleado && s.fecha===fs && s.tienda===tiendaActual && !s.turnoFds){
+          sustExistente=s;break;
+        }
+      }
+      dias.push({fecha:fs, dow:dow, sust:sustExistente});
+    }
+    d=new Date(d);d.setDate(d.getDate()+1);
+  }
+  // También FdS
+  d=parseFechaLocal(a.desde);
+  while(d<=fin){
+    var dow=d.getDay();
+    if(dow===6 || dow===0){
+      var fs=formatFechaLocal(d);
+      var turnos=dow===6?['SAB_M','SAB_T']:['DOM_M','DOM_T'];
+      for(var t=0;t<turnos.length;t++){
+        var sustExistente=null;
+        for(var i=0;i<sustituciones.length;i++){
+          var s=sustituciones[i];
+          if(s.ausente===a.empleado && s.fecha===fs && s.tienda===tiendaActual && s.turnoFds===turnos[t]){
+            sustExistente=s;break;
+          }
+        }
+        // Solo añadir si el empleado trabaja en ese turno FdS
+        var fdsData=tiendaActual==='granvia'?getFdsGV(d):getFdsIS(d);
+        if(fdsData[turnos[t]] && fdsData[turnos[t]][a.empleado]){
+          dias.push({fecha:fs, dow:dow, turnoFds:turnos[t], sust:sustExistente});
+        }
+      }
+    }
+    d=new Date(d);d.setDate(d.getDate()+1);
+  }
+
+  if(dias.length===0){alert('No hay días laborables en este rango');return;}
+
+  var html='<div style="margin-bottom:10px"><strong>'+a.empleado+'</strong> — '+formatFechaES(a.desde)+' a '+formatFechaES(a.hasta)+'</div>';
+  html+='<div style="max-height:400px;overflow-y:auto">';
+  for(var i=0;i<dias.length;i++){
+    var dia=dias[i];
+    var fechaObj=parseFechaLocal(dia.fecha);
+    var label=DIAS[fechaObj.getDay()]+' '+formatFechaES(dia.fecha);
+    if(dia.turnoFds) label+=' ('+dia.turnoFds.replace('_',' ')+')';
+    var sustNombre=dia.sust?dia.sust.sustituto:'Sin cubrir';
+    var sustHora=dia.sust?formatHora(dia.sust.entrada)+'-'+formatHora(dia.sust.salida):'';
+    var colorSust=dia.sust?'#2e7d32':'#999';
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee">';
+    html+='<div style="flex:1"><div style="font-size:12px;font-weight:600">'+label+'</div>';
+    html+='<div style="font-size:11px;color:'+colorSust+'">→ '+sustNombre+(sustHora?' ('+sustHora+')':'')+'</div></div>';
+    html+='<div style="display:flex;gap:4px">';
+    html+='<button class="btn btn-sm" style="font-size:10px;padding:2px 8px" onclick="cambiarSustitutoDia('+ausIdx+',\''+dia.fecha+'\',\''+(dia.turnoFds||'')+'\')">Cambiar</button>';
+    if(dia.sust){
+      html+='<button class="btn btn-sm btn-danger" style="font-size:10px;padding:2px 8px" onclick="quitarSustitutoDia('+ausIdx+',\''+dia.fecha+'\',\''+(dia.turnoFds||'')+'\')">Quitar</button>';
+    }
+    html+='</div></div>';
+  }
+  html+='</div>';
+
+  document.getElementById('asignar-sust-titulo').textContent='✎ Editar sustituciones — '+a.empleado;
+  document.getElementById('asignar-sust-body').innerHTML=html;
+  // Ocultar botón confirmar del modal, usamos los botones individuales
+  document.getElementById('asignar-sust-body').removeAttribute('data-fecha');
+  document.getElementById('asignar-sust-body').removeAttribute('data-ausente');
+  abrirModal('modal-asignar-sust');
+}
+
+function cambiarSustitutoDia(ausIdx, fechaStr, turnoFds){
+  var aus=getAusencias();
+  var a=aus[ausIdx];
+  // Eliminar sustitución actual de ese día
+  sustituciones=sustituciones.filter(function(s){
+    if(turnoFds) return!(s.ausente===a.empleado && s.fecha===fechaStr && s.tienda===tiendaActual && s.turnoFds===turnoFds);
+    return!(s.ausente===a.empleado && s.fecha===fechaStr && s.tienda===tiendaActual && !s.turnoFds);
+  });
+  cerrarModal('modal-asignar-sust');
+  // Abrir selector de sustituto normal
+  abrirAsignarSustituto(fechaStr, a.empleado, turnoFds||null);
+  // Guardar referencia para volver a editar después
+  window._editarAusenciaPendiente = ausIdx;
+}
+
+function quitarSustitutoDia(ausIdx, fechaStr, turnoFds){
+  var aus=getAusencias();
+  var a=aus[ausIdx];
+  sustituciones=sustituciones.filter(function(s){
+    if(turnoFds) return!(s.ausente===a.empleado && s.fecha===fechaStr && s.tienda===tiendaActual && s.turnoFds===turnoFds);
+    return!(s.ausente===a.empleado && s.fecha===fechaStr && s.tienda===tiendaActual && !s.turnoFds);
+  });
+  renderCalendario();syncSustituciones();
+  // Reabrir el editor
+  editarSustitutosAusencia(ausIdx);
 }
 function cancelarAusencia(i){
   if(!confirm('¿Cancelar esta ausencia?'))return;
@@ -1690,7 +2205,11 @@ function detectarSinCubrir(fecha){
         }
         if(!tieneSust){
           var franja=tiendaActual==='granvia'?getFranja(horarios[emp][0],horarios[emp][1]):getFranjaIS(horarios[emp][0],horarios[emp][1]);
-          sinCubrir.push({emp:emp,franja:franja,entrada:horarios[emp][0],salida:horarios[emp][1],turnoFds:null});
+          // Comprobar si deja bajo mínimos
+          var alertasMin=verificarMinimosLV(fecha, tiendaActual);
+          var bajoMin=false;
+          for(var m=0;m<alertasMin.length;m++){if(alertasMin[m].franja===franja){bajoMin=true;break;}}
+          sinCubrir.push({emp:emp,franja:franja,entrada:horarios[emp][0],salida:horarios[emp][1],turnoFds:null,bajoMinimos:bajoMin});
         }
       }
     }else{
@@ -1703,7 +2222,18 @@ function detectarSinCubrir(fecha){
           for(var j=0;j<sustituciones.length;j++){
             if(sustituciones[j].fecha===fs&&sustituciones[j].ausente===emp&&sustituciones[j].tienda===tiendaActual&&sustituciones[j].turnoFds===tk){tieneSust=true;break;}
           }
-          if(!tieneSust){sinCubrir.push({emp:emp,franja:tk,entrada:fdsData[tk][emp][0],salida:fdsData[tk][emp][1],turnoFds:tk});}
+          if(!tieneSust){
+            // Comprobar mínimos FdS
+            var minFds=MINIMOS_FDS[tiendaActual];
+            var bajoMin=false;
+            if(minFds&&minFds[tk]){
+              var countTurno=0;
+              for(var e in fdsData[tk]){if(!estaAusente(e,fecha)||e===emp)countTurno++;} // contar sin el ausente
+              countTurno--; // quitar al ausente
+              if(countTurno<minFds[tk])bajoMin=true;
+            }
+            sinCubrir.push({emp:emp,franja:tk,entrada:fdsData[tk][emp][0],salida:fdsData[tk][emp][1],turnoFds:tk,bajoMinimos:bajoMin});
+          }
         }
       }
     }
@@ -2644,6 +3174,22 @@ function cargarDesdeSheets() {
         for (var i = 0; i < data.horariosGV.length; i++) {
           var h = data.horariosGV[i];
           HORARIOS_GV[h.semana][h.dia][h.empleado] = [h.entrada, h.salida];
+        }
+      }
+      // Horarios Isabel L-V
+      if (data.horariosIS && data.horariosIS.length > 0) {
+        SHEETS_HORARIOS_IS = parseHorariosIS(data.horariosIS);
+      }
+      // Rotaciones FdS (GV e Isabel)
+      if (data.rotaciones && data.rotaciones.length > 0) {
+        var rotConfig = parseRotacionesFdS(data.rotaciones);
+        if (rotConfig.granvia) {
+          SHEETS_FDS_GV = rotConfig.granvia;
+          if (rotConfig.granvia.descarga.orden.length > 0) DESCARGA_GV = rotConfig.granvia.descarga.orden;
+          if (rotConfig.granvia.rotacion7.orden.length > 0) ROTACION_GV = rotConfig.granvia.rotacion7.orden;
+        }
+        if (rotConfig.isabel) {
+          SHEETS_FDS_IS = rotConfig.isabel;
         }
       }
       // Ausencias

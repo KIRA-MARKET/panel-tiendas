@@ -1,3 +1,7 @@
+// Funciones ejecutables directamente desde el editor
+function actualizarHorariosIS() { crearHorariosIS(SpreadsheetApp.getActiveSpreadsheet()); }
+function actualizarRotacionesFdS() { crearRotacionesFdS(SpreadsheetApp.getActiveSpreadsheet()); }
+
 function inicializarTodo() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   crearEmpleadosGV(ss);
@@ -53,7 +57,7 @@ function crearEmpleadosGV(ss) {
     ['VANESA','Vanesa','Ortega','22334455L','612012012','vanesa@kira.com','2022-03-01',25,'ambas','mananas','','#2e7d32','',''],
     ['MORILLA','Jose','Morilla','33445566M','612013013','morilla@kira.com','2022-06-15',25,'ambas','tardes','','#e65100','',''],
     ['ALFREDO','Alfredo','Garcia','44556677N','612014014','alfredo@kira.com','2023-01-10',15,'granvia','tardes','','#e65100','',''],
-    ['ALEXVERA','Alejandro','Vera','55667788O','612015015','alexvera@kira.com','2023-03-01',15,'granvia','tardes','','#e65100','','']
+    ['ALEX VERA','Alejandro','Vera','55667788O','612015015','alexvera@kira.com','2023-03-01',15,'granvia','tardes','','#e65100','','']
   ];
   writeData(ss, 'EmpleadosGV', h, r);
 }
@@ -75,7 +79,7 @@ function crearEmpleadosIS(ss) {
     ['CECI','Cecilia','Martin','88990011R','612020003','ceci@reypik.com','2021-06-01',30,'isabel','cierre','','#6a1b9a','',''],
     ['ANDREA','Andrea','Lopez','99001122S','612020004','andrea@reypik.com','2022-02-15',23.5,'isabel','cierre','','#6a1b9a','',''],
     ['ABEL','Abel','Vera','00112233T','612020005','abel@reypik.com','2022-05-01',19,'isabel','cierre','','#6a1b9a','',''],
-    ['MARICARMEN','Maria Carmen','Ortiz','11223344U','612020006','maricarmen@reypik.com','2022-09-01',15,'isabel','mananas','','#2e7d32','',''],
+    ['M. CARMEN','Maria Carmen','Ortiz','11223344U','612020006','maricarmen@reypik.com','2022-09-01',15,'isabel','mananas','','#2e7d32','',''],
     ['RUBEN','Ruben','Garcia','22334455V','612020007','ruben@reypik.com','2023-01-15',15,'isabel','tardes','','#e65100','',''],
     ['GONZALO','Gonzalo','Fernandez','33445566W','612020008','gonzalo@reypik.com','2023-04-01',15,'isabel','tardes','','#e65100','','']
   ];
@@ -148,14 +152,15 @@ function crearHorariosIS(ss) {
     ['fijo','LV','ANTONIO',10,13,''],
     ['fijo','LV','ABDEL',14.5,17.5,''],
     ['fijo','LV','ALEX',14.75,17.75,''],
-    ['fijo','LV','MORILLA',18.75,22.25,''],
+    ['fijo','LJ','MORILLA',18.75,22.25,'L a J'],
+    ['fijo','V','MORILLA',18.25,22.25,'Viernes'],
     ['fijo','LXV','VANESA',6,10,''],
     ['fijo','MJ','VANESA',7,10,''],
     ['fijo','LXV','EDU',6,10,''],
     ['compartido','LXV','DAVID',11,15,'compartido con GranVia'],
     ['compartido','MJV','LETI',11,15,'compartido con GranVia'],
-    ['fijo','LV_ABEL','ABEL',18.25,22.25,'solo L y V'],
-    ['fijo','MXJ','ANDREA',18.25,22.25,'solo M X y J'],
+    ['fijo','L','ABEL',18.25,22.25,'solo Lunes'],
+    ['fijo','MXJV','ANDREA',18.25,22.25,'M X J V'],
     ['rotacion','sem1','CAROLINA',10,14.5,'manana'],
     ['rotacion','sem1','ALVARO',15,19.5,'tarde'],
     ['rotacion','sem1','CECI',17.75,22.25,'cierre'],
@@ -175,12 +180,12 @@ function crearHorariosIS(ss) {
 function crearRotacionesFdS(ss) {
   var h = ['tienda','tipo','parametro','valor','notas'];
   var r = [
-    ['granvia','fijo','ANTONIO','SAB_M|5|13','Sabado manana fijo'],
+    ['granvia','fijo','ANTONIO','SAB_M|5|12.5','Sabado manana fijo'],
     ['granvia','fijo','ELI','DOM_M|7.25|14.75','Domingo manana fijo'],
     ['granvia','fijo','ALFREDO','SAB_T|14.75|22.25','Sabado tarde fijo'],
-    ['granvia','fijo','ALEXVERA','SAB_T|14.75|22.25','Sabado tarde fijo'],
+    ['granvia','fijo','ALEX VERA','SAB_T|14.75|22.25','Sabado tarde fijo'],
     ['granvia','fijo','ALFREDO','DOM_T|14.75|22.25','Domingo tarde fijo'],
-    ['granvia','fijo','ALEXVERA','DOM_T|14.75|22.25','Domingo tarde fijo'],
+    ['granvia','fijo','ALEX VERA','DOM_T|14.75|22.25','Domingo tarde fijo'],
     ['granvia','descarga_abc','orden','DAVID,LETI,EDU','Ciclo 3: SAB_M descarga DOM_T SAB_T'],
     ['granvia','descarga_abc','SAB_M_horario','5|12.5','Horario descarga sabado'],
     ['granvia','descarga_abc','DOM_T_horario','14.75|22.25',''],
@@ -202,15 +207,15 @@ function crearRotacionesFdS(ss) {
     ['isabel','grupoA','sem8','SAB_M:ANDREA|SAB_T:CAROLINA|DOM_M:ALVARO|DOM_T:CECI',''],
     ['isabel','grupoA','horario_m','7.25|14.75','Manana'],
     ['isabel','grupoA','horario_t','14.75|22.25','Tarde'],
-    ['isabel','grupoB','orden','MARICARMEN,ABEL,GONZALO,RUBEN','Cada uno S+D'],
-    ['isabel','grupoB','sem1','SAB_M:MARICARMEN|SAB_T:ABEL,GONZALO,RUBEN|DOM_M:GONZALO|DOM_T:MARICARMEN,ABEL,RUBEN',''],
-    ['isabel','grupoB','sem2','SAB_M:ABEL|SAB_T:MARICARMEN,GONZALO,RUBEN|DOM_M:RUBEN|DOM_T:MARICARMEN,ABEL,GONZALO',''],
-    ['isabel','grupoB','sem3','SAB_M:GONZALO|SAB_T:MARICARMEN,ABEL,RUBEN|DOM_M:MARICARMEN|DOM_T:ABEL,GONZALO,RUBEN',''],
-    ['isabel','grupoB','sem4','SAB_M:RUBEN|SAB_T:MARICARMEN,ABEL,GONZALO|DOM_M:ABEL|DOM_T:MARICARMEN,GONZALO,RUBEN',''],
-    ['isabel','grupoB','sem5','SAB_M:MARICARMEN|SAB_T:ABEL,GONZALO,RUBEN|DOM_M:RUBEN|DOM_T:MARICARMEN,ABEL,GONZALO',''],
-    ['isabel','grupoB','sem6','SAB_M:ABEL|SAB_T:MARICARMEN,GONZALO,RUBEN|DOM_M:GONZALO|DOM_T:MARICARMEN,ABEL,RUBEN',''],
-    ['isabel','grupoB','sem7','SAB_M:GONZALO|SAB_T:MARICARMEN,ABEL,RUBEN|DOM_M:ABEL|DOM_T:MARICARMEN,GONZALO,RUBEN',''],
-    ['isabel','grupoB','sem8','SAB_M:RUBEN|SAB_T:MARICARMEN,ABEL,GONZALO|DOM_M:MARICARMEN|DOM_T:ABEL,GONZALO,RUBEN',''],
+    ['isabel','grupoB','orden','M. CARMEN,ABEL,GONZALO,RUBEN','Cada uno S+D'],
+    ['isabel','grupoB','sem1','SAB_M:M. CARMEN|SAB_T:ABEL,GONZALO,RUBEN|DOM_M:GONZALO|DOM_T:M. CARMEN,ABEL,RUBEN',''],
+    ['isabel','grupoB','sem2','SAB_M:ABEL|SAB_T:M. CARMEN,GONZALO,RUBEN|DOM_M:RUBEN|DOM_T:M. CARMEN,ABEL,GONZALO',''],
+    ['isabel','grupoB','sem3','SAB_M:GONZALO|SAB_T:M. CARMEN,ABEL,RUBEN|DOM_M:M. CARMEN|DOM_T:ABEL,GONZALO,RUBEN',''],
+    ['isabel','grupoB','sem4','SAB_M:RUBEN|SAB_T:M. CARMEN,ABEL,GONZALO|DOM_M:ABEL|DOM_T:M. CARMEN,GONZALO,RUBEN',''],
+    ['isabel','grupoB','sem5','SAB_M:M. CARMEN|SAB_T:ABEL,GONZALO,RUBEN|DOM_M:RUBEN|DOM_T:M. CARMEN,ABEL,GONZALO',''],
+    ['isabel','grupoB','sem6','SAB_M:ABEL|SAB_T:M. CARMEN,GONZALO,RUBEN|DOM_M:GONZALO|DOM_T:M. CARMEN,ABEL,RUBEN',''],
+    ['isabel','grupoB','sem7','SAB_M:GONZALO|SAB_T:M. CARMEN,ABEL,RUBEN|DOM_M:ABEL|DOM_T:M. CARMEN,GONZALO,RUBEN',''],
+    ['isabel','grupoB','sem8','SAB_M:RUBEN|SAB_T:M. CARMEN,ABEL,GONZALO|DOM_M:M. CARMEN|DOM_T:ABEL,GONZALO,RUBEN',''],
     ['isabel','grupoB','horario_m','7.25|14.75','Manana'],
     ['isabel','grupoB','horario_t','14.75|22.25','Tarde'],
     ['isabel','config','fecha_inicio','2026-02-28','Fecha base ciclos'],
