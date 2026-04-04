@@ -439,8 +439,8 @@ var EMPLEADOS_GV = {
   ALEXVERA:{alias:'ALEX VERA',nombre:'Alejandro',apellidos:'Vera',dni:'55667788O',telefono:'612015015',email:'alexvera@kira.com',fechaAlta:'2023-03-01',contrato:15,tienda:'granvia',franja:'tardes',restriccion:'',color:'#e65100'}
 };
 var HORARIOS_GV = {
-  A:{LJ:{LETI:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]},V:{LETI:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]}},
-  B:{LJ:{DAVID:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]},V:{DAVID:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]}}
+  A:{LJ:{DAVID:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]},V:{DAVID:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]}},
+  B:{LJ:{LETI:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]},V:{LETI:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]}}
 };
 
 // Mínimos por franja L-V
@@ -544,10 +544,10 @@ var EMPLEADOS_IS = {
 // Sem 3: Carolina mañana, Ceci tarde, Alvaro cierre
 // Sem 4: Ceci mañana, Carolina tarde, Alvaro cierre
 var ROTACION_IS = [
-  {mañana:'CAROLINA', tarde:'ALVARO', cierre:'CECI'},
   {mañana:'ALVARO', tarde:'CAROLINA', cierre:'CECI'},
   {mañana:'CAROLINA', tarde:'CECI', cierre:'ALVARO'},
-  {mañana:'CECI', tarde:'CAROLINA', cierre:'ALVARO'}
+  {mañana:'CECI', tarde:'CAROLINA', cierre:'ALVARO'},
+  {mañana:'CAROLINA', tarde:'ALVARO', cierre:'CECI'}
 ];
 
 function getHorariosIS(fecha) {
@@ -1459,9 +1459,14 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
     // Verificar ausencia
     if(!error&&estaAusente(alias,fecha)){error='También está ausente';}
     
+    // Calcular horas FdS del sustituto
+    var horasFdsSust=e.horasFDS?(e.horasFDS/2):(turnoAusente[1]-turnoAusente[0]);
+    var entradaFds=turnoAusente[0];
+    var salidaFds=entradaFds+horasFdsSust;
+
     // Verificar solapamiento con otra tienda
     if(!error && e.tienda==='ambas'){
-      var solape=verificarSolapamientoSustituto(alias, fecha, tiendaActual, turnoAusente[0], turnoAusente[1]);
+      var solape=verificarSolapamientoSustituto(alias, fecha, tiendaActual, entradaFds, salidaFds);
       if(solape.solapamiento){
         var otraTienda=solape.tienda==='granvia'?'GV':'IS';
         error='Solape con '+otraTienda+' ('+formatHora(solape.inicio)+'-'+formatHora(solape.fin)+')';
@@ -1481,19 +1486,18 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
     }
     var fdsSab=tiendaActual==='granvia'?getFdsGV(sab):getFdsIS(sab);
     var fdsDom=tiendaActual==='granvia'?getFdsGV(dom):getFdsIS(dom);
-    
+
     var todosLosTurnos=[
       {key:'SAB_M',data:fdsSab},
       {key:'SAB_T',data:fdsSab},
       {key:'DOM_M',data:fdsDom},
       {key:'DOM_T',data:fdsDom}
     ];
-    
+
     for(var ot=0;ot<todosLosTurnos.length;ot++){
       var turnoInfo=todosLosTurnos[ot];
       var otroTurno=turnoInfo.key;
       var fdsOtro=turnoInfo.data;
-      // No verificar el turno que va a cubrir
       if(otroTurno===turnoKey) continue;
       if(fdsOtro[otroTurno] && fdsOtro[otroTurno][alias]){
         var minimos=MINIMOS_FDS[tiendaActual];
@@ -1504,7 +1508,7 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
         }
       }
     }
-    
+
     var valido=!error;
     if(valido)hayValido=true;
     var isSelected=seleccionesDias[selKey]===alias;
@@ -1512,7 +1516,7 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
     html+='<div class="candidato-item'+(valido?'':' invalido')+(isSelected?' selected':'')+'" onclick="'+(valido?'seleccionarCandidatoFds(\''+fs+'\',\''+turnoKey+'\',\''+alias+'\')':'')+'">';
     html+='<div class="candidato-avatar" style="background:'+e.color+'">'+alias.charAt(0)+'</div>';
     html+='<div class="candidato-info"><div class="candidato-nombre">'+alias+(avisos?' <span style="color:#ff5252;font-size:9px">'+avisos+'</span>':'')+'</div>';
-    if(valido){html+='<div class="candidato-horario">'+formatHora(turnoAusente[0])+'-'+formatHora(turnoAusente[1])+'</div>';}
+    if(valido){html+='<div class="candidato-horario">'+formatHora(entradaFds)+'-'+formatHora(salidaFds)+' ('+horasFdsSust+'h)</div>';}
     else{html+='<div class="candidato-error">'+error+'</div>';}
     html+='</div><div class="candidato-check">'+(isSelected?'✓':'')+'</div></div>';
   }
