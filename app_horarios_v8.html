@@ -315,6 +315,7 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
         <button onclick="exportarPDF('fds')">🗓️ Fines de Semana</button>
       </div>
     </div>
+    <button class="btn" style="background:#ff9800;color:#fff" onclick="calcularSustituciones()">⚡ Calcular sustituciones</button>
     <button class="btn btn-primary" onclick="abrirModalAusencia()">+ Ausencia</button>
     <button class="btn btn-ghost" onclick="abrirModalEmpleado()">+ Empleado</button>
   </div>
@@ -418,6 +419,16 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
     <div class="modal-header"><h3 id="asignar-sust-titulo">📋 Cubrir turno</h3><button class="modal-close" onclick="cerrarModal('modal-asignar-sust')">×</button></div>
     <div class="modal-body" id="asignar-sust-body"></div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-asignar-sust')">Cancelar</button><button class="btn btn-success" onclick="confirmarAsignarSustituto()">Asignar sustituto</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-auto-sust">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header"><h3>⚡ Propuesta de sustituciones</h3><button class="modal-close" onclick="cerrarModal('modal-auto-sust')">×</button></div>
+    <div class="modal-body" id="auto-sust-body" style="max-height:500px;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-auto-sust')">Cancelar</button>
+      <button class="btn btn-success" onclick="aplicarPropuestaSustituciones()">✓ Aplicar todas</button>
+    </div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-detalle-vacaciones">
@@ -585,23 +596,6 @@ function getFdsGV(fecha) {
     }
   }
 
-  // Regla de equilibrio: si SAB_T=3 (mínimo) y DOM_M=3 (excedente), mover 1 de DOM_M a SAB_T
-  var countSABT = Object.keys(result.SAB_T).length;
-  var countDOMM = Object.keys(result.DOM_M).length;
-  var minSABT = MINIMOS_FDS.granvia ? MINIMOS_FDS.granvia.SAB_T : 3;
-  var minDOMM = MINIMOS_FDS.granvia ? MINIMOS_FDS.granvia.DOM_M : 2;
-  if (countSABT <= minSABT && countDOMM > minDOMM) {
-    // Buscar un empleado movible de DOM_M (no fijo como ELI)
-    var fijosDOM = ['ELI']; // Empleados fijos que no se mueven
-    for (var emp in result.DOM_M) {
-      if (fijosDOM.indexOf(emp) === -1) {
-        // Mover este empleado a SAB_T
-        result.SAB_T[emp] = [14.75, 22.25];
-        delete result.DOM_M[emp];
-        break; // Solo mover uno
-      }
-    }
-  }
 
   return result;
 }
@@ -2228,9 +2222,17 @@ function detectarSinCubrir(fecha){
             var bajoMin=false;
             if(minFds&&minFds[tk]){
               var countTurno=0;
-              for(var e in fdsData[tk]){if(!estaAusente(e,fecha)||e===emp)countTurno++;} // contar sin el ausente
-              countTurno--; // quitar al ausente
+              for(var e in fdsData[tk]){if(!estaAusente(e,fecha)||e===emp)countTurno++;}
+              countTurno--;
               if(countTurno<minFds[tk])bajoMin=true;
+              // Regla equilibrio GV: SAB_T en mínimo justo + DOM_M con excedente → marcar rojo
+              if(!bajoMin && tiendaActual==='granvia' && tk==='SAB_T' && countTurno<=minFds[tk]){
+                var dom=new Date(fecha);dom.setDate(dom.getDate()+1);
+                var countDOMM=0;
+                var minDOMM=minFds['DOM_M']||2;
+                if(fdsData['DOM_M']){for(var e2 in fdsData['DOM_M']){if(!estaAusente(e2,dom))countDOMM++;}}
+                if(countDOMM>minDOMM)bajoMin=true;
+              }
             }
             sinCubrir.push({emp:emp,franja:tk,entrada:fdsData[tk][emp][0],salida:fdsData[tk][emp][1],turnoFds:tk,bajoMinimos:bajoMin});
           }
@@ -3298,6 +3300,360 @@ function syncFaltas() {
   for (var i = 0; i < faltasGV.length; i++) { rows.push(faltasGV[i]); }
   for (var i = 0; i < faltasIS.length; i++) { rows.push(faltasIS[i]); }
   guardarEnSheets('faltas', h, rows);
+}
+
+// ==================== MOTOR AUTOMATICO DE SUSTITUCIONES ====================
+var _propuestaSustituciones = [];
+
+function escanearSinCubrir() {
+  // Escanea AMBAS tiendas en el mes visible y devuelve todos los turnos sin cubrir
+  var sinCubrir = [];
+  var tiendaOriginal = tiendaActual;
+  var tiendas = ['granvia', 'isabel'];
+
+  for (var ti = 0; ti < tiendas.length; ti++) {
+    tiendaActual = tiendas[ti];
+    var inicio = new Date(añoActual, mesActual, 1);
+    var fin = new Date(añoActual, mesActual + 1, 0);
+
+    for (var d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+      var fecha = new Date(d);
+      var dow = fecha.getDay();
+      if (dow === 0) continue; // Domingo se procesa con sábado
+
+      var items = detectarSinCubrir(fecha);
+      for (var i = 0; i < items.length; i++) {
+        sinCubrir.push({
+          tienda: tiendas[ti],
+          fecha: formatFechaLocal(fecha),
+          fechaObj: new Date(fecha),
+          emp: items[i].emp,
+          franja: items[i].franja,
+          entrada: items[i].entrada,
+          salida: items[i].salida,
+          turnoFds: items[i].turnoFds,
+          bajoMinimos: items[i].bajoMinimos
+        });
+      }
+    }
+  }
+  tiendaActual = tiendaOriginal;
+
+  // Ordenar: primero bajo mínimos, luego por fecha
+  sinCubrir.sort(function(a, b) {
+    if (a.bajoMinimos !== b.bajoMinimos) return a.bajoMinimos ? -1 : 1;
+    return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0;
+  });
+
+  return sinCubrir;
+}
+
+function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
+  // Devuelve array de candidatos válidos para un turno, considerando sustituciones ya propuestas
+  var tiendaOriginal = tiendaActual;
+  tiendaActual = turno.tienda;
+  var fecha = parseFechaLocal(turno.fecha);
+  var emps = turno.tienda === 'granvia' ? EMPLEADOS_GV : EMPLEADOS_IS;
+  // También considerar empleados de la otra tienda que sean compartidos
+  var empsOtra = turno.tienda === 'granvia' ? EMPLEADOS_IS : EMPLEADOS_GV;
+  var todosEmps = {};
+  for (var k in emps) todosEmps[k] = emps[k];
+  for (var k in empsOtra) { if (empsOtra[k].tienda === 'ambas' && !todosEmps[k]) todosEmps[k] = empsOtra[k]; }
+
+  var candidatos = [];
+  var dow = fecha.getDay();
+
+  for (var alias in todosEmps) {
+    if (alias === turno.emp) continue;
+    var e = todosEmps[alias];
+    var error = '';
+
+    // Ausente
+    if (estaAusente(alias, fecha)) { error = 'ausente'; }
+
+    // Ya asignado como sustituto en otra propuesta para este día
+    if (!error) {
+      for (var s = 0; s < sustitucionesSimuladas.length; s++) {
+        var sim = sustitucionesSimuladas[s];
+        if (sim.sustituto === alias && sim.fecha === turno.fecha) {
+          error = 'ya asignado'; break;
+        }
+      }
+    }
+
+    // Restricciones
+    if (!error && turno.turnoFds === null) {
+      if (e.restriccion === 'solo-mañanas' && turno.franja !== 'mañanas') error = 'restriccion';
+      if (e.restriccion === 'solo-cierre' && turno.franja !== 'cierre') error = 'restriccion';
+      if (e.restriccion === 'solo-descarga' && turno.franja !== 'descarga') error = 'restriccion';
+    }
+
+    // Ya trabaja en esa franja/turno
+    if (!error && turno.turnoFds === null) {
+      var horarios;
+      if (turno.tienda === 'granvia') {
+        var semAB = getSemanaAB(fecha);
+        horarios = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+      } else {
+        horarios = getHorariosIS(fecha);
+      }
+      if (horarios && horarios[alias]) {
+        var suFranja = turno.tienda === 'granvia' ? getFranja(horarios[alias][0], horarios[alias][1]) : getFranjaIS(horarios[alias][0], horarios[alias][1]);
+        if (suFranja === turno.franja) error = 'ya trabaja';
+      }
+    } else if (!error && turno.turnoFds) {
+      var fdsData = turno.tienda === 'granvia' ? getFdsGV(fecha) : getFdsIS(fecha);
+      if (fdsData[turno.turnoFds] && fdsData[turno.turnoFds][alias]) error = 'ya trabaja';
+    }
+
+    // Horas sustituto
+    var horasSust, entradaSust, salidaSust;
+    if (turno.turnoFds) {
+      entradaSust = turno.entrada;
+      salidaSust = entradaSust + 7.5;
+    } else {
+      horasSust = calcularHorasDiariasMultitienda(alias, fecha, turno.tienda);
+      entradaSust = turno.entrada;
+      salidaSust = entradaSust + horasSust;
+    }
+
+    // Max-15
+    if (!error && e.restriccion === 'max-15' && salidaSust > 15) error = 'max-15';
+
+    // Solapamiento entre tiendas
+    if (!error && e.tienda === 'ambas') {
+      var solape = verificarSolapamientoSustituto(alias, fecha, turno.tienda, entradaSust, salidaSust);
+      if (solape.solapamiento) error = 'solape';
+    }
+
+    // Verificar si moverlo deja su turno bajo mínimos
+    var dejaBajoMin = false;
+    if (!error) {
+      if (turno.turnoFds === null) {
+        var efecto = verificarEfectoSustituto(alias, fecha, turno.tienda, turno.franja);
+        if (efecto) dejaBajoMin = true;
+      } else {
+        // FdS: verificar todos los turnos
+        var fdsCheck = turno.tienda === 'granvia' ? getFdsGV(fecha) : getFdsIS(fecha);
+        var turnos = ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T'];
+        for (var t = 0; t < turnos.length; t++) {
+          if (turnos[t] === turno.turnoFds) continue;
+          if (fdsCheck[turnos[t]] && fdsCheck[turnos[t]][alias]) {
+            var minimos = MINIMOS_FDS[turno.tienda];
+            var actual = 0;
+            for (var e2 in fdsCheck[turnos[t]]) { if (!estaAusente(e2, fecha)) actual++; }
+            if (actual - 1 < minimos[turnos[t]]) { dejaBajoMin = true; break; }
+          }
+        }
+      }
+    }
+
+    if (!error) {
+      // Calcular prioridad: ratio horas trabajadas vs contrato
+      var lunes = getLunesDeSemana(fecha);
+      var horas = calcularHorasSemanales(alias, lunes);
+      var contratoTienda = turno.tienda === 'granvia' ? horas.contratoGV : horas.contratoIS;
+      var totalTienda = turno.tienda === 'granvia' ? horas.totalGV : horas.totalIS;
+      var margen = contratoTienda - totalTienda; // Cuanto más margen, mejor candidato
+
+      candidatos.push({
+        alias: alias,
+        entrada: entradaSust,
+        salida: salidaSust,
+        margen: margen,
+        dejaBajoMin: dejaBajoMin,
+        color: e.color || '#666'
+      });
+    }
+  }
+
+  // Ordenar: primero los que NO dejan bajo mínimos, luego por mayor margen de horas
+  candidatos.sort(function(a, b) {
+    if (a.dejaBajoMin !== b.dejaBajoMin) return a.dejaBajoMin ? 1 : -1;
+    return b.margen - a.margen;
+  });
+
+  tiendaActual = tiendaOriginal;
+  return candidatos;
+}
+
+function calcularHorasDiariasMultitienda(alias, fecha, tienda) {
+  var emps = tienda === 'granvia' ? EMPLEADOS_GV : EMPLEADOS_IS;
+  var e = emps[alias]; if (!e) return 4;
+  var dow = fecha.getDay();
+  if (dow >= 1 && dow <= 5) {
+    if (tienda === 'granvia') {
+      var semAB = getSemanaAB(fecha);
+      var horarios = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+      if (horarios && horarios[alias]) return horarios[alias][1] - horarios[alias][0];
+    } else {
+      var horarios = getHorariosIS(fecha);
+      if (horarios && horarios[alias]) return horarios[alias][1] - horarios[alias][0];
+    }
+  }
+  return e.contrato / 5;
+}
+
+function calcularSustituciones() {
+  var sinCubrir = escanearSinCubrir();
+
+  if (sinCubrir.length === 0) {
+    alert('No hay turnos sin cubrir en ' + MESES[mesActual] + ' ' + añoActual);
+    return;
+  }
+
+  // Generar propuestas con sustituciones simuladas (para evitar asignar el mismo candidato dos veces)
+  _propuestaSustituciones = [];
+  var sustSimuladas = [];
+  var sinSolucion = [];
+
+  for (var i = 0; i < sinCubrir.length; i++) {
+    var turno = sinCubrir[i];
+    var candidatos = obtenerCandidatosValidos(turno, sustSimuladas);
+
+    if (candidatos.length > 0 && !candidatos[0].dejaBajoMin) {
+      var mejor = candidatos[0];
+      var propuesta = {
+        tienda: turno.tienda,
+        fecha: turno.fecha,
+        ausente: turno.emp,
+        sustituto: mejor.alias,
+        entrada: mejor.entrada,
+        salida: mejor.salida,
+        franja: turno.turnoFds ? '' : turno.franja,
+        turnoFds: turno.turnoFds || '',
+        bajoMinimos: turno.bajoMinimos,
+        alternativas: candidatos.slice(1, 4) // Guardar alternativas
+      };
+      _propuestaSustituciones.push(propuesta);
+      sustSimuladas.push(propuesta);
+    } else {
+      sinSolucion.push(turno);
+    }
+  }
+
+  // Mostrar propuesta
+  mostrarPropuestaSustituciones(sinSolucion);
+}
+
+function mostrarPropuestaSustituciones(sinSolucion) {
+  var html = '';
+
+  if (_propuestaSustituciones.length === 0 && sinSolucion.length === 0) {
+    html = '<p>No hay turnos sin cubrir.</p>';
+  } else {
+    // Resumen
+    html += '<div style="margin-bottom:12px;padding:10px;background:#f5f5f5;border-radius:8px;font-size:12px">';
+    html += '<strong>' + _propuestaSustituciones.length + '</strong> sustituciones propuestas';
+    if (sinSolucion.length > 0) html += ' · <span style="color:#c62828"><strong>' + sinSolucion.length + '</strong> sin solución</span>';
+    html += '</div>';
+
+    // Propuestas agrupadas por fecha
+    if (_propuestaSustituciones.length > 0) {
+      var porFecha = {};
+      for (var i = 0; i < _propuestaSustituciones.length; i++) {
+        var p = _propuestaSustituciones[i];
+        var key = p.fecha;
+        if (!porFecha[key]) porFecha[key] = [];
+        porFecha[key].push({idx: i, prop: p});
+      }
+
+      for (var fecha in porFecha) {
+        var fechaObj = parseFechaLocal(fecha);
+        html += '<div style="margin-bottom:8px"><div style="font-weight:700;font-size:12px;color:#1a1a2e;margin-bottom:4px">' + DIAS[fechaObj.getDay()] + ' ' + formatFechaES(fecha) + '</div>';
+        var items = porFecha[fecha];
+        for (var j = 0; j < items.length; j++) {
+          var p = items[j].prop;
+          var idx = items[j].idx;
+          var tiendaLabel = p.tienda === 'granvia' ? 'GV' : 'IS';
+          var turnoLabel = p.turnoFds ? p.turnoFds.replace('_', ' ') : p.franja;
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin-bottom:2px;background:#fff;border-radius:6px;border:1px solid #e0e0e0;font-size:11px">';
+          html += '<div><span style="background:' + (p.tienda === 'granvia' ? '#1a1a2e' : '#4a90d9') + ';color:#fff;padding:1px 5px;border-radius:3px;font-size:9px;margin-right:5px">' + tiendaLabel + '</span>';
+          html += '<span style="color:#c62828;text-decoration:line-through">' + p.ausente + '</span> → <strong style="color:#2e7d32">' + p.sustituto + '</strong>';
+          html += ' <span style="color:#888">(' + turnoLabel + ' · ' + formatHora(p.entrada) + '-' + formatHora(p.salida) + ')</span></div>';
+          html += '<div style="display:flex;gap:3px">';
+          if (p.alternativas && p.alternativas.length > 0) {
+            html += '<select style="font-size:10px;padding:1px 3px;border:1px solid #ccc;border-radius:3px" onchange="cambiarPropuesta(' + idx + ',this.value)">';
+            html += '<option value="' + p.sustituto + '">' + p.sustituto + '</option>';
+            for (var a = 0; a < p.alternativas.length; a++) {
+              var alt = p.alternativas[a];
+              html += '<option value="' + alt.alias + '">' + alt.alias + (alt.dejaBajoMin ? ' ⚠️' : '') + '</option>';
+            }
+            html += '</select>';
+          }
+          html += '<button style="font-size:9px;padding:1px 5px;background:#ef5350;color:#fff;border:none;border-radius:3px;cursor:pointer" onclick="quitarPropuesta(' + idx + ')">✕</button>';
+          html += '</div></div>';
+        }
+        html += '</div>';
+      }
+    }
+
+    // Sin solución
+    if (sinSolucion.length > 0) {
+      html += '<div style="margin-top:12px;padding:10px;background:#ffebee;border-radius:8px">';
+      html += '<div style="font-weight:700;font-size:12px;color:#c62828;margin-bottom:6px">⚠️ Sin sustituto disponible — valorar contratación eventual</div>';
+      for (var i = 0; i < sinSolucion.length; i++) {
+        var s = sinSolucion[i];
+        var fechaObj = parseFechaLocal(s.fecha);
+        var tiendaLabel = s.tienda === 'granvia' ? 'GV' : 'IS';
+        var turnoLabel = s.turnoFds ? s.turnoFds.replace('_', ' ') : s.franja;
+        html += '<div style="font-size:11px;padding:2px 0">· ' + tiendaLabel + ' — ' + DIAS[fechaObj.getDay()] + ' ' + formatFechaES(s.fecha) + ': <strong>' + s.emp + '</strong> (' + turnoLabel + ')</div>';
+      }
+      html += '</div>';
+    }
+  }
+
+  document.getElementById('auto-sust-body').innerHTML = html;
+  abrirModal('modal-auto-sust');
+}
+
+function cambiarPropuesta(idx, nuevoSustituto) {
+  if (_propuestaSustituciones[idx]) {
+    var p = _propuestaSustituciones[idx];
+    // Buscar datos del nuevo sustituto en alternativas
+    for (var a = 0; a < p.alternativas.length; a++) {
+      if (p.alternativas[a].alias === nuevoSustituto) {
+        p.sustituto = nuevoSustituto;
+        p.entrada = p.alternativas[a].entrada;
+        p.salida = p.alternativas[a].salida;
+        break;
+      }
+    }
+    // Si seleccionó el original, ya está bien
+    if (nuevoSustituto === _propuestaSustituciones[idx].sustituto) return;
+  }
+}
+
+function quitarPropuesta(idx) {
+  _propuestaSustituciones.splice(idx, 1);
+  mostrarPropuestaSustituciones([]);
+}
+
+function aplicarPropuestaSustituciones() {
+  if (_propuestaSustituciones.length === 0) { cerrarModal('modal-auto-sust'); return; }
+
+  var count = 0;
+  for (var i = 0; i < _propuestaSustituciones.length; i++) {
+    var p = _propuestaSustituciones[i];
+    sustituciones.push({
+      fecha: p.fecha,
+      ausente: p.ausente,
+      sustituto: p.sustituto,
+      entrada: p.entrada,
+      salida: p.salida,
+      franja: p.franja || '',
+      turnoFds: p.turnoFds || '',
+      tienda: p.tienda
+    });
+    count++;
+  }
+
+  _propuestaSustituciones = [];
+  cerrarModal('modal-auto-sust');
+  renderCalendario();
+  renderAusencias();
+  syncSustituciones();
+  alert(count + ' sustituciones aplicadas correctamente.');
 }
 
 // Inicializar
