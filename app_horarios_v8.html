@@ -1451,10 +1451,9 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
     // Verificar ausencia
     if(!error&&estaAusente(alias,fecha)){error='También está ausente';}
     
-    // Calcular horas FdS del sustituto
-    var horasFdsSust=e.horasFDS?(e.horasFDS/2):(turnoAusente[1]-turnoAusente[0]);
+    // FdS: el sustituto cubre el turno completo del ausente
     var entradaFds=turnoAusente[0];
-    var salidaFds=entradaFds+horasFdsSust;
+    var salidaFds=turnoAusente[1];
 
     // Verificar solapamiento con otra tienda
     if(!error && e.tienda==='ambas'){
@@ -1508,7 +1507,7 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
     html+='<div class="candidato-item'+(valido?'':' invalido')+(isSelected?' selected':'')+'" onclick="'+(valido?'seleccionarCandidatoFds(\''+fs+'\',\''+turnoKey+'\',\''+alias+'\')':'')+'">';
     html+='<div class="candidato-avatar" style="background:'+e.color+'">'+alias.charAt(0)+'</div>';
     html+='<div class="candidato-info"><div class="candidato-nombre">'+alias+(avisos?' <span style="color:#ff5252;font-size:9px">'+avisos+'</span>':'')+'</div>';
-    if(valido){html+='<div class="candidato-horario">'+formatHora(entradaFds)+'-'+formatHora(salidaFds)+' ('+horasFdsSust+'h)</div>';}
+    if(valido){html+='<div class="candidato-horario">'+formatHora(entradaFds)+'-'+formatHora(salidaFds)+'</div>';}
     else{html+='<div class="candidato-error">'+error+'</div>';}
     html+='</div><div class="candidato-check">'+(isSelected?'✓':'')+'</div></div>';
   }
@@ -1597,11 +1596,7 @@ function confirmarAusencia(){
       var fdsData=tiendaActual==='granvia'?getFdsGV(f):getFdsIS(f);
       var turno=fdsData[turnoFds]?fdsData[turnoFds][emp]:null;
       if(turno){
-        // Calcular horas del sustituto en FdS
-        var sustEmp=emps[sust];
-        var horasFdsSust=sustEmp&&sustEmp.horasFDS?sustEmp.horasFDS:(turno[1]-turno[0]);
-        var salidaFds=turno[0]+horasFdsSust;
-        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:salidaFds,turnoFds:turnoFds,tienda:tiendaActual});
+        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:turno[1],turnoFds:turnoFds,tienda:tiendaActual});
       }
     } else {
       // L-V - usar horas diarias del sustituto
