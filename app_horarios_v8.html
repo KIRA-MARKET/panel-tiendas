@@ -100,6 +100,9 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
 .aviso-solapamiento:hover { background: #d32f2f; }
 .aviso-minimos { background: #ff9800; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 8px; font-weight: 700; margin-top: 4px; cursor: pointer; }
 .aviso-minimos:hover { background: #f57c00; }
+.aviso-sin-cubrir { background: #e53935; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 8px; font-weight: 700; margin-top: 4px; cursor: pointer; animation: pulso 2s infinite; }
+.aviso-sin-cubrir:hover { background: #c62828; }
+@keyframes pulso { 0%,100%{opacity:1} 50%{opacity:0.7} }
 .seccion-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .seccion-header h2 { font-size: 18px; font-weight: 600; }
 .empleados-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
@@ -329,10 +332,10 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
       <div class="paso active" id="paso-1"><div class="paso-header"><span class="paso-numero">1</span><span class="paso-titulo">Empleado</span></div><div class="form-group"><label>Empleado</label><select id="ausencia-empleado"></select></div></div>
       <div class="paso" id="paso-2"><div class="paso-header"><span class="paso-numero">2</span><span class="paso-titulo">Motivo</span></div><div class="resumen-ausencia" id="resumen-paso2"></div><div class="form-group"><label>Tipo</label><select id="ausencia-tipo"><option value="">--</option><option value="vacaciones">🏖️ Vacaciones</option><option value="baja">🏥 Baja</option><option value="permiso">📅 Permiso</option></select></div></div>
       <div class="paso" id="paso-3"><div class="paso-header"><span class="paso-numero">3</span><span class="paso-titulo">Fechas</span></div><div class="resumen-ausencia" id="resumen-paso3"></div><div class="form-row"><div class="form-group"><label>Desde</label><input type="date" id="ausencia-desde"></div><div class="form-group"><label>Hasta</label><input type="date" id="ausencia-hasta"></div></div></div>
-      <div class="paso" id="paso-4"><div class="paso-header"><span class="paso-numero">4</span><span class="paso-titulo">Sustitutos</span></div><div class="resumen-ausencia" id="resumen-paso4"></div><div id="dias-sustitucion"></div></div>
+      <div class="paso" id="paso-4"><div class="paso-header"><span class="paso-numero">4</span><span class="paso-titulo">Sustitutos</span></div><div class="resumen-ausencia" id="resumen-paso4"></div><p style="font-size:11px;color:#666;margin-bottom:8px">Puedes asignar sustitutos ahora o hacerlo más tarde desde el calendario.</p><div id="dias-sustitucion"></div></div>
       <div class="paso" id="paso-5"><div class="paso-header"><span class="paso-numero">5</span><span class="paso-titulo">Confirmar</span></div><div class="resumen-final" id="resumen-final"></div></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-secondary" id="btn-anterior" onclick="pasoAnterior()" style="display:none">← Anterior</button><button class="btn btn-secondary" onclick="cerrarModal('modal-ausencia')">Cancelar</button><button class="btn btn-success" id="btn-siguiente" onclick="pasoSiguiente()">Siguiente →</button></div>
+    <div class="modal-footer"><button class="btn btn-secondary" id="btn-anterior" onclick="pasoAnterior()" style="display:none">← Anterior</button><button class="btn btn-secondary" onclick="cerrarModal('modal-ausencia')">Cancelar</button><button class="btn" id="btn-saltar" onclick="saltarSustitutos()" style="display:none;background:#ff9800;color:#fff">Registrar sin sustitutos ⏭</button><button class="btn btn-success" id="btn-siguiente" onclick="pasoSiguiente()">Siguiente →</button></div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-empleado">
@@ -367,6 +370,13 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
       <div class="form-group"><label>Motivo</label><textarea id="falta-motivo" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm)"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-falta')">Cancelar</button><button class="btn btn-success" onclick="guardarFalta()">Guardar</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-asignar-sust">
+  <div class="modal">
+    <div class="modal-header"><h3 id="asignar-sust-titulo">📋 Cubrir turno</h3><button class="modal-close" onclick="cerrarModal('modal-asignar-sust')">×</button></div>
+    <div class="modal-body" id="asignar-sust-body"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-asignar-sust')">Cancelar</button><button class="btn btn-success" onclick="confirmarAsignarSustituto()">Asignar sustituto</button></div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-detalle-vacaciones">
@@ -998,6 +1008,16 @@ function renderCalendario(){
         var detMin=alertasMin.map(function(a){return a.franja.toUpperCase()+': '+a.actual+'/'+a.minimo;}).join('\\n');
         avisos.push('<div class="aviso-minimos" onclick="alert(\'BAJO MÍNIMOS:\\n'+detMin+'\')">🔴 '+alertasMin.length+' bajo mín</div>');
       }
+      // Turnos sin cubrir
+      var sinCubrir=detectarSinCubrir(dia);
+      if(sinCubrir.length>0){
+        var botonesHtml='';
+        for(var sc=0;sc<sinCubrir.length;sc++){
+          var tc=sinCubrir[sc];
+          botonesHtml+='<div class="aviso-sin-cubrir" onclick="abrirAsignarSustituto(\''+formatFechaLocal(dia)+'\',\''+tc.emp+'\',null)">🔴 '+tc.emp+' sin cubrir ('+tc.franja+')</div>';
+        }
+        avisos.push(botonesHtml);
+      }
       var avisoHtml=avisos.join('');
       html+='<div class="col-dia" style="'+(esDelMes?'':'opacity:0.4')+'"><div class="dia-num">'+dia.getDate()+'</div>'+renderTurnos(dia,horarios||{})+avisoHtml+'</div>';
     }
@@ -1010,7 +1030,15 @@ function renderCalendario(){
     var avisoFdsHtml='';
     if(solapFds.length>0){
       var detallesFds=solapFds.map(function(s){return s.empleado+': GV '+s.gv+' / IS '+s.is;}).join('\\n');
-      avisoFdsHtml='<div class="aviso-solapamiento" onclick="alert(\'SOLAPAMIENTOS FDS:\\n'+detallesFds+'\')" style="grid-column:1/-1">⚠️ '+solapFds.length+' solapamiento'+(solapFds.length>1?'s':'')+'</div>';
+      avisoFdsHtml+='<div class="aviso-solapamiento" onclick="alert(\'SOLAPAMIENTOS FDS:\\n'+detallesFds+'\')" style="grid-column:1/-1">⚠️ '+solapFds.length+' solapamiento'+(solapFds.length>1?'s':'')+'</div>';
+    }
+    var sinCubrirSab=detectarSinCubrir(sab);
+    var sinCubrirDom=detectarSinCubrir(dom);
+    var sinCubrirFds=sinCubrirSab.concat(sinCubrirDom);
+    for(var sc=0;sc<sinCubrirFds.length;sc++){
+      var tc=sinCubrirFds[sc];
+      var fSc=sc<sinCubrirSab.length?sab:dom;
+      avisoFdsHtml+='<div class="aviso-sin-cubrir" style="grid-column:1/-1" onclick="abrirAsignarSustituto(\''+formatFechaLocal(fSc)+'\',\''+tc.emp+'\',\''+tc.turnoFds+'\')">🔴 '+tc.emp+' sin cubrir ('+tc.turnoFds.replace('_',' ')+')</div>';
     }
     html+='<div class="col-fds" style="'+(esDelMesFds?'':'opacity:0.4')+'">';
     html+='<div class="fds-box sab-m"><div class="fds-header">Sáb '+sab.getDate()+' Mañana</div>'+renderTurnosFds(sab,fdsData.SAB_M||{},'SAB_M')+'</div>';
@@ -1300,6 +1328,7 @@ function actualizarPasos(){
   for(var i=1;i<=5;i++)document.getElementById('paso-'+i).classList.toggle('active',i===pasoActual);
   document.getElementById('btn-anterior').style.display=pasoActual>1?'inline-flex':'none';
   document.getElementById('btn-siguiente').textContent=pasoActual===5?'Confirmar ✓':'Siguiente →';
+  document.getElementById('btn-saltar').style.display=pasoActual===4?'inline-flex':'none';
 }
 function pasoAnterior(){if(pasoActual>1){pasoActual--;actualizarPasos();}}
 function pasoSiguiente(){
@@ -1616,6 +1645,115 @@ function confirmarAusencia(){
   }
   cerrarModal('modal-ausencia');renderCalendario();renderAusencias();
   syncAusencias();
+  syncSustituciones();
+}
+function saltarSustitutos(){
+  seleccionesDias={};
+  generarResumenFinal();
+  pasoActual=5;
+  actualizarPasos();
+}
+// Detectar turnos sin cubrir por ausencias sin sustituto
+function detectarSinCubrir(fecha){
+  var fs=formatFechaLocal(fecha);
+  var dow=fecha.getDay();
+  var sinCubrir=[];
+  var aus=getAusencias();
+  for(var i=0;i<aus.length;i++){
+    var a=aus[i];
+    if(a.desde>fs||a.hasta<fs)continue;
+    var emp=a.empleado;
+    if(dow>=1&&dow<=5){
+      var semAB=getSemanaAB(fecha);
+      var horarios;
+      if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+      else{horarios=getHorariosIS(fecha);}
+      if(horarios&&horarios[emp]){
+        var tieneSust=false;
+        for(var j=0;j<sustituciones.length;j++){
+          if(sustituciones[j].fecha===fs&&sustituciones[j].ausente===emp&&sustituciones[j].tienda===tiendaActual&&!sustituciones[j].turnoFds){tieneSust=true;break;}
+        }
+        if(!tieneSust){
+          var franja=tiendaActual==='granvia'?getFranja(horarios[emp][0],horarios[emp][1]):getFranjaIS(horarios[emp][0],horarios[emp][1]);
+          sinCubrir.push({emp:emp,franja:franja,entrada:horarios[emp][0],salida:horarios[emp][1],turnoFds:null});
+        }
+      }
+    }else{
+      var fdsData=tiendaActual==='granvia'?getFdsGV(fecha):getFdsIS(fecha);
+      var turnos=dow===6?['SAB_M','SAB_T']:['DOM_M','DOM_T'];
+      for(var t=0;t<turnos.length;t++){
+        var tk=turnos[t];
+        if(fdsData[tk]&&fdsData[tk][emp]){
+          var tieneSust=false;
+          for(var j=0;j<sustituciones.length;j++){
+            if(sustituciones[j].fecha===fs&&sustituciones[j].ausente===emp&&sustituciones[j].tienda===tiendaActual&&sustituciones[j].turnoFds===tk){tieneSust=true;break;}
+          }
+          if(!tieneSust){sinCubrir.push({emp:emp,franja:tk,entrada:fdsData[tk][emp][0],salida:fdsData[tk][emp][1],turnoFds:tk});}
+        }
+      }
+    }
+  }
+  return sinCubrir;
+}
+// Asignar sustituto desde el calendario
+function abrirAsignarSustituto(fechaStr,empAusente,turnoFds){
+  var f=parseFechaLocal(fechaStr);
+  var dow=f.getDay();
+  var turnoAusente;
+  if(turnoFds){
+    var fdsData=tiendaActual==='granvia'?getFdsGV(f):getFdsIS(f);
+    turnoAusente=fdsData[turnoFds]?fdsData[turnoFds][empAusente]:null;
+  }else{
+    var semAB=getSemanaAB(f);
+    var horarios;
+    if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+    else{horarios=getHorariosIS(f);}
+    turnoAusente=horarios?horarios[empAusente]:null;
+  }
+  if(!turnoAusente)return;
+  var franja=turnoFds?null:(tiendaActual==='granvia'?getFranja(turnoAusente[0],turnoAusente[1]):getFranjaIS(turnoAusente[0],turnoAusente[1]));
+  var candidatosHtml=turnoFds?generarCandidatosFds(f,empAusente,turnoAusente,turnoFds,fechaStr):generarCandidatos(f,empAusente,turnoAusente,franja,fechaStr);
+  seleccionesDias={};
+  var diaLabel=DIAS[dow]+' '+formatFechaES(fechaStr)+(turnoFds?' ('+turnoFds.replace('_',' ')+')':'');
+  var html='<div style="margin-bottom:12px"><strong>Turno de '+empAusente+'</strong>: '+formatHora(turnoAusente[0])+'-'+formatHora(turnoAusente[1])+'</div>';
+  html+='<div class="candidatos-lista">'+candidatosHtml+'</div>';
+  document.getElementById('asignar-sust-titulo').textContent='📋 Cubrir turno — '+diaLabel;
+  document.getElementById('asignar-sust-body').innerHTML=html;
+  document.getElementById('asignar-sust-body').setAttribute('data-fecha',fechaStr);
+  document.getElementById('asignar-sust-body').setAttribute('data-ausente',empAusente);
+  document.getElementById('asignar-sust-body').setAttribute('data-turnofds',turnoFds||'');
+  abrirModal('modal-asignar-sust');
+}
+function confirmarAsignarSustituto(){
+  var body=document.getElementById('asignar-sust-body');
+  var fechaStr=body.getAttribute('data-fecha');
+  var empAusente=body.getAttribute('data-ausente');
+  var turnoFds=body.getAttribute('data-turnofds')||null;
+  var selKey=turnoFds?fechaStr+'-'+turnoFds:fechaStr;
+  var sust=seleccionesDias[selKey];
+  if(!sust){alert('Selecciona un sustituto');return;}
+  var f=parseFechaLocal(fechaStr);
+  var dow=f.getDay();
+  var emps=getEmpleadosTienda();
+  if(turnoFds){
+    var fdsData=tiendaActual==='granvia'?getFdsGV(f):getFdsIS(f);
+    var turno=fdsData[turnoFds]?fdsData[turnoFds][empAusente]:null;
+    if(turno){sustituciones.push({fecha:fechaStr,ausente:empAusente,sustituto:sust,entrada:turno[0],salida:turno[0]+7.5,turnoFds:turnoFds,tienda:tiendaActual});}
+  }else{
+    var semAB=getSemanaAB(f);
+    var horarios;
+    if(tiendaActual==='granvia'){horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+    else{horarios=getHorariosIS(f);}
+    var turno=horarios?horarios[empAusente]:null;
+    if(turno){
+      var horasSust=calcularHorasDiarias(sust,f);
+      var salidaSust=turno[0]+horasSust;
+      var franja=tiendaActual==='granvia'?getFranja(turno[0],salidaSust):getFranjaIS(turno[0],salidaSust);
+      sustituciones.push({fecha:fechaStr,ausente:empAusente,sustituto:sust,entrada:turno[0],salida:salidaSust,franja:franja,tienda:tiendaActual});
+    }
+  }
+  cerrarModal('modal-asignar-sust');
+  renderCalendario();
   syncSustituciones();
 }
 
