@@ -439,8 +439,8 @@ var EMPLEADOS_GV = {
   ALEXVERA:{alias:'ALEX VERA',nombre:'Alejandro',apellidos:'Vera',dni:'55667788O',telefono:'612015015',email:'alexvera@kira.com',fechaAlta:'2023-03-01',contrato:15,tienda:'granvia',franja:'tardes',restriccion:'',color:'#e65100'}
 };
 var HORARIOS_GV = {
-  A:{LJ:{DAVID:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]},V:{DAVID:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]}},
-  B:{LJ:{LETI:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]},V:{LETI:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]}}
+  A:{LJ:{LETI:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]},V:{LETI:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]}},
+  B:{LJ:{DAVID:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]},V:{DAVID:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],LETI:[17.75,22.25]}}
 };
 
 // Mínimos por franja L-V
@@ -544,24 +544,19 @@ var EMPLEADOS_IS = {
 // Sem 3: Carolina mañana, Ceci tarde, Alvaro cierre
 // Sem 4: Ceci mañana, Carolina tarde, Alvaro cierre
 var ROTACION_IS = [
-  {mañana:'ALVARO', tarde:'CAROLINA', cierre:'CECI'},
   {mañana:'CAROLINA', tarde:'CECI', cierre:'ALVARO'},
   {mañana:'CECI', tarde:'CAROLINA', cierre:'ALVARO'},
-  {mañana:'CAROLINA', tarde:'ALVARO', cierre:'CECI'}
+  {mañana:'CAROLINA', tarde:'ALVARO', cierre:'CECI'},
+  {mañana:'ALVARO', tarde:'CAROLINA', cierre:'CECI'}
 ];
 
 function getHorariosIS(fecha) {
   var dow = fecha.getDay(); // 1=L, 2=M, 3=X, 4=J, 5=V
   if (dow < 1 || dow > 5) return {};
   
-  // Calcular semana (ciclo 4) desde 28 feb 2026 (alineado con FdS)
-  // Usar solo año/mes/día para evitar problemas de zona horaria
-  var inicioYear = 2026, inicioMonth = 2, inicioDay = 28; // 28 feb 2026
-  var inicio = new Date(inicioYear, inicioMonth - 1, inicioDay);
-  var fechaNorm = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-  var diffDias = Math.round((fechaNorm - inicio) / (24 * 60 * 60 * 1000));
-  var semIdx = Math.floor(diffDias / 7) % 4;
-  if (semIdx < 0) semIdx = ((semIdx % 4) + 4) % 4;
+  // Ciclo 4 semanas basado en número de semana ISO
+  var numSem = getNumSemana(fecha);
+  var semIdx = (numSem - 1) % 4;
   
   var rot = ROTACION_IS[semIdx];
   var horarios = {};
@@ -671,11 +666,8 @@ function formatFechaLocal(f){var y=f.getFullYear(),m=f.getMonth()+1,d=f.getDate(
 function getWeekNumber(d){var date=new Date(d.getTime());date.setHours(0,0,0,0);date.setDate(date.getDate()+3-(date.getDay()+6)%7);var week1=new Date(date.getFullYear(),0,4);return 1+Math.round(((date.getTime()-week1.getTime())/86400000-3+(week1.getDay()+6)%7)/7);}
 function getNumSemana(f){var d=new Date(Date.UTC(f.getFullYear(),f.getMonth(),f.getDate()));var dn=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dn);var ys=new Date(Date.UTC(d.getUTCFullYear(),0,1));return Math.ceil((((d-ys)/86400000)+1)/7);}
 function getSemanaAB(f){
-  var ini=new Date(2026,1,28);
-  var fechaNorm=new Date(f.getFullYear(),f.getMonth(),f.getDate());
-  var diffDias=Math.round((fechaNorm-ini)/(24*60*60*1000));
-  var diffSemanas=Math.floor(diffDias/7);
-  return diffSemanas%2===0?'A':'B';
+  var numSem=getNumSemana(f);
+  return numSem%2===1?'A':'B';
 }
 function getFdsRotacion(f){var ini=new Date(2026,1,28);var sem=Math.floor((f-ini)/(7*24*60*60*1000));var rot=((sem%3)+3)%3;return rot===0?3:rot;}
 function getFranja(e,s){if(e<7&&s<=13)return'descarga';if(s<=15)return'mañanas';if(e>=16)return'cierre';return'tardes';}
