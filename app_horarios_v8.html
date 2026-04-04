@@ -436,7 +436,7 @@ var EMPLEADOS_GV = {
   VANESA:{alias:'VANESA',nombre:'Vanesa',apellidos:'Ortega',dni:'22334455L',telefono:'612012012',email:'vanesa@kira.com',fechaAlta:'2022-03-01',contrato:25,tienda:'ambas',franja:'mañanas',restriccion:'',color:'#2e7d32'},
   MORILLA:{alias:'MORILLA',nombre:'José',apellidos:'Morilla',dni:'33445566M',telefono:'612013013',email:'morilla@kira.com',fechaAlta:'2022-06-15',contrato:25,tienda:'ambas',franja:'tardes',restriccion:'',color:'#e65100'},
   ALFREDO:{alias:'ALFREDO',nombre:'Alfredo',apellidos:'García',dni:'44556677N',telefono:'612014014',email:'alfredo@kira.com',fechaAlta:'2023-01-10',contrato:15,tienda:'granvia',franja:'tardes',restriccion:'',color:'#e65100'},
-  ALEXVERA:{alias:'ALEX VERA',nombre:'Alejandro',apellidos:'Vera',dni:'55667788O',telefono:'612015015',email:'alexvera@kira.com',fechaAlta:'2023-03-01',contrato:15,tienda:'granvia',franja:'tardes',restriccion:'',color:'#e65100'}
+  'ALEX VERA':{alias:'ALEX VERA',nombre:'Alejandro',apellidos:'Vera',dni:'55667788O',telefono:'612015015',email:'alexvera@kira.com',fechaAlta:'2023-03-01',contrato:15,tienda:'granvia',franja:'tardes',restriccion:'',color:'#e65100'}
 };
 var HORARIOS_GV = {
   A:{LJ:{LETI:[6,10.5],ANTONIO:[6,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]},V:{LETI:[5,9.5],ANTONIO:[5,9.5],EVA:[7,15],SARA:[9,14.5],ELI:[9.5,15],EDU:[10.5,15],VANESA:[10.5,14],SILVIA:[14,18.5],MORILLA:[15,18.5],FRANCIS:[16.75,22.25],ALEX:[17.75,22.25],ABDEL:[17.75,22.25],DAVID:[17.75,22.25]}},
@@ -458,7 +458,7 @@ var MINIMOS_FDS = {
 // Rotación FDS Gran Vía - cálculo dinámico
 // Descarga A=DAVID, B=LETI, C=EDU - ciclo 3: SAB_M(descarga) -> DOM_T -> SAB_T
 // Rotación 1-7: FRANCIS, ALEX, SILVIA, SARA, MORILLA, VANESA, ABDEL - ciclo 7: SAB_M(2) -> DOM_M(2) -> DOM_T(2) -> SAB_T(1)
-// FIJOS: ANTONIO (sab mañana), ELI (dom mañana), ALFREDO+ALEXVERA (sab/dom tarde)
+// FIJOS: ANTONIO (sab mañana), ELI (dom mañana), ALFREDO+ALEX VERA (sab/dom tarde)
 var DESCARGA_GV = ['DAVID','LETI','EDU']; // A, B, C
 var ROTACION_GV = ['FRANCIS','ALEX','SILVIA','SARA','MORILLA','VANESA','ABDEL']; // 1-7
 
@@ -493,9 +493,9 @@ function getFdsGV(fecha) {
   result.SAB_M['ANTONIO'] = [5, 13];
   result.DOM_M['ELI'] = [7.25, 14.75];
   result.SAB_T['ALFREDO'] = [14.75, 22.25];
-  result.SAB_T['ALEXVERA'] = [14.75, 22.25];
+  result.SAB_T['ALEX VERA'] = [14.75, 22.25];
   result.DOM_T['ALFREDO'] = [14.75, 22.25];
-  result.DOM_T['ALEXVERA'] = [14.75, 22.25];
+  result.DOM_T['ALEX VERA'] = [14.75, 22.25];
   
   // Rotación A, B, C (DAVID, LETI, EDU) - ciclo 3
   for (var i = 0; i < 3; i++) {
@@ -661,6 +661,7 @@ var mesActual=2,añoActual=2026,tiendaActual='granvia';
 var ausenciasGV=[],ausenciasIS=[],sustituciones=[];
 var pasoActual=1,seleccionesDias={},empleadoViendo=null;
 function formatHora(h){var hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+':'+(mm<10?'0':'')+mm;}
+function formatFechaES(str){if(!str||str.indexOf('-')===-1)return str;var p=str.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 function parseFechaLocal(str){var p=str.split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));}
 function formatFechaLocal(f){var y=f.getFullYear(),m=f.getMonth()+1,d=f.getDate();return y+'-'+(m<10?'0':'')+m+'-'+(d<10?'0':'')+d;}
 function getWeekNumber(d){var date=new Date(d.getTime());date.setHours(0,0,0,0);date.setDate(date.getDate()+3-(date.getDay()+6)%7);var week1=new Date(date.getFullYear(),0,4);return 1+Math.round(((date.getTime()-week1.getTime())/86400000-3+(week1.getDay()+6)%7)/7);}
@@ -1187,7 +1188,7 @@ function verEmpleado(alias){
   html+='<div class="ficha-campo"><label>Teléfono</label><span>'+e.telefono+'</span></div>';
   html+='<div class="ficha-campo"><label>Email</label><span>'+e.email+'</span></div></div>';
   html+='<div class="ficha-grupo"><h4>Laboral</h4>';
-  html+='<div class="ficha-campo"><label>Alta</label><span>'+e.fechaAlta+'</span></div>';
+  html+='<div class="ficha-campo"><label>Alta</label><span>'+formatFechaES(e.fechaAlta)+'</span></div>';
   html+='<div class="ficha-campo"><label>Contrato</label><span>'+e.contrato+'h/sem</span></div>';
   html+='<div class="ficha-campo"><label>Tienda</label><span>'+tiendaTxt[e.tienda]+'</span></div>';
   html+='<div class="ficha-campo"><label>Franja</label><span>'+(e.franja||'--')+'</span></div>';
@@ -1222,7 +1223,7 @@ function renderAusencias(){
   var tipoTxt={vacaciones:'🏖️ Vacaciones',baja:'🏥 Baja',permiso:'📅 Permiso'};
   var html='';
   for(var i=0;i<aus.length;i++){var a=aus[i];
-    html+='<div class="ausencia-card"><div><div class="nombre">'+a.empleado+'</div><div class="detalle">'+(tipoTxt[a.tipo]||a.tipo)+'</div><div class="fechas">'+a.desde+' → '+a.hasta+'</div></div>';
+    html+='<div class="ausencia-card"><div><div class="nombre">'+a.empleado+'</div><div class="detalle">'+(tipoTxt[a.tipo]||a.tipo)+'</div><div class="fechas">'+formatFechaES(a.desde)+' → '+formatFechaES(a.hasta)+'</div></div>';
     html+='<button class="btn btn-danger btn-sm" onclick="cancelarAusencia('+i+')">Cancelar</button></div>';
   }
   lista.innerHTML=html||'<div class="empty-state"><p>No hay ausencias en '+(tiendaActual==='granvia'?'Gran Vía':'Isabel')+'</p></div>';
@@ -1309,7 +1310,7 @@ function pasoSiguiente(){
   var tipoTxt={vacaciones:'Vacaciones',baja:'Baja',permiso:'Permiso'};
   if(pasoActual===1){if(!emp){alert('Selecciona empleado');return;}document.getElementById('resumen-paso2').innerHTML='<strong>'+emp+'</strong>';pasoActual=2;actualizarPasos();}
   else if(pasoActual===2){if(!tipo){alert('Selecciona motivo');return;}document.getElementById('resumen-paso3').innerHTML='<strong>'+emp+'</strong> · '+tipoTxt[tipo];pasoActual=3;actualizarPasos();}
-  else if(pasoActual===3){if(!desde||!hasta){alert('Selecciona fechas');return;}if(desde>hasta){alert('Fechas incorrectas');return;}document.getElementById('resumen-paso4').innerHTML='<strong>'+emp+'</strong> · '+tipoTxt[tipo]+' · '+desde+' al '+hasta;generarDiasSust(emp,desde,hasta);pasoActual=4;actualizarPasos();}
+  else if(pasoActual===3){if(!desde||!hasta){alert('Selecciona fechas');return;}if(desde>hasta){alert('Fechas incorrectas');return;}document.getElementById('resumen-paso4').innerHTML='<strong>'+emp+'</strong> · '+tipoTxt[tipo]+' · '+formatFechaES(desde)+' al '+formatFechaES(hasta);generarDiasSust(emp,desde,hasta);pasoActual=4;actualizarPasos();}
   else if(pasoActual===4){generarResumenFinal();pasoActual=5;actualizarPasos();}
   else if(pasoActual===5){confirmarAusencia();}
 }
@@ -1542,7 +1543,7 @@ function generarResumenFinal(){
   var html='<h4>✓ Resumen de ausencia</h4>';
   html+='<div class="resumen-item"><span>Empleado</span><strong>'+emp+'</strong></div>';
   html+='<div class="resumen-item"><span>Motivo</span><strong>'+tipoTxt[tipo]+'</strong></div>';
-  html+='<div class="resumen-item"><span>Período</span><strong>'+desde+' al '+hasta+'</strong></div>';
+  html+='<div class="resumen-item"><span>Período</span><strong>'+formatFechaES(desde)+' al '+formatFechaES(hasta)+'</strong></div>';
   var numSust=Object.keys(seleccionesDias).length;
   html+='<div class="resumen-item"><span>Sustituciones</span><strong>'+numSust+' turno(s) cubiertos</strong></div>';
   for(var key in seleccionesDias){
@@ -1742,7 +1743,7 @@ function verDetalleVacaciones(alias, year) {
   var html = '<table class="control-table"><thead><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th></tr></thead><tbody>';
   for (var i = 0; i < vac.detalle.length; i++) {
     var d = vac.detalle[i];
-    html += '<tr><td>' + (tipoTxt[d.tipo] || d.tipo) + '</td><td>' + d.desde + '</td><td>' + d.hasta + '</td><td>' + d.dias + '</td></tr>';
+    html += '<tr><td>' + (tipoTxt[d.tipo] || d.tipo) + '</td><td>' + formatFechaES(d.desde) + '</td><td>' + formatFechaES(d.hasta) + '</td><td>' + d.dias + '</td></tr>';
   }
   html += '</tbody></table>';
   html += '<div style="margin-top:16px;padding:12px;background:#f5f5f5;border-radius:6px">';
@@ -1775,7 +1776,7 @@ function renderTablaFaltas(year) {
     
     html += '<tr>';
     html += '<td><strong>' + f.empleado + '</strong></td>';
-    html += '<td>' + f.fecha + '</td>';
+    html += '<td>' + formatFechaES(f.fecha) + '</td>';
     html += '<td class="' + tipoClass + '">' + tipoTxt + '</td>';
     html += '<td>' + (f.motivo || '-') + '</td>';
     html += '<td><button class="btn-delete" onclick="eliminarFalta(' + i + ')" title="Eliminar">🗑️</button></td>';
