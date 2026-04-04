@@ -100,9 +100,9 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
 .aviso-solapamiento:hover { background: #d32f2f; }
 .aviso-minimos { background: #ff9800; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 8px; font-weight: 700; margin-top: 4px; cursor: pointer; }
 .aviso-minimos:hover { background: #f57c00; }
-.aviso-sin-cubrir { background: #e53935; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 8px; font-weight: 700; margin-top: 4px; cursor: pointer; animation: pulso 2s infinite; }
-.aviso-sin-cubrir:hover { background: #c62828; }
-@keyframes pulso { 0%,100%{opacity:1} 50%{opacity:0.7} }
+.aviso-sin-cubrir { background: #e53935; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 8px; font-weight: 700; margin-top: 4px; cursor: pointer; animation: centelleo 1s infinite; box-shadow: 0 0 4px rgba(229,57,53,0.6); }
+.aviso-sin-cubrir:hover { background: #c62828; box-shadow: 0 0 8px rgba(229,57,53,0.9); }
+@keyframes centelleo { 0%,100%{opacity:1;box-shadow:0 0 4px rgba(229,57,53,0.6)} 50%{opacity:0.5;box-shadow:0 0 12px rgba(229,57,53,1)} }
 .seccion-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .seccion-header h2 { font-size: 18px; font-weight: 600; }
 .empleados-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
@@ -1548,6 +1548,14 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
 function seleccionarCandidato(fecha,alias){
   if(seleccionesDias[fecha]===alias){delete seleccionesDias[fecha];}
   else{seleccionesDias[fecha]=alias;}
+  // Si estamos en el modal de asignar desde calendario, regenerar ahí
+  if(document.getElementById('modal-asignar-sust').classList.contains('active')){
+    var body=document.getElementById('asignar-sust-body');
+    var empAus=body.getAttribute('data-ausente');
+    var turnoFds=body.getAttribute('data-turnofds')||null;
+    abrirAsignarSustituto(fecha,empAus,turnoFds);
+    return;
+  }
   var emp=document.getElementById('ausencia-empleado').value;
   var desde=document.getElementById('ausencia-desde').value;
   var hasta=document.getElementById('ausencia-hasta').value;
@@ -1558,6 +1566,13 @@ function seleccionarCandidatoFds(fecha,turnoKey,alias){
   var selKey=fecha+'-'+turnoKey;
   if(seleccionesDias[selKey]===alias){delete seleccionesDias[selKey];}
   else{seleccionesDias[selKey]=alias;}
+  // Si estamos en el modal de asignar desde calendario, regenerar ahí
+  if(document.getElementById('modal-asignar-sust').classList.contains('active')){
+    var body=document.getElementById('asignar-sust-body');
+    var empAus=body.getAttribute('data-ausente');
+    abrirAsignarSustituto(fecha,empAus,turnoKey);
+    return;
+  }
   var emp=document.getElementById('ausencia-empleado').value;
   var desde=document.getElementById('ausencia-desde').value;
   var hasta=document.getElementById('ausencia-hasta').value;
