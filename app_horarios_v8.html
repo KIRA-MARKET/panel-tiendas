@@ -318,6 +318,7 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
       </div>
     </div>
     <button class="btn" style="background:#ff9800;color:#fff" onclick="calcularSustituciones()">⚡ Calcular sustituciones</button>
+    <button class="btn" style="background:#5c6bc0;color:#fff" onclick="auditarHorarios()">🔍 Auditar</button>
     <button class="btn btn-primary" onclick="abrirModalAusencia()">+ Ausencia</button>
     <button class="btn btn-ghost" onclick="abrirModalEmpleado()">+ Empleado</button>
   </div>
@@ -432,6 +433,13 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
       <button class="btn" style="background:#ff9800;color:#fff" onclick="aplicarSeleccionadas()">✓ Aplicar seleccionadas</button>
       <button class="btn btn-success" onclick="aplicarPropuestaSustituciones()">✓ Aplicar todas</button>
     </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-auditoria">
+  <div class="modal" style="max-width:750px">
+    <div class="modal-header"><h3>🔍 Auditoría de horarios</h3><button class="modal-close" onclick="cerrarModal('modal-auditoria')">×</button></div>
+    <div class="modal-body" id="auditoria-body" style="max-height:500px;overflow-y:auto"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-auditoria')">Cerrar</button></div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-detalle-vacaciones">
@@ -4060,6 +4068,138 @@ function aplicarPropuestaSustituciones() {
   renderAusencias();
   syncSustituciones();
   alert(aplicadas.length + ' sustituciones aplicadas correctamente.');
+}
+
+// ==================== AUDITOR DE HORARIOS ====================
+function auditarHorarios() {
+  var alertas = [];
+  var tiendaOriginal = tiendaActual;
+  var tiendas = ['granvia', 'isabel'];
+  var tiendaNombres = {granvia: 'Gran Vía', isabel: 'Isabel'};
+
+  var inicio = new Date(añoActual, mesActual, 1);
+  var fin = new Date(añoActual, mesActual + 1, 0);
+
+  for (var ti = 0; ti < tiendas.length; ti++) {
+    tiendaActual = tiendas[ti];
+
+    for (var d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+      var fecha = new Date(d);
+      var dow = fecha.getDay();
+      if (dow === 0) continue; // Domingos se auditan con sábado
+      var fs = formatFechaLocal(fecha);
+
+      if (dow >= 1 && dow <= 5) {
+        // L-V: analizar cobertura por intervalos de 15 min
+        var semAB = getSemanaAB(fecha);
+        var horarios;
+        if (tiendaActual === 'granvia') horarios = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+        else horarios = getHorariosIS(fecha);
+        if (!horarios) continue;
+
+        var horariosAjustados = aplicarModificacionesHorario(horarios, fecha);
+
+        // Construir cobertura cada 15 min (5:00-22:30)
+        for (var h = 5; h < 22.5; h += 0.25) {
+          var presentes = [];
+          for (var emp in horariosAjustados) {
+            if (estaAusente(emp, fecha)) {
+              // Buscar sustituto
+              var sust = null;
+              for (var si = 0; si < sustituciones.length; si++) {
+                var s = sustituciones[si];
+                if (s.ausente === emp && s.fecha === fs && s.tienda === tiendaActual && !s.turnoFds) { sust = s; break; }
+              }
+              if (sust && h >= sust.entrada && h < sust.salida) {
+                presentes.push(sust.sustituto);
+              }
+              continue;
+            }
+            // Comprobar si está sustituyendo en otro lado
+            var sustInfo = estaSustituyendo(emp, fecha, '');
+            if (sustInfo.sustituyendo) continue;
+
+            var turno = horariosAjustados[emp];
+            if (h >= turno[0] && h < turno[1]) {
+              presentes.push(emp);
+            }
+          }
+
+          // Detectar problemas
+          if (presentes.length === 1 && h >= 7 && h < 22) {
+            // Solo 1 persona en horario comercial
+            var yaReportado = false;
+            for (var a = alertas.length - 1; a >= 0; a--) {
+              if (alertas[a].tipo === 'solo' && alertas[a].fecha === fs && alertas[a].tienda === tiendaActual && alertas[a].emp === presentes[0] && alertas[a].hastaH === h) {
+                alertas[a].hastaH = h + 0.25;
+                yaReportado = true; break;
+              }
+            }
+            if (!yaReportado) {
+              alertas.push({tipo:'solo', tienda:tiendaActual, fecha:fs, emp:presentes[0], desdeH:h, hastaH:h+0.25});
+            }
+          }
+          if (presentes.length === 0 && h >= 6 && h < 22.25) {
+            var yaReportado = false;
+            for (var a = alertas.length - 1; a >= 0; a--) {
+              if (alertas[a].tipo === 'vacio' && alertas[a].fecha === fs && alertas[a].tienda === tiendaActual && alertas[a].hastaH === h) {
+                alertas[a].hastaH = h + 0.25;
+                yaReportado = true; break;
+              }
+            }
+            if (!yaReportado) {
+              alertas.push({tipo:'vacio', tienda:tiendaActual, fecha:fs, desdeH:h, hastaH:h+0.25});
+            }
+          }
+        }
+      }
+    }
+  }
+  tiendaActual = tiendaOriginal;
+
+  // Mostrar resultados
+  var html = '';
+  if (alertas.length === 0) {
+    html = '<div style="text-align:center;padding:30px;color:#2e7d32"><strong>✓ Sin anomalías detectadas en ' + MESES[mesActual] + '</strong></div>';
+  } else {
+    html += '<div style="margin-bottom:10px;padding:8px;background:#f5f5f5;border-radius:6px;font-size:12px">';
+    html += '<strong>' + alertas.length + '</strong> anomalía(s) en ' + MESES[mesActual] + ' ' + añoActual;
+    html += '</div>';
+
+    // Agrupar por tipo
+    var solos = alertas.filter(function(a){return a.tipo==='solo';});
+    var vacios = alertas.filter(function(a){return a.tipo==='vacio';});
+
+    if (vacios.length > 0) {
+      html += '<div style="margin-bottom:12px"><div style="font-weight:700;color:#c62828;margin-bottom:6px">🔴 Tienda sin cobertura</div>';
+      for (var i = 0; i < vacios.length; i++) {
+        var a = vacios[i];
+        var fechaObj = parseFechaLocal(a.fecha);
+        html += '<div style="font-size:11px;padding:3px 8px;margin-bottom:2px;background:#ffebee;border-radius:4px">';
+        html += '<strong>' + tiendaNombres[a.tienda] + '</strong> — ' + DIAS[fechaObj.getDay()] + ' ' + formatFechaES(a.fecha);
+        html += ' · <span style="color:#c62828">' + formatHora(a.desdeH) + '-' + formatHora(a.hastaH) + ' sin nadie</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    if (solos.length > 0) {
+      html += '<div style="margin-bottom:12px"><div style="font-weight:700;color:#e65100;margin-bottom:6px">🟠 Empleado solo en tienda</div>';
+      for (var i = 0; i < solos.length; i++) {
+        var a = solos[i];
+        var fechaObj = parseFechaLocal(a.fecha);
+        html += '<div style="font-size:11px;padding:3px 8px;margin-bottom:2px;background:#fff3e0;border-radius:4px">';
+        html += '<strong>' + tiendaNombres[a.tienda] + '</strong> — ' + DIAS[fechaObj.getDay()] + ' ' + formatFechaES(a.fecha);
+        html += ' · <span style="color:#e65100">' + a.emp + ' solo ' + formatHora(a.desdeH) + '-' + formatHora(a.hastaH) + '</span>';
+        html += ' <span style="color:#888">(' + ((a.hastaH-a.desdeH)*60) + ' min)</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+  }
+
+  document.getElementById('auditoria-body').innerHTML = html;
+  abrirModal('modal-auditoria');
 }
 
 // Inicializar
