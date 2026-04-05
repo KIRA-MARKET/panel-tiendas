@@ -1271,30 +1271,9 @@ function estaSustituyendo(emp, fecha, franjaOriginal) {
     var sust = sustituciones[i];
     if(sust.sustituto === emp && sust.fecha === fs) {
       if(sust.tienda === tiendaActual) {
-        // Sustitución en esta misma tienda: solo ocultar si hay solapamiento horario
-        var dow = fecha.getDay();
-        var horarioOriginal = null;
-        if(dow >= 1 && dow <= 5) {
-          if(tiendaActual === 'granvia') {
-            var semAB = getSemanaAB(fecha);
-            var h = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
-            if(h && h[emp]) horarioOriginal = h[emp];
-          } else {
-            var h = getHorariosIS(fecha);
-            if(h && h[emp]) horarioOriginal = h[emp];
-          }
-        }
-        if(horarioOriginal && !(sust.salida <= horarioOriginal[0] || horarioOriginal[1] <= sust.entrada)) {
-          // Hay solapamiento entre turno original y sustitución → ocultar
-          var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
-          return { sustituyendo: true, a: sust.ausente, franja: frSust };
-        }
-        if(!horarioOriginal) {
-          // No tiene turno original hoy (ej: solo trabaja ciertos días), ocultar
-          var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
-          return { sustituyendo: true, a: sust.ausente, franja: frSust };
-        }
-        // No hay solapamiento → no ocultar (trabaja ambos turnos)
+        // Sustitución en esta misma tienda → siempre ocultar del turno original
+        var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
+        return { sustituyendo: true, a: sust.ausente, franja: frSust };
       }
       // Compartido sustituyendo en la OTRA tienda: solo ocultar si hay solapamiento horario
       var emps = tiendaActual === 'granvia' ? EMPLEADOS_GV : EMPLEADOS_IS;
