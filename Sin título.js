@@ -256,7 +256,8 @@ var HOJAS = {
   ausencias: 'Ausencias',
   sustituciones: 'Sustituciones',
   modificaciones: 'Modificaciones',
-  faltas: 'Faltas'
+  faltas: 'Faltas',
+  historialPropuestas: 'HistorialPropuestas'
 };
 
 function doGet(e) { return handleRequest(e); }

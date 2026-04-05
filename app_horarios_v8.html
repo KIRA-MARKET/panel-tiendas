@@ -427,6 +427,7 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
     <div class="modal-body" id="auto-sust-body" style="max-height:500px;overflow-y:auto"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="cerrarModal('modal-auto-sust')">Cancelar</button>
+      <button class="btn" style="background:#ff9800;color:#fff" onclick="aplicarSeleccionadas()">✓ Aplicar seleccionadas</button>
       <button class="btn btn-success" onclick="aplicarPropuestaSustituciones()">✓ Aplicar todas</button>
     </div>
   </div>
@@ -1921,7 +1922,9 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
     var yaTrabaja=horarios&&horarios[alias];
     var error='';
     var avisoSolape='';
-    if(yaTrabaja){
+    // CAROLINA no puede cierres en Isabel
+    if(alias==='CAROLINA'&&tiendaActual==='isabel'&&franja==='cierre'){error='No puede cierres (conciliación)';}
+    if(yaTrabaja && !error){
       var suFranja=getFranja(yaTrabaja[0],yaTrabaja[1]);
       if(suFranja===franja){error='Ya trabaja en '+franja;}
     }
@@ -1982,7 +1985,12 @@ function generarCandidatosFds(fecha,empAusente,turnoAusente,turnoKey,fs){
     var e=emps[alias];
     var error='';
     var avisoSolape='';
-    
+
+    // EVA no trabaja FdS
+    if(alias==='EVA'){error='No trabaja fines de semana';}
+    // Compartidos GV no pueden sustituir en FdS de Isabel
+    if(!error && tiendaActual==='isabel' && e.tienda==='ambas'){error='Compartido GV - no FdS Isabel';}
+
     // Verificar si ya trabaja en este turno FdS
     var yaTrabaja=fdsData[turnoKey]&&fdsData[turnoKey][alias];
     if(yaTrabaja){error='Ya trabaja en este turno';}
@@ -3289,6 +3297,46 @@ function syncSustituciones() {
   guardarEnSheets('sustituciones', h, sustituciones);
 }
 
+function guardarHistorialPropuestas(propuestas, aplicadas) {
+  var h = ['fechaCalculo','tienda','fecha','ausente','turno','propuestoMotor','elegidoUsuario','decision'];
+  var rows = [];
+  var ahora = new Date().toISOString().slice(0, 19);
+  for (var i = 0; i < propuestas.length; i++) {
+    var p = propuestas[i];
+    var turno = p.turnoFds || p.franja;
+    // Buscar si fue aplicada y con qué sustituto
+    var aplicada = null;
+    for (var j = 0; j < aplicadas.length; j++) {
+      var a = aplicadas[j];
+      if (a.fecha === p.fecha && a.ausente === p.ausente && a.tienda === p.tienda) {
+        aplicada = a; break;
+      }
+    }
+    var decision, elegido;
+    if (!aplicada) {
+      decision = 'rechazada';
+      elegido = '';
+    } else if (aplicada.sustituto === p.sustituto) {
+      decision = 'aceptada';
+      elegido = p.sustituto;
+    } else {
+      decision = 'cambiada';
+      elegido = aplicada.sustituto;
+    }
+    rows.push({fechaCalculo:ahora, tienda:p.tienda, fecha:p.fecha, ausente:p.ausente, turno:turno, propuestoMotor:p.sustituto, elegidoUsuario:elegido, decision:decision});
+  }
+  if (rows.length > 0) {
+    // Append: leer existentes y añadir
+    fetch(SHEETS_API + '?action=readAll').then(function(r){return r.json();}).then(function(data){
+      var existentes = data.historialPropuestas || [];
+      var todas = existentes.concat(rows);
+      guardarEnSheets('historialPropuestas', h, todas);
+    }).catch(function(){
+      guardarEnSheets('historialPropuestas', h, rows);
+    });
+  }
+}
+
 function syncModificaciones() {
   var h = ['tienda','empleado','fecha','turnoFds','entradaOriginal','salidaOriginal','nuevaEntrada','nuevaSalida','motivo'];
   guardarEnSheets('modificaciones', h, modificacionesHorario);
@@ -3319,7 +3367,6 @@ function escanearSinCubrir() {
     for (var d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
       var fecha = new Date(d);
       var dow = fecha.getDay();
-      if (dow === 0) continue; // Domingo se procesa con sábado
 
       var items = detectarSinCubrir(fecha);
       for (var i = 0; i < items.length; i++) {
@@ -3339,10 +3386,12 @@ function escanearSinCubrir() {
   }
   tiendaActual = tiendaOriginal;
 
-  // Ordenar: primero bajo mínimos, luego por fecha
+  // Ordenar: 1) por fecha, 2) GV antes que Isabel (compartidos priorizan GV), 3) bajo mínimos primero
   sinCubrir.sort(function(a, b) {
+    if (a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1;
+    if (a.tienda !== b.tienda) return a.tienda === 'granvia' ? -1 : 1;
     if (a.bajoMinimos !== b.bajoMinimos) return a.bajoMinimos ? -1 : 1;
-    return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0;
+    return 0;
   });
 
   return sinCubrir;
@@ -3358,18 +3407,32 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
   var empsOtra = turno.tienda === 'granvia' ? EMPLEADOS_IS : EMPLEADOS_GV;
   var todosEmps = {};
   for (var k in emps) todosEmps[k] = emps[k];
-  for (var k in empsOtra) { if (empsOtra[k].tienda === 'ambas' && !todosEmps[k]) todosEmps[k] = empsOtra[k]; }
+  // Compartidos de GV solo para Isabel L-V (NO para FdS Isabel)
+  var esFdsIsabel = turno.turnoFds && turno.tienda === 'isabel';
+  if (!esFdsIsabel) {
+    for (var k in empsOtra) { if (empsOtra[k].tienda === 'ambas' && !todosEmps[k]) todosEmps[k] = empsOtra[k]; }
+  }
 
   var candidatos = [];
   var dow = fecha.getDay();
+  var esFds = (dow === 0 || dow === 6);
 
   for (var alias in todosEmps) {
     if (alias === turno.emp) continue;
     var e = todosEmps[alias];
     var error = '';
 
+    // EVA no puede trabajar FdS
+    if (alias === 'EVA' && esFds) { error = 'no trabaja FdS'; }
+
+    // CAROLINA no puede hacer cierres en Isabel
+    if (!error && alias === 'CAROLINA' && turno.tienda === 'isabel' && turno.franja === 'cierre') { error = 'no puede cierres (conciliación)'; }
+
+    // Compartidos GV no pueden sustituir en FdS de Isabel
+    if (!error && esFdsIsabel && e.tienda === 'ambas') { error = 'compartido GV no FdS Isabel'; }
+
     // Ausente
-    if (estaAusente(alias, fecha)) { error = 'ausente'; }
+    if (!error && estaAusente(alias, fecha)) { error = 'ausente'; }
 
     // Ya asignado como sustituto en otra propuesta para este día
     if (!error) {
@@ -3454,7 +3517,29 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
       var horas = calcularHorasSemanales(alias, lunes);
       var contratoTienda = turno.tienda === 'granvia' ? horas.contratoGV : horas.contratoIS;
       var totalTienda = turno.tienda === 'granvia' ? horas.totalGV : horas.totalIS;
-      var margen = contratoTienda - totalTienda; // Cuanto más margen, mejor candidato
+      var margen = contratoTienda - totalTienda;
+
+      // FdS: calcular excedente del turno de origen y penalizar DOM_T
+      var excedenteTurnoOrigen = 99; // Alto = no viene de ningún turno FdS
+      var vieneDeDOMT = false;
+      if (turno.turnoFds) {
+        var fdsOrigen = turno.tienda === 'granvia' ? getFdsGV(fecha) : getFdsIS(fecha);
+        var turnosFds = ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T'];
+        for (var tf = 0; tf < turnosFds.length; tf++) {
+          if (turnosFds[tf] === turno.turnoFds) continue;
+          if (fdsOrigen[turnosFds[tf]] && fdsOrigen[turnosFds[tf]][alias]) {
+            var actualOrigen = 0;
+            for (var e3 in fdsOrigen[turnosFds[tf]]) { if (!estaAusente(e3, fecha)) actualOrigen++; }
+            var minOrigen = MINIMOS_FDS[turno.tienda] ? MINIMOS_FDS[turno.tienda][turnosFds[tf]] : 2;
+            excedenteTurnoOrigen = actualOrigen - minOrigen;
+            if (turnosFds[tf] === 'DOM_T') vieneDeDOMT = true;
+            break;
+          }
+        }
+      }
+
+      // Es empleado propio de la tienda o compartido?
+      var esPropio = (e.tienda === turno.tienda) || (e.tienda !== 'ambas' && turno.tienda === 'isabel');
 
       candidatos.push({
         alias: alias,
@@ -3462,14 +3547,20 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
         salida: salidaSust,
         margen: margen,
         dejaBajoMin: dejaBajoMin,
+        excedente: excedenteTurnoOrigen,
+        vieneDeDOMT: vieneDeDOMT,
+        esPropio: esPropio,
         color: e.color || '#666'
       });
     }
   }
 
-  // Ordenar: primero los que NO dejan bajo mínimos, luego por mayor margen de horas
+  // Ordenar: 1) no deja bajo mínimos, 2) empleados propios primero, 3) no viene de DOM_T, 4) mayor excedente, 5) mayor margen horas
   candidatos.sort(function(a, b) {
     if (a.dejaBajoMin !== b.dejaBajoMin) return a.dejaBajoMin ? 1 : -1;
+    if (a.esPropio !== b.esPropio) return a.esPropio ? -1 : 1;
+    if (a.vieneDeDOMT !== b.vieneDeDOMT) return a.vieneDeDOMT ? 1 : -1;
+    if (a.excedente !== b.excedente) return b.excedente - a.excedente;
     return b.margen - a.margen;
   });
 
@@ -3523,7 +3614,7 @@ function calcularSustituciones() {
         franja: turno.turnoFds ? '' : turno.franja,
         turnoFds: turno.turnoFds || '',
         bajoMinimos: turno.bajoMinimos,
-        alternativas: candidatos.slice(1, 4) // Guardar alternativas
+        alternativas: candidatos.slice(1) // Todos los candidatos válidos como alternativas
       };
       _propuestaSustituciones.push(propuesta);
       sustSimuladas.push(propuesta);
@@ -3568,7 +3659,8 @@ function mostrarPropuestaSustituciones(sinSolucion) {
           var tiendaLabel = p.tienda === 'granvia' ? 'GV' : 'IS';
           var turnoLabel = p.turnoFds ? p.turnoFds.replace('_', ' ') : p.franja;
           html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin-bottom:2px;background:#fff;border-radius:6px;border:1px solid #e0e0e0;font-size:11px">';
-          html += '<div><span style="background:' + (p.tienda === 'granvia' ? '#1a1a2e' : '#4a90d9') + ';color:#fff;padding:1px 5px;border-radius:3px;font-size:9px;margin-right:5px">' + tiendaLabel + '</span>';
+          html += '<div style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="prop-check-' + idx + '" checked style="margin:0">';
+          html += '<span style="background:' + (p.tienda === 'granvia' ? '#1a1a2e' : '#4a90d9') + ';color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">' + tiendaLabel + '</span>';
           html += '<span style="color:#c62828;text-decoration:line-through">' + p.ausente + '</span> → <strong style="color:#2e7d32">' + p.sustituto + '</strong>';
           html += ' <span style="color:#888">(' + turnoLabel + ' · ' + formatHora(p.entrada) + '-' + formatHora(p.salida) + ')</span></div>';
           html += '<div style="display:flex;gap:3px">';
@@ -3629,31 +3721,57 @@ function quitarPropuesta(idx) {
   mostrarPropuestaSustituciones([]);
 }
 
+function aplicarSeleccionadas() {
+  if (_propuestaSustituciones.length === 0) { cerrarModal('modal-auto-sust'); return; }
+
+  var todasPropuestas = _propuestaSustituciones.slice(); // Copia para historial
+  var aplicadas = [];
+  var count = 0;
+  var restantes = [];
+  for (var i = 0; i < _propuestaSustituciones.length; i++) {
+    var checkbox = document.getElementById('prop-check-' + i);
+    if (checkbox && checkbox.checked) {
+      var p = _propuestaSustituciones[i];
+      var sust = {fecha:p.fecha, ausente:p.ausente, sustituto:p.sustituto, entrada:p.entrada, salida:p.salida, franja:p.franja||'', turnoFds:p.turnoFds||'', tienda:p.tienda};
+      sustituciones.push(sust);
+      aplicadas.push(sust);
+      count++;
+    } else {
+      restantes.push(_propuestaSustituciones[i]);
+    }
+  }
+
+  // Guardar historial: propuestas vs decisiones
+  guardarHistorialPropuestas(todasPropuestas, aplicadas);
+
+  _propuestaSustituciones = restantes;
+  cerrarModal('modal-auto-sust');
+  renderCalendario();
+  renderAusencias();
+  syncSustituciones();
+  if (count > 0) alert(count + ' sustituciones aplicadas. Puedes volver a calcular para ver el estado actualizado.');
+}
+
 function aplicarPropuestaSustituciones() {
   if (_propuestaSustituciones.length === 0) { cerrarModal('modal-auto-sust'); return; }
 
-  var count = 0;
+  var aplicadas = [];
   for (var i = 0; i < _propuestaSustituciones.length; i++) {
     var p = _propuestaSustituciones[i];
-    sustituciones.push({
-      fecha: p.fecha,
-      ausente: p.ausente,
-      sustituto: p.sustituto,
-      entrada: p.entrada,
-      salida: p.salida,
-      franja: p.franja || '',
-      turnoFds: p.turnoFds || '',
-      tienda: p.tienda
-    });
-    count++;
+    var sust = {fecha:p.fecha, ausente:p.ausente, sustituto:p.sustituto, entrada:p.entrada, salida:p.salida, franja:p.franja||'', turnoFds:p.turnoFds||'', tienda:p.tienda};
+    sustituciones.push(sust);
+    aplicadas.push(sust);
   }
+
+  // Guardar historial
+  guardarHistorialPropuestas(_propuestaSustituciones, aplicadas);
 
   _propuestaSustituciones = [];
   cerrarModal('modal-auto-sust');
   renderCalendario();
   renderAusencias();
   syncSustituciones();
-  alert(count + ' sustituciones aplicadas correctamente.');
+  alert(aplicadas.length + ' sustituciones aplicadas correctamente.');
 }
 
 // Inicializar
