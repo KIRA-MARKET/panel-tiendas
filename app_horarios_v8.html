@@ -4099,8 +4099,14 @@ function auditarHorarios() {
 
         var horariosAjustados = aplicarModificacionesHorario(horarios, fecha);
 
-        // Construir cobertura cada 15 min (5:00-22:30)
-        for (var h = 5; h < 22.5; h += 0.25) {
+        // Determinar hora inicio real del día (primer turno programado)
+        var horaInicioDia = 22;
+        for (var emp in horariosAjustados) {
+          if (horariosAjustados[emp][0] < horaInicioDia) horaInicioDia = horariosAjustados[emp][0];
+        }
+
+        // Construir cobertura cada 15 min desde inicio real hasta 22:15
+        for (var h = horaInicioDia; h < 22.25; h += 0.25) {
           var presentes = [];
           for (var emp in horariosAjustados) {
             if (estaAusente(emp, fecha)) {
