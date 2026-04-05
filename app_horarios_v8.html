@@ -1263,9 +1263,17 @@ function estaSustituyendo(emp, fecha, franjaOriginal) {
   var fs = formatFechaLocal(fecha);
   for(var i = 0; i < sustituciones.length; i++) {
     var sust = sustituciones[i];
-    if(sust.sustituto === emp && sust.fecha === fs && sust.tienda === tiendaActual) {
-      var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
-      return { sustituyendo: true, a: sust.ausente, franja: frSust };
+    if(sust.sustituto === emp && sust.fecha === fs) {
+      if(sust.tienda === tiendaActual) {
+        // Sustitución en esta misma tienda
+        var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
+        return { sustituyendo: true, a: sust.ausente, franja: frSust };
+      }
+      // Compartido sustituyendo en la OTRA tienda (caso comodín EDU)
+      var emps = tiendaActual === 'granvia' ? EMPLEADOS_GV : EMPLEADOS_IS;
+      if(emps[emp] && emps[emp].tienda === 'ambas') {
+        return { sustituyendo: true, a: sust.ausente, franja: 'otra tienda' };
+      }
     }
   }
   return { sustituyendo: false };
@@ -1950,8 +1958,9 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
     var yaTrabaja=horarios&&horarios[alias];
     var error='';
     var avisoSolape='';
-    // CAROLINA no puede cierres en Isabel
-    if(alias==='CAROLINA'&&tiendaActual==='isabel'&&franja==='cierre'){error='No puede cierres (conciliación)';}
+    // CAROLINA no puede cierres en Isabel (aviso, permite excepción)
+    var avisoCarolina='';
+    if(alias==='CAROLINA'&&tiendaActual==='isabel'&&franja==='cierre'){avisoCarolina='⚠️ Cierre (conciliación)';}
     if(yaTrabaja && !error){
       var suFranja=getFranja(yaTrabaja[0],yaTrabaja[1]);
       if(suFranja===franja){error='Ya trabaja en '+franja;}
@@ -1990,7 +1999,7 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
     if(valido)hayValido=true;
     var selKey=fs;
     var isSelected=seleccionesDias[selKey]===alias;
-    var avisos = [avisoSolape, avisoMinimos].filter(function(a){return a;}).join(' ');
+    var avisos = [avisoSolape, avisoMinimos, avisoCarolina].filter(function(a){return a;}).join(' ');
     html+='<div class="candidato-item'+(valido?'':' invalido')+(isSelected?' selected':'')+'" onclick="'+(valido?'seleccionarCandidato(\''+fs+'\',\''+alias+'\')':'')+'">';
     html+='<div class="candidato-avatar" style="background:'+e.color+'">'+alias.charAt(0)+'</div>';
     html+='<div class="candidato-info"><div class="candidato-nombre">'+alias+(avisos?' <span style="color:#ff5252;font-size:9px">'+avisos+'</span>':'')+'</div>';
@@ -3480,8 +3489,8 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
     // EVA no puede trabajar FdS
     if (alias === 'EVA' && esFds) { error = 'no trabaja FdS'; }
 
-    // CAROLINA no puede hacer cierres en Isabel
-    if (!error && alias === 'CAROLINA' && turno.tienda === 'isabel' && turno.franja === 'cierre') { error = 'no puede cierres (conciliación)'; }
+    // CAROLINA cierres Isabel: aviso, no bloqueo (excepción puntual posible)
+    var avisoCarolinaCierre = (!error && alias === 'CAROLINA' && turno.tienda === 'isabel' && turno.franja === 'cierre');
 
     // Compartidos GV no pueden sustituir en FdS de Isabel
     if (!error && esFdsIsabel && e.tienda === 'ambas') { error = 'compartido GV no FdS Isabel'; }
@@ -3489,12 +3498,19 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
     // Ausente
     if (!error && estaAusente(alias, fecha)) { error = 'ausente'; }
 
-    // Ya asignado como sustituto en otra propuesta para este día
+    // Ya asignado como sustituto en otra propuesta para este día (o fin de semana completo para FdS)
     if (!error) {
       for (var s = 0; s < sustitucionesSimuladas.length; s++) {
         var sim = sustitucionesSimuladas[s];
-        if (sim.sustituto === alias && sim.fecha === turno.fecha) {
-          error = 'ya asignado'; break;
+        if (sim.sustituto === alias) {
+          if (sim.fecha === turno.fecha) { error = 'ya asignado'; break; }
+          // FdS: comprobar todo el fin de semana
+          if (turno.turnoFds && sim.turnoFds) {
+            var fechaTurno = parseFechaLocal(turno.fecha);
+            var fechaSim = parseFechaLocal(sim.fecha);
+            var diffDias = Math.abs(Math.round((fechaTurno - fechaSim) / (24*60*60*1000)));
+            if (diffDias <= 1) { error = 'ya asignado FdS'; break; }
+          }
         }
       }
     }
@@ -3604,6 +3620,7 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
         margen: margen,
         dejaBajoMin: dejaBajoMin,
         tieneSolape: tieneSolape,
+        tieneAviso: avisoCarolinaCierre,
         excedente: excedenteTurnoOrigen,
         vieneDeDOMT: vieneDeDOMT,
         esPropio: esPropio,
@@ -3727,7 +3744,7 @@ function mostrarPropuestaSustituciones(sinSolucion) {
             html += '<option value="' + p.sustituto + '">' + p.sustituto + '</option>';
             for (var a = 0; a < p.alternativas.length; a++) {
               var alt = p.alternativas[a];
-              var avisoAlt = alt.dejaBajoMin ? ' ⚠️min' : (alt.tieneSolape ? ' 🔄solape' : '');
+              var avisoAlt = alt.dejaBajoMin ? ' ⚠️min' : (alt.tieneSolape ? ' 🔄solape' : (alt.tieneAviso ? ' ⚠️concil.' : ''));
               html += '<option value="' + alt.alias + '">' + alt.alias + avisoAlt + '</option>';
             }
             html += '</select>';
@@ -3811,12 +3828,14 @@ function aplicarSeleccionadas() {
     }
   }
 
-  // Pedir motivos de las rechazadas
+  // Pedir motivos individuales de las rechazadas
   if (rechazadas.length > 0) {
-    var motivo = prompt('Has desmarcado ' + rechazadas.length + ' propuesta(s).\n¿Motivo general? (para que el sistema aprenda)\n\nDeja vacío si no quieres comentar.');
-    if (motivo) {
-      for (var r = 0; r < rechazadas.length; r++) {
-        guardarMotivoRechazo(rechazadas[r], motivo);
+    for (var r = 0; r < rechazadas.length; r++) {
+      var rec = rechazadas[r];
+      var turnoLabel = rec.turnoFds || rec.franja;
+      var motivo = prompt('Rechazo ' + (r+1) + '/' + rechazadas.length + ':\n' + rec.ausente + ' → ' + rec.sustituto + ' (' + formatFechaES(rec.fecha) + ', ' + turnoLabel + ')\n\n¿Motivo? (vacío para saltar)');
+      if (motivo) {
+        guardarMotivoRechazo(rec, motivo);
       }
     }
   }
