@@ -3257,32 +3257,30 @@ function exportarPDF(modo) {
     html += '.fds-turno-header { font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,0.1); }';
   }
   
-  // Turnos - colores sólidos para PDF limpio sin artefactos
+  // Turnos - estilo visual como el HTML
   if (modo === 'lv') {
-    html += '.turno { padding: 3px 5px; margin: 0; font-size: 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.3); }';
-    html += '.turno:last-child { border-bottom: none; }';
-    html += '.turno-nombre { font-weight: 700; white-space: nowrap; overflow: hidden; }';
-    html += '.turno-hora { white-space: nowrap; font-size: 7px; }';
+    html += '.turno { padding: 3px 5px; margin-bottom: 1px; border-radius: 2px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; }';
+    html += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
+    html += '.turno-hora { white-space: nowrap; font-size: 7px; opacity: 0.9; }';
   } else {
-    html += '.turno { padding: 5px 8px; margin: 0; font-size: 11px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.3); }';
-    html += '.turno:last-child { border-bottom: none; }';
-    html += '.turno-nombre { font-weight: 700; white-space: nowrap; overflow: hidden; }';
-    html += '.turno-hora { white-space: nowrap; font-size: 9px; }';
+    html += '.turno { padding: 4px 7px; margin-bottom: 2px; border-radius: 3px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; }';
+    html += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
+    html += '.turno-hora { white-space: nowrap; font-size: 9px; opacity: 0.9; }';
   }
-  html += '.turno.descarga { background: #3366aa; color: #fff !important; }';
+  html += '.turno.descarga { background: #2c5aa0; color: #fff !important; }';
   html += '.turno.descarga .turno-nombre, .turno.descarga .turno-hora { color: #fff !important; }';
-  html += '.turno.mañanas { background: #388e3c; color: #fff !important; }';
+  html += '.turno.mañanas { background: #2e7d32; color: #fff !important; }';
   html += '.turno.mañanas .turno-nombre, .turno.mañanas .turno-hora { color: #fff !important; }';
-  html += '.turno.tardes { background: #ef6c00; color: #fff !important; }';
+  html += '.turno.tardes { background: #e65100; color: #fff !important; }';
   html += '.turno.tardes .turno-nombre, .turno.tardes .turno-hora { color: #fff !important; }';
-  html += '.turno.cierre { background: #7b1fa2; color: #fff !important; }';
+  html += '.turno.cierre { background: #6a1b9a; color: #fff !important; }';
   html += '.turno.cierre .turno-nombre, .turno.cierre .turno-hora { color: #fff !important; }';
-  html += '.turno.fds { background: #455a64; color: #fff !important; }';
+  html += '.turno.fds { background: #37474f; color: #fff !important; }';
   html += '.turno.fds .turno-nombre, .turno.fds .turno-hora { color: #fff !important; }';
-  html += '.turno.ausente { opacity: 0.5; text-decoration: line-through; background: #e0e0e0 !important; color: #b71c1c !important; border: 1px dashed #c62828; }';
-  html += '.turno.ausente .turno-nombre, .turno.ausente .turno-hora { color: #b71c1c !important; }';
-  html += '.turno.sustituto { background: #ffc107 !important; color: #1a1a2e !important; font-weight: 700; border-left: 4px solid #ff8f00; }';
-  html += '.turno.sustituto .turno-nombre, .turno.sustituto .turno-hora { color: #1a1a2e !important; }';
+  html += '.turno.ausente { opacity: 0.45; text-decoration: line-through; background: #ffcdd2 !important; color: #c62828 !important; border: 1px dashed #e57373; }';
+  html += '.turno.ausente .turno-nombre, .turno.ausente .turno-hora { color: #c62828 !important; }';
+  html += '.turno.sustituto { background: #ffd600 !important; color: #212121 !important; font-weight: 700; border-left: 3px solid #f57f17; }';
+  html += '.turno.sustituto .turno-nombre, .turno.sustituto .turno-hora { color: #212121 !important; }';
   
   // Leyenda compacta
   html += '.leyenda { display: flex; gap: 15px; justify-content: center; margin-top: 8px; padding: 8px; background: white; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }';
