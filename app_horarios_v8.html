@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KIRA · Gestión de Horarios</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 :root {
   --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -3258,38 +3257,42 @@ function exportarPDF(modo) {
     html += '.fds-turno-header { font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,0.1); }';
   }
   
-  // Turnos - degradados profesionales (renderizado por html2canvas, sin artefactos)
+  // Turnos - colores vivos con borde acento (compatible Chrome PDF, sin artefactos)
   if (modo === 'lv') {
-    html += '.turno { padding: 3px 5px; margin-bottom: 1px; border-radius: 3px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; }';
+    html += '.turno { padding: 3px 5px; margin-bottom: 1px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid transparent; }';
     html += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
-    html += '.turno-hora { white-space: nowrap; font-size: 7px; opacity: 0.9; }';
+    html += '.turno-hora { white-space: nowrap; font-size: 7px; }';
   } else {
-    html += '.turno { padding: 4px 7px; margin-bottom: 2px; border-radius: 4px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; }';
+    html += '.turno { padding: 4px 7px; margin-bottom: 2px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid transparent; }';
     html += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
-    html += '.turno-hora { white-space: nowrap; font-size: 9px; opacity: 0.9; }';
+    html += '.turno-hora { white-space: nowrap; font-size: 9px; }';
   }
-  html += '.turno.descarga { background: linear-gradient(135deg, #2c5aa0 0%, #4a90d9 100%); color: #fff !important; }';
-  html += '.turno.descarga .turno-nombre, .turno.descarga .turno-hora { color: #fff !important; }';
-  html += '.turno.mañanas { background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); color: #fff !important; }';
-  html += '.turno.mañanas .turno-nombre, .turno.mañanas .turno-hora { color: #fff !important; }';
-  html += '.turno.tardes { background: linear-gradient(135deg, #e65100 0%, #ff9800 100%); color: #fff !important; }';
-  html += '.turno.tardes .turno-nombre, .turno.tardes .turno-hora { color: #fff !important; }';
-  html += '.turno.cierre { background: linear-gradient(135deg, #6a1b9a 0%, #ab47bc 100%); color: #fff !important; }';
-  html += '.turno.cierre .turno-nombre, .turno.cierre .turno-hora { color: #fff !important; }';
-  html += '.turno.fds { background: linear-gradient(135deg, #37474f 0%, #607d8b 100%); color: #fff !important; }';
-  html += '.turno.fds .turno-nombre, .turno.fds .turno-hora { color: #fff !important; }';
-  html += '.turno.ausente { opacity: 0.45; text-decoration: line-through; background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%) !important; color: #c62828 !important; border: 1px dashed #e57373; }';
-  html += '.turno.ausente .turno-nombre, .turno.ausente .turno-hora { color: #c62828 !important; }';
-  html += '.turno.sustituto { background: linear-gradient(135deg, #ffd600 0%, #ffab00 100%) !important; color: #212121 !important; font-weight: 700; border-left: 3px solid #f57f17; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }';
-  html += '.turno.sustituto .turno-nombre, .turno.sustituto .turno-hora { color: #212121 !important; }';
+  html += '.turno.descarga { background: #dce7f5; border-left-color: #2c5aa0; color: #1a3a6e; }';
+  html += '.turno.descarga .turno-nombre { color: #1a3a6e; } .turno.descarga .turno-hora { color: #4a6fa0; }';
+  html += '.turno.mañanas { background: #dff0d8; border-left-color: #2e7d32; color: #1b5e20; }';
+  html += '.turno.mañanas .turno-nombre { color: #1b5e20; } .turno.mañanas .turno-hora { color: #4a8a4e; }';
+  html += '.turno.tardes { background: #fde8d0; border-left-color: #e65100; color: #bf360c; }';
+  html += '.turno.tardes .turno-nombre { color: #bf360c; } .turno.tardes .turno-hora { color: #d48430; }';
+  html += '.turno.cierre { background: #ede0f5; border-left-color: #6a1b9a; color: #4a148c; }';
+  html += '.turno.cierre .turno-nombre { color: #4a148c; } .turno.cierre .turno-hora { color: #8a55b0; }';
+  html += '.turno.fds { background: #eceff1; border-left-color: #37474f; color: #263238; }';
+  html += '.turno.fds .turno-nombre { color: #263238; } .turno.fds .turno-hora { color: #607d8b; }';
+  html += '.turno.ausente { opacity: 0.5; text-decoration: line-through; background: #fce4ec; border-left-color: #c62828; color: #c62828; }';
+  html += '.turno.ausente .turno-nombre, .turno.ausente .turno-hora { color: #c62828; }';
+  html += '.turno.sustituto { background: #fff9c4; border-left-color: #f57f17; color: #212121; font-weight: 700; }';
+  html += '.turno.sustituto .turno-nombre { color: #e65100; } .turno.sustituto .turno-hora { color: #212121; }';
   
   // Leyenda compacta
   html += '.leyenda { display: flex; gap: 15px; justify-content: center; margin-top: 8px; padding: 8px; background: white; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }';
   html += '.leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #495057; }';
   html += '.leyenda-color { width: 14px; height: 14px; border-radius: 3px; }';
   
-  // html2pdf.js - renderiza como imagen, sin artefactos de Chrome print
-  html += 'body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }';
+  // Print styles
+  if (modo === 'lv') {
+    html += '@media print { @page { size: A3 portrait; margin: 3mm; } }';
+  } else {
+    html += '@media print { @page { size: A3 landscape; margin: 5mm; } body { max-height: 287mm; max-width: 410mm; overflow: hidden; } }';
+  }
   
   html += '</style></head><body>';
   
@@ -3327,53 +3330,10 @@ function exportarPDF(modo) {
   
   html += '</body></html>';
 
-  var nombreFichero = (tiendaActual === 'granvia' ? 'KIRA_GranVia' : 'REYPIK_Isabel') + '_' + MESES[mesActual] + '_' + añoActual + '_' + modoTxt.replace(/ /g,'_') + '.pdf';
-  var orientacion = modo === 'lv' ? 'portrait' : 'landscape';
-
-  // Crear contenedor temporal oculto
-  var container = document.createElement('div');
-  container.id = 'pdf-render-temp';
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + (modo === 'lv' ? '297mm' : '420mm') + ';background:#f5f5f5;';
-
-  // Insertar contenido con estilos inline
-  var iframe = document.createElement('iframe');
-  iframe.style.cssText = 'width:' + (modo === 'lv' ? '297mm' : '420mm') + ';height:' + (modo === 'lv' ? '420mm' : '297mm') + ';border:none;';
-  container.appendChild(iframe);
-  document.body.appendChild(container);
-
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
-
-  setTimeout(function() {
-    var contenido = iframe.contentDocument.body;
-
-    if (typeof html2pdf === 'undefined') {
-      // Fallback si html2pdf no cargó: abrir ventana con print
-      document.body.removeChild(container);
-      var ventana = window.open('', '_blank');
-      ventana.document.write(html);
-      ventana.document.close();
-      setTimeout(function() { ventana.print(); }, 500);
-      return;
-    }
-
-    html2pdf().set({
-      margin: [3, 3, 3, 3],
-      filename: nombreFichero,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0, windowWidth: iframe.contentDocument.body.scrollWidth },
-      jsPDF: { unit: 'mm', format: 'a3', orientation: orientacion }
-    }).from(contenido).save().then(function() {
-      document.body.removeChild(container);
-    }).catch(function() {
-      document.body.removeChild(container);
-      alert('Error generando PDF. Se abrirá la ventana de impresión.');
-      var ventana = window.open('', '_blank');
-      ventana.document.write(html);
-      ventana.document.close();
-      setTimeout(function() { ventana.print(); }, 500);
-    });
-  }, 1000);
+  var ventana = window.open('', '_blank');
+  ventana.document.write(html);
+  ventana.document.close();
+  setTimeout(function() { ventana.print(); }, 500);
 }
 
 // ==================== GOOGLE SHEETS SYNC ====================
