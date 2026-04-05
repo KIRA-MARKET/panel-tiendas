@@ -3267,13 +3267,20 @@ function exportarPDF(modo) {
     html += '.turno-nombre { font-weight: 600; color: #212529; }';
     html += '.turno-hora { color: #6c757d; font-size: 9px; }';
   }
-  html += '.turno.descarga { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left: 2px solid #1976d2; }';
-  html += '.turno.mañanas { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left: 2px solid #388e3c; }';
-  html += '.turno.tardes { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 2px solid #f57c00; }';
-  html += '.turno.cierre { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border-left: 2px solid #7b1fa2; }';
-  html += '.turno.fds { background: rgba(255,255,255,0.7); border-left: 2px solid #c2185b; }';
-  html += '.turno.ausente { opacity: 0.4; text-decoration: line-through; }';
-  html += '.turno.sustituto { background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); border-left: 2px solid #ffa000; }';
+  html += '.turno.descarga { background: #2c5aa0; color: #fff !important; }';
+  html += '.turno.descarga .turno-nombre, .turno.descarga .turno-hora { color: #fff !important; }';
+  html += '.turno.mañanas { background: #2e7d32; color: #fff !important; }';
+  html += '.turno.mañanas .turno-nombre, .turno.mañanas .turno-hora { color: #fff !important; }';
+  html += '.turno.tardes { background: #e65100; color: #fff !important; }';
+  html += '.turno.tardes .turno-nombre, .turno.tardes .turno-hora { color: #fff !important; }';
+  html += '.turno.cierre { background: #6a1b9a; color: #fff !important; }';
+  html += '.turno.cierre .turno-nombre, .turno.cierre .turno-hora { color: #fff !important; }';
+  html += '.turno.fds { background: #444; color: #fff !important; }';
+  html += '.turno.fds .turno-nombre, .turno.fds .turno-hora { color: #fff !important; }';
+  html += '.turno.ausente { opacity: 0.5; text-decoration: line-through; background: #ffcdd2 !important; color: #c62828 !important; border: 1px dashed #c62828; }';
+  html += '.turno.ausente .turno-nombre, .turno.ausente .turno-hora { color: #c62828 !important; }';
+  html += '.turno.sustituto { background: #ffd600 !important; color: #000 !important; font-weight: 700; border: 2px solid #c7a500; }';
+  html += '.turno.sustituto .turno-nombre, .turno.sustituto .turno-hora { color: #000 !important; }';
   
   // Leyenda compacta
   html += '.leyenda { display: flex; gap: 15px; justify-content: center; margin-top: 8px; padding: 8px; background: white; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }';
