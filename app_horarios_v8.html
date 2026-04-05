@@ -1161,6 +1161,7 @@ function verificarEfectoSustituto(sustituto, fecha, tienda, franjaDestino) {
 function getAusencias(){return tiendaActual==='granvia'?ausenciasGV:ausenciasIS;}
 function setAusencias(arr){if(tiendaActual==='granvia')ausenciasGV=arr;else ausenciasIS=arr;}
 function estaAusente(n,f){var aus=getAusencias();var fs=formatFechaLocal(f);for(var i=0;i<aus.length;i++)if(aus[i].empleado===n&&aus[i].desde<=fs&&aus[i].hasta>=fs)return true;return false;}
+function getTipoAusencia(n,f){var aus=getAusencias();var fs=formatFechaLocal(f);for(var i=0;i<aus.length;i++)if(aus[i].empleado===n&&aus[i].desde<=fs&&aus[i].hasta>=fs)return aus[i].tipo;return '';}
 function getSustituto(f,n){var fs=formatFechaLocal(f);for(var i=0;i<sustituciones.length;i++)if(sustituciones[i].fecha===fs&&sustituciones[i].ausente===n&&sustituciones[i].tienda===tiendaActual)return sustituciones[i];return null;}
 function getEmpleadosTienda(){return tiendaActual==='granvia'?EMPLEADOS_GV:EMPLEADOS_IS;}
 function getTodosEmpleados(){var all={};for(var k in EMPLEADOS_GV)all[k]=EMPLEADOS_GV[k];for(var k in EMPLEADOS_IS)all[k]=EMPLEADOS_IS[k];return all;}
@@ -3144,15 +3145,23 @@ function renderTurnosParaPDF(dia, horarios) {
     var sustInfo = estaSustituyendo(n, dia, franja);
     if (sustInfo.sustituyendo) continue;
 
-    franjas[franja].push({nombre: n, h: h, aus: aus, sust: sust});
+    var tipoAus = aus ? getTipoAusencia(n, dia) : '';
+    franjas[franja].push({nombre: n, h: h, aus: aus, tipoAus: tipoAus, sust: sust});
   }
 
   for (var f in franjas) {
     if (franjas[f].length > 0) {
       for (var i = 0; i < franjas[f].length; i++) {
         var t = franjas[f][i];
+        var etiquetaAus = '';
+        if (t.aus) {
+          if (t.tipoAus === 'baja') etiquetaAus = ' (BAJA)';
+          else if (t.tipoAus === 'vacaciones') etiquetaAus = ' (VACAS)';
+          else if (t.tipoAus === 'permiso') etiquetaAus = ' (PERM)';
+          else etiquetaAus = ' (AUS)';
+        }
         html += '<div class="turno ' + f + (t.aus ? ' ausente' : '') + '">';
-        html += '<span class="turno-nombre">' + t.nombre + '</span>';
+        html += '<span class="turno-nombre">' + t.nombre + etiquetaAus + '</span>';
         html += '<span class="turno-hora">' + formatHora(t.h[0]) + '-' + formatHora(t.h[1]) + '</span>';
         html += '</div>';
         if (t.sust) {
@@ -3180,8 +3189,16 @@ function renderTurnosFdsParaPDF(dia, horarios, turnoKey) {
     var estaSust = estaSustituyendoFds(n, dia, turnoKey);
     if (estaSust) continue;
 
+    var etiquetaAus = '';
+    if (aus) {
+      var tipoAus = getTipoAusencia(n, dia);
+      if (tipoAus === 'baja') etiquetaAus = ' (BAJA)';
+      else if (tipoAus === 'vacaciones') etiquetaAus = ' (VACAS)';
+      else if (tipoAus === 'permiso') etiquetaAus = ' (PERM)';
+      else etiquetaAus = ' (AUS)';
+    }
     html += '<div class="turno fds' + (aus ? ' ausente' : '') + '">';
-    html += '<span class="turno-nombre">' + n + '</span>';
+    html += '<span class="turno-nombre">' + n + etiquetaAus + '</span>';
     html += '<span class="turno-hora">' + formatHora(h[0]) + '-' + formatHora(h[1]) + '</span>';
     html += '</div>';
 
@@ -3277,8 +3294,8 @@ function exportarPDF(modo) {
   html += '.turno.cierre .turno-nombre, .turno.cierre .turno-hora { color: #30084a; }';
   html += '.turno.fds { background: #cfd8dc; border-left-color: #263238; color: #1a2226; }';
   html += '.turno.fds .turno-nombre, .turno.fds .turno-hora { color: #1a2226; }';
-  html += '.turno.ausente { text-decoration: line-through; background: #f8a0a0; border-left-color: #b71c1c; color: #7f0000; }';
-  html += '.turno.ausente .turno-nombre, .turno.ausente .turno-hora { color: #7f0000; }';
+  html += '.turno.ausente { text-decoration: line-through; background: #e0e0e0; border-left-color: #9e9e9e; color: #9e9e9e; opacity: 0.6; }';
+  html += '.turno.ausente .turno-nombre, .turno.ausente .turno-hora { color: #9e9e9e; }';
   html += '.turno.sustituto { background: #ffe066; border-left-color: #e65100; color: #212121; font-weight: 700; }';
   html += '.turno.sustituto .turno-nombre { color: #bf360c; font-weight: 800; } .turno.sustituto .turno-hora { color: #333; font-weight: 700; }';
   
