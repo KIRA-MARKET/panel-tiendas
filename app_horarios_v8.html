@@ -104,6 +104,8 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
 .aviso-sin-cubrir:hover { background: #c62828; box-shadow: 0 0 8px rgba(229,57,53,0.9); }
 .aviso-sin-cubrir.ok-minimos { background: #ff9800; animation: centelleo-suave 2s infinite; box-shadow: 0 0 4px rgba(255,152,0,0.4); }
 .aviso-sin-cubrir.ok-minimos:hover { background: #f57c00; box-shadow: 0 0 8px rgba(255,152,0,0.7); }
+.aviso-sin-cubrir.descartado { background: #78909c; animation: none; box-shadow: none; opacity: 0.8; }
+.aviso-sin-cubrir.descartado:hover { background: #546e7a; }
 @keyframes centelleo-suave { 0%,100%{opacity:1} 50%{opacity:0.7} }
 @keyframes centelleo { 0%,100%{opacity:1;box-shadow:0 0 4px rgba(229,57,53,0.6)} 50%{opacity:0.5;box-shadow:0 0 12px rgba(229,57,53,1)} }
 .seccion-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -418,7 +420,7 @@ body { font-family: var(--font-main); background: var(--bg); color: var(--text);
   <div class="modal">
     <div class="modal-header"><h3 id="asignar-sust-titulo">📋 Cubrir turno</h3><button class="modal-close" onclick="cerrarModal('modal-asignar-sust')">×</button></div>
     <div class="modal-body" id="asignar-sust-body"></div>
-    <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-asignar-sust')">Cancelar</button><button class="btn btn-success" onclick="confirmarAsignarSustituto()">Asignar sustituto</button></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-asignar-sust')">Cancelar</button><button class="btn" style="background:#78909c;color:#fff" onclick="noSustituirTurno()">No sustituir</button><button class="btn btn-success" onclick="confirmarAsignarSustituto()">Asignar sustituto</button></div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-auto-sust">
@@ -1215,9 +1217,11 @@ function renderCalendario(){
         var botonesHtml='';
         for(var sc=0;sc<sinCubrir.length;sc++){
           var tc=sinCubrir[sc];
-          var clsSc=tc.bajoMinimos?'aviso-sin-cubrir':'aviso-sin-cubrir ok-minimos';
-          var iconSc=tc.bajoMinimos?'🔴':'🟠';
-          botonesHtml+='<div class="'+clsSc+'" onclick="abrirAsignarSustituto(\''+formatFechaLocal(dia)+'\',\''+tc.emp+'\',null)">'+iconSc+' '+tc.emp+' sin cubrir ('+tc.franja+')</div>';
+          var clsSc=tc.descartado?'aviso-sin-cubrir descartado':(tc.bajoMinimos?'aviso-sin-cubrir':'aviso-sin-cubrir ok-minimos');
+          var iconSc=tc.descartado?'⬜':(tc.bajoMinimos?'🔴':'🟠');
+          var labelSc=tc.descartado?tc.emp+' (no cubierto)':tc.emp+' sin cubrir ('+tc.franja+')';
+          var onclickSc=tc.descartado?'alert(\'Motivo: '+tc.motivoDescarte.replace(/'/g,"\\'")+'\')':'abrirAsignarSustituto(\''+formatFechaLocal(dia)+'\',\''+tc.emp+'\',null)';
+          botonesHtml+='<div class="'+clsSc+'" onclick="'+onclickSc+'">'+iconSc+' '+labelSc+'</div>';
         }
         avisos.push(botonesHtml);
       }
@@ -1241,9 +1245,11 @@ function renderCalendario(){
     for(var sc=0;sc<sinCubrirFds.length;sc++){
       var tc=sinCubrirFds[sc];
       var fSc=sc<sinCubrirSab.length?sab:dom;
-      var clsSc=tc.bajoMinimos?'aviso-sin-cubrir':'aviso-sin-cubrir ok-minimos';
-      var iconSc=tc.bajoMinimos?'🔴':'🟠';
-      avisoFdsHtml+='<div class="'+clsSc+'" style="grid-column:1/-1" onclick="abrirAsignarSustituto(\''+formatFechaLocal(fSc)+'\',\''+tc.emp+'\',\''+tc.turnoFds+'\')">'+iconSc+' '+tc.emp+' sin cubrir ('+tc.turnoFds.replace('_',' ')+')</div>';
+      var clsSc=tc.descartado?'aviso-sin-cubrir descartado':(tc.bajoMinimos?'aviso-sin-cubrir':'aviso-sin-cubrir ok-minimos');
+      var iconSc=tc.descartado?'⬜':(tc.bajoMinimos?'🔴':'🟠');
+      var labelSc=tc.descartado?tc.emp+' (no cubierto)':tc.emp+' sin cubrir ('+tc.turnoFds.replace('_',' ')+')';
+      var onclickSc=tc.descartado?'alert(\'Motivo: '+tc.motivoDescarte.replace(/'/g,"\\'")+'\')':'abrirAsignarSustituto(\''+formatFechaLocal(fSc)+'\',\''+tc.emp+'\',\''+tc.turnoFds+'\')';
+      avisoFdsHtml+='<div class="'+clsSc+'" style="grid-column:1/-1" onclick="'+onclickSc+'">'+iconSc+' '+labelSc+'</div>';
     }
     html+='<div class="col-fds" style="'+(esDelMesFds?'':'opacity:0.4')+'">';
     html+='<div class="fds-box sab-m"><div class="fds-header">Sáb '+sab.getDate()+' Mañana</div>'+renderTurnosFds(sab,fdsData.SAB_M||{},'SAB_M')+'</div>';
@@ -2248,7 +2254,8 @@ function detectarSinCubrir(fecha){
           var alertasMin=verificarMinimosLV(fecha, tiendaActual);
           var bajoMin=false;
           for(var m=0;m<alertasMin.length;m++){if(alertasMin[m].franja===franja){bajoMin=true;break;}}
-          sinCubrir.push({emp:emp,franja:franja,entrada:horarios[emp][0],salida:horarios[emp][1],turnoFds:null,bajoMinimos:bajoMin});
+          var desc=esDescartado(fs,emp,tiendaActual,null);
+          sinCubrir.push({emp:emp,franja:franja,entrada:horarios[emp][0],salida:horarios[emp][1],turnoFds:null,bajoMinimos:bajoMin,descartado:!!desc,motivoDescarte:desc?desc.motivo:''});
         }
       }
     }else{
@@ -2279,7 +2286,8 @@ function detectarSinCubrir(fecha){
                 if(countDOMM>minDOMM)bajoMin=true;
               }
             }
-            sinCubrir.push({emp:emp,franja:tk,entrada:fdsData[tk][emp][0],salida:fdsData[tk][emp][1],turnoFds:tk,bajoMinimos:bajoMin});
+            var desc=esDescartado(fs,emp,tiendaActual,tk);
+            sinCubrir.push({emp:emp,franja:tk,entrada:fdsData[tk][emp][0],salida:fdsData[tk][emp][1],turnoFds:tk,bajoMinimos:bajoMin,descartado:!!desc,motivoDescarte:desc?desc.motivo:''});
           }
         }
       }
@@ -2316,6 +2324,28 @@ function abrirAsignarSustituto(fechaStr,empAusente,turnoFds){
   document.getElementById('asignar-sust-body').setAttribute('data-turnofds',turnoFds||'');
   abrirModal('modal-asignar-sust');
 }
+function noSustituirTurno(){
+  var body=document.getElementById('asignar-sust-body');
+  var fechaStr=body.getAttribute('data-fecha');
+  var empAusente=body.getAttribute('data-ausente');
+  var turnoFds=body.getAttribute('data-turnofds')||'';
+  if(!fechaStr || !empAusente) { cerrarModal('modal-asignar-sust'); return; }
+  var f=parseFechaLocal(fechaStr);
+  var franja='';
+  if(!turnoFds){
+    var dow=f.getDay();
+    var horarios;
+    if(tiendaActual==='granvia'){var semAB=getSemanaAB(f);horarios=HORARIOS_GV[semAB][dow===5?'V':'LJ'];}
+    else{horarios=getHorariosIS(f);}
+    if(horarios&&horarios[empAusente]){
+      franja=tiendaActual==='granvia'?getFranja(horarios[empAusente][0],horarios[empAusente][1]):getFranjaIS(horarios[empAusente][0],horarios[empAusente][1]);
+    }
+  }
+  if(descartarSustitucion(fechaStr, empAusente, tiendaActual, turnoFds, franja)){
+    cerrarModal('modal-asignar-sust');
+  }
+}
+
 function confirmarAsignarSustituto(){
   var body=document.getElementById('asignar-sust-body');
   var fechaStr=body.getAttribute('data-fecha');
@@ -3277,6 +3307,14 @@ function cargarDesdeSheets() {
           else faltasIS.push(obj);
         }
       }
+      // Descartadas
+      if (data.descartadas) {
+        sustitucionesDescartadas = [];
+        for (var i = 0; i < data.descartadas.length; i++) {
+          var dc = data.descartadas[i];
+          sustitucionesDescartadas.push({fecha:dc.fecha, ausente:dc.ausente, tienda:dc.tienda, turnoFds:dc.turnoFds||'', franja:dc.franja||'', motivo:dc.motivo||''});
+        }
+      }
       renderCalendario();
       renderEmpleados();
       renderAusencias();
@@ -3416,6 +3454,32 @@ function syncFaltas() {
 
 // ==================== MOTOR AUTOMATICO DE SUSTITUCIONES ====================
 var _propuestaSustituciones = [];
+var sustitucionesDescartadas = []; // Turnos que el usuario decidió no cubrir
+
+function esDescartado(fecha, ausente, tienda, turnoFds) {
+  for (var i = 0; i < sustitucionesDescartadas.length; i++) {
+    var d = sustitucionesDescartadas[i];
+    if (d.fecha === fecha && d.ausente === ausente && d.tienda === tienda) {
+      if (turnoFds && d.turnoFds === turnoFds) return d;
+      if (!turnoFds && !d.turnoFds) return d;
+    }
+  }
+  return null;
+}
+
+function descartarSustitucion(fecha, ausente, tienda, turnoFds, franja) {
+  var motivo = prompt('¿Por qué no se cubre este turno?\n' + ausente + ' — ' + formatFechaES(fecha) + (turnoFds ? ' (' + turnoFds.replace('_',' ') + ')' : ' (' + franja + ')'));
+  if (motivo === null) return false;
+  sustitucionesDescartadas.push({fecha:fecha, ausente:ausente, tienda:tienda, turnoFds:turnoFds||'', franja:franja||'', motivo:motivo||'sin motivo'});
+  syncDescartadas();
+  renderCalendario();
+  return true;
+}
+
+function syncDescartadas() {
+  var h = ['tienda','fecha','ausente','turnoFds','franja','motivo'];
+  guardarEnSheets('descartadas', h, sustitucionesDescartadas);
+}
 
 function escanearSinCubrir() {
   // Escanea AMBAS tiendas en el mes visible y devuelve todos los turnos sin cubrir
@@ -3434,6 +3498,7 @@ function escanearSinCubrir() {
 
       var items = detectarSinCubrir(fecha);
       for (var i = 0; i < items.length; i++) {
+        if (items[i].descartado) continue; // Ignorar descartados
         sinCubrir.push({
           tienda: tiendas[ti],
           fecha: formatFechaLocal(fecha),

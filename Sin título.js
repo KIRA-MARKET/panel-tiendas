@@ -257,7 +257,8 @@ var HOJAS = {
   sustituciones: 'Sustituciones',
   modificaciones: 'Modificaciones',
   faltas: 'Faltas',
-  historialPropuestas: 'HistorialPropuestas'
+  historialPropuestas: 'HistorialPropuestas',
+  descartadas: 'Descartadas'
 };
 
 function doGet(e) { return handleRequest(e); }
