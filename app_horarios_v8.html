@@ -3240,7 +3240,7 @@ function exportarPDF(modo) {
   }
   
   // Cabecera
-  html += '.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 8px 15px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }';
+  html += '.header { background: #1a1a2e; color: white; padding: 8px 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; width: 100%; }';
   html += '.header h1 { font-size: 16px; font-weight: 700; }';
   html += '.header .tienda { font-size: 18px; font-weight: 700; letter-spacing: 1px; }';
   html += '.header .info { display: flex; gap: 15px; align-items: center; }';
@@ -3259,7 +3259,7 @@ function exportarPDF(modo) {
     html += '.col-sem .num { font-size: 12px; font-weight: 700; color: #e53935; }';
     html += '.col-sem .letra { font-size: 9px; color: #6c757d; font-weight: 600; }';
     html += '.col-dia { flex: 1; border-right: 1px solid #f0f0f0; padding: 2px 3px; }';
-    html += '.dia-num { font-size: 11px; font-weight: 800; color: #1a1a2e; margin-bottom: 3px; }';
+    html += '.dia-num { font-size: 9px; font-weight: 800; color: #1a1a2e; margin-bottom: 2px; }';
   } else {
     // Estilos FdS - grid dinámico que ocupa todo el ancho
     html += '.fds-grid { display: grid; gap: 10px; width: 100%; }';
@@ -3276,13 +3276,13 @@ function exportarPDF(modo) {
   
   // Turnos - colores medios saturados, bien visibles, sin degradados ni border-radius
   if (modo === 'lv') {
-    html += '.turno { padding: 4px 6px; margin-bottom: 1px; font-size: 9px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid transparent; }';
+    html += '.turno { padding: 2px 5px; margin-bottom: 1px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid transparent; }';
     html += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
-    html += '.turno-hora { white-space: nowrap; font-size: 8px; font-weight: 600; }';
+    html += '.turno-hora { white-space: nowrap; font-size: 7px; font-weight: 600; }';
   } else {
-    html += '.turno { padding: 5px 8px; margin-bottom: 2px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid transparent; }';
+    html += '.turno { padding: 3px 6px; margin-bottom: 1px; font-size: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid transparent; }';
     html += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
-    html += '.turno-hora { white-space: nowrap; font-size: 10px; font-weight: 600; }';
+    html += '.turno-hora { white-space: nowrap; font-size: 9px; font-weight: 600; }';
   }
   html += '.turno.descarga { background: #bbcfea; border-left-color: #1a4a8a; color: #0d2b52; }';
   html += '.turno.descarga .turno-nombre, .turno.descarga .turno-hora { color: #0d2b52; }';
@@ -3304,11 +3304,11 @@ function exportarPDF(modo) {
   html += '.leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #495057; }';
   html += '.leyenda-color { width: 14px; height: 14px; border-radius: 3px; }';
   
-  // Print styles
+  // Print styles - todo en una sola página
   if (modo === 'lv') {
-    html += '@media print { @page { size: A3 portrait; margin: 3mm; } }';
+    html += '@media print { @page { size: A3 portrait; margin: 3mm; } body { width: 291mm; max-height: 414mm; overflow: hidden; padding: 0 !important; } .btn-print-bar { display: none !important; } }';
   } else {
-    html += '@media print { @page { size: A3 landscape; margin: 5mm; } body { max-height: 287mm; max-width: 410mm; overflow: hidden; } }';
+    html += '@media print { @page { size: A3 landscape; margin: 3mm; } body { width: 414mm; max-height: 291mm; overflow: hidden; padding: 0 !important; } .btn-print-bar { display: none !important; } }';
   }
   
   html += '.btn-print-bar { position: fixed; top: 0; left: 0; right: 0; background: #1a1a2e; padding: 8px 20px; display: flex; gap: 10px; align-items: center; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }';
