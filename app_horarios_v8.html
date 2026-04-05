@@ -1271,9 +1271,30 @@ function estaSustituyendo(emp, fecha, franjaOriginal) {
     var sust = sustituciones[i];
     if(sust.sustituto === emp && sust.fecha === fs) {
       if(sust.tienda === tiendaActual) {
-        // Sustitución en esta misma tienda
-        var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
-        return { sustituyendo: true, a: sust.ausente, franja: frSust };
+        // Sustitución en esta misma tienda: solo ocultar si hay solapamiento horario
+        var dow = fecha.getDay();
+        var horarioOriginal = null;
+        if(dow >= 1 && dow <= 5) {
+          if(tiendaActual === 'granvia') {
+            var semAB = getSemanaAB(fecha);
+            var h = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+            if(h && h[emp]) horarioOriginal = h[emp];
+          } else {
+            var h = getHorariosIS(fecha);
+            if(h && h[emp]) horarioOriginal = h[emp];
+          }
+        }
+        if(horarioOriginal && !(sust.salida <= horarioOriginal[0] || horarioOriginal[1] <= sust.entrada)) {
+          // Hay solapamiento entre turno original y sustitución → ocultar
+          var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
+          return { sustituyendo: true, a: sust.ausente, franja: frSust };
+        }
+        if(!horarioOriginal) {
+          // No tiene turno original hoy (ej: solo trabaja ciertos días), ocultar
+          var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
+          return { sustituyendo: true, a: sust.ausente, franja: frSust };
+        }
+        // No hay solapamiento → no ocultar (trabaja ambos turnos)
       }
       // Compartido sustituyendo en la OTRA tienda: solo ocultar si hay solapamiento horario
       var emps = tiendaActual === 'granvia' ? EMPLEADOS_GV : EMPLEADOS_IS;
@@ -2138,7 +2159,7 @@ function seleccionarCandidato(fecha,alias){
     var body=document.getElementById('asignar-sust-body');
     var empAus=body.getAttribute('data-ausente');
     var turnoFds=body.getAttribute('data-turnofds')||null;
-    abrirAsignarSustituto(fecha,empAus,turnoFds);
+    abrirAsignarSustituto(fecha,empAus,turnoFds,true);
     return;
   }
   var emp=document.getElementById('ausencia-empleado').value;
@@ -2155,7 +2176,7 @@ function seleccionarCandidatoFds(fecha,turnoKey,alias){
   if(document.getElementById('modal-asignar-sust').classList.contains('active')){
     var body=document.getElementById('asignar-sust-body');
     var empAus=body.getAttribute('data-ausente');
-    abrirAsignarSustituto(fecha,empAus,turnoKey);
+    abrirAsignarSustituto(fecha,empAus,turnoKey,true);
     return;
   }
   var emp=document.getElementById('ausencia-empleado').value;
@@ -2321,7 +2342,7 @@ function detectarSinCubrir(fecha){
   return sinCubrir;
 }
 // Asignar sustituto desde el calendario
-function abrirAsignarSustituto(fechaStr,empAusente,turnoFds){
+function abrirAsignarSustituto(fechaStr,empAusente,turnoFds,mantenerSeleccion){
   var f=parseFechaLocal(fechaStr);
   var dow=f.getDay();
   var turnoAusente;
@@ -2337,8 +2358,8 @@ function abrirAsignarSustituto(fechaStr,empAusente,turnoFds){
   }
   if(!turnoAusente)return;
   var franja=turnoFds?null:(tiendaActual==='granvia'?getFranja(turnoAusente[0],turnoAusente[1]):getFranjaIS(turnoAusente[0],turnoAusente[1]));
+  if(!mantenerSeleccion) seleccionesDias={};
   var candidatosHtml=turnoFds?generarCandidatosFds(f,empAusente,turnoAusente,turnoFds,fechaStr):generarCandidatos(f,empAusente,turnoAusente,franja,fechaStr);
-  seleccionesDias={};
   var diaLabel=DIAS[dow]+' '+formatFechaES(fechaStr)+(turnoFds?' ('+turnoFds.replace('_',' ')+')':'');
   var html='<div style="margin-bottom:12px"><strong>Turno de '+empAusente+'</strong>: '+formatHora(turnoAusente[0])+'-'+formatHora(turnoAusente[1])+'</div>';
   html+='<div class="candidatos-lista">'+candidatosHtml+'</div>';
