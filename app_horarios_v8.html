@@ -3287,13 +3287,20 @@ function exportarPDF(modo) {
   html += '.leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #495057; }';
   html += '.leyenda-color { width: 14px; height: 14px; border-radius: 3px; }';
   
-  // Print styles - A3 vertical para L-V, A3 horizontal para FdS
+  // Print styles - forzar renderizado limpio en PDF
   if (modo === 'lv') {
-    html += '@media print { @page { size: A3 portrait; margin: 3mm; } }';
+    html += '@media print { @page { size: A3 portrait; margin: 3mm; }';
   } else {
-    // A3 landscape: 420x297mm - usar max-width para evitar segunda página
-    html += '@media print { @page { size: A3 landscape; margin: 5mm; } body { max-height: 287mm; max-width: 410mm; overflow: hidden; transform: scale(1.18); transform-origin: top left; } }';
+    html += '@media print { @page { size: A3 landscape; margin: 5mm; } body { max-height: 287mm; max-width: 410mm; overflow: hidden; transform: scale(1.18); transform-origin: top left; }';
   }
+  // Fix Chrome PDF: sin border-radius, padding extra, forzar colores
+  html += ' .turno { border-radius: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; margin-bottom: 0 !important; padding-top: 4px !important; padding-bottom: 4px !important; }';
+  html += ' .turno + .turno { border-top: 1px solid rgba(255,255,255,0.4); }';
+  html += ' .turno.sustituto { border-radius: 0 !important; }';
+  html += ' .turno.ausente { border-radius: 0 !important; }';
+  html += ' .fds-turno { border-radius: 0 !important; }';
+  html += ' .fds-card { border-radius: 0 !important; }';
+  html += ' }';
   
   html += '</style></head><body>';
   
