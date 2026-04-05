@@ -3311,7 +3311,13 @@ function exportarPDF(modo) {
     html += '@media print { @page { size: A3 landscape; margin: 5mm; } body { max-height: 287mm; max-width: 410mm; overflow: hidden; } }';
   }
   
-  html += '</style></head><body>';
+  html += '.btn-print-bar { position: fixed; top: 0; left: 0; right: 0; background: #1a1a2e; padding: 8px 20px; display: flex; gap: 10px; align-items: center; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }';
+  html += '.btn-print-bar button { padding: 6px 16px; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }';
+  html += '.btn-print { background: #4caf50; color: #fff; }';
+  html += '.btn-print:hover { background: #388e3c; }';
+  html += '@media print { .btn-print-bar { display: none !important; } body { padding-top: 0 !important; } }';
+  html += '</style></head><body style="padding-top: 45px;">';
+  html += '<div class="btn-print-bar"><button class="btn-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button><span style="color:rgba(255,255,255,0.6);font-size:11px">Consejo: Para mejor calidad, abre este archivo en Safari → Archivo → Exportar como PDF</span></div>';
   
   // Cabecera con empresa, tienda y fecha
   var nombreEmpresa = tiendaActual === 'granvia' ? 'KIRA MARKET S.L.' : 'REYPIK MARKET S.L.';
@@ -3350,7 +3356,6 @@ function exportarPDF(modo) {
   var ventana = window.open('', '_blank');
   ventana.document.write(html);
   ventana.document.close();
-  setTimeout(function() { ventana.print(); }, 500);
 }
 
 // ==================== GOOGLE SHEETS SYNC ====================
