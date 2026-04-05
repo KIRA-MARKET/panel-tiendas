@@ -1275,10 +1275,30 @@ function estaSustituyendo(emp, fecha, franjaOriginal) {
         var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
         return { sustituyendo: true, a: sust.ausente, franja: frSust };
       }
-      // Compartido sustituyendo en la OTRA tienda (caso comodín EDU)
+      // Compartido sustituyendo en la OTRA tienda: solo ocultar si hay solapamiento horario
       var emps = tiendaActual === 'granvia' ? EMPLEADOS_GV : EMPLEADOS_IS;
       if(emps[emp] && emps[emp].tienda === 'ambas') {
-        return { sustituyendo: true, a: sust.ausente, franja: 'otra tienda' };
+        // Obtener horario del empleado en la tienda actual
+        var dow = fecha.getDay();
+        var horarioActual = null;
+        if(dow >= 1 && dow <= 5) {
+          if(tiendaActual === 'granvia') {
+            var semAB = getSemanaAB(fecha);
+            var h = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+            if(h && h[emp]) horarioActual = h[emp];
+          } else {
+            var h = getHorariosIS(fecha);
+            if(h && h[emp]) horarioActual = h[emp];
+          }
+        }
+        // Si tiene horario aquí y solapa con la sustitución → ocultar
+        if(horarioActual) {
+          if(!(sust.salida <= horarioActual[0] || horarioActual[1] <= sust.entrada)) {
+            return { sustituyendo: true, a: sust.ausente, franja: 'otra tienda (solape)' };
+          }
+        } else {
+          // No tiene horario en esta tienda hoy, no ocultar
+        }
       }
     }
   }
@@ -1976,8 +1996,13 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
     if(!error&&e.restriccion==='solo-descarga'&&franja!=='descarga'){error='Solo puede descarga';}
     if(!error&&estaAusente(alias,fecha)){error='También está ausente';}
 
-    // Calcular horario del sustituto (sus horas diarias, no las del ausente)
+    // Calcular horario del sustituto (sus horas diarias, comodín usa horas de la otra tienda)
     var horasSust=calcularHorasDiarias(alias,fecha);
+    if(e.tienda==='ambas'){
+      var otraTienda=tiendaActual==='granvia'?'isabel':'granvia';
+      var horasOtra=calcularHorasDiariasMultitienda(alias,fecha,otraTienda);
+      if(horasOtra>horasSust) horasSust=horasOtra;
+    }
     var entradaSust=turnoAusente[0];
     var salidaSust=entradaSust+horasSust;
 
@@ -2368,7 +2393,14 @@ function confirmarAsignarSustituto(){
     else{horarios=getHorariosIS(f);}
     var turno=horarios?horarios[empAusente]:null;
     if(turno){
+      // Caso comodín: si es compartido, usar horas de la tienda con más horas
       var horasSust=calcularHorasDiarias(sust,f);
+      var empData=getEmpleadosTienda()[sust];
+      if(empData && empData.tienda==='ambas'){
+        var otraTienda=tiendaActual==='granvia'?'isabel':'granvia';
+        var horasOtra=calcularHorasDiariasMultitienda(sust,f,otraTienda);
+        if(horasOtra>horasSust) horasSust=horasOtra;
+      }
       var salidaSust=turno[0]+horasSust;
       var franja=tiendaActual==='granvia'?getFranja(turno[0],salidaSust):getFranjaIS(turno[0],salidaSust);
       sustituciones.push({fecha:fechaStr,ausente:empAusente,sustituto:sust,entrada:turno[0],salida:salidaSust,franja:franja,tienda:tiendaActual});
@@ -3611,7 +3643,16 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
       entradaSust = turno.entrada;
       salidaSust = entradaSust + 7.5;
     } else {
-      horasSust = calcularHorasDiariasMultitienda(alias, fecha, turno.tienda);
+      // Caso comodín: si es compartido sustituyendo en otra tienda, usar horas de su tienda de origen
+      var tiendaHoras = turno.tienda;
+      if (e.tienda === 'ambas') {
+        var otraTienda = turno.tienda === 'granvia' ? 'isabel' : 'granvia';
+        var horasOtra = calcularHorasDiariasMultitienda(alias, fecha, otraTienda);
+        var horasEsta = calcularHorasDiariasMultitienda(alias, fecha, turno.tienda);
+        // Si tiene más horas en la otra tienda (viene de allí como comodín), usar esas
+        if (horasOtra > horasEsta) tiendaHoras = otraTienda;
+      }
+      horasSust = calcularHorasDiariasMultitienda(alias, fecha, tiendaHoras);
       entradaSust = turno.entrada;
       salidaSust = entradaSust + horasSust;
     }
@@ -3633,16 +3674,35 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
         var efecto = verificarEfectoSustituto(alias, fecha, turno.tienda, turno.franja);
         if (efecto) dejaBajoMin = true;
       } else {
-        // FdS: verificar todos los turnos
-        var fdsCheck = turno.tienda === 'granvia' ? getFdsGV(fecha) : getFdsIS(fecha);
-        var turnos = ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T'];
-        for (var t = 0; t < turnos.length; t++) {
-          if (turnos[t] === turno.turnoFds) continue;
-          if (fdsCheck[turnos[t]] && fdsCheck[turnos[t]][alias]) {
+        // FdS: verificar todos los turnos con fecha correcta (sáb o dom) y sustSimuladas
+        var dowT = fecha.getDay();
+        var sabFecha, domFecha;
+        if (dowT === 6) { sabFecha = fecha; domFecha = new Date(fecha); domFecha.setDate(domFecha.getDate()+1); }
+        else { domFecha = fecha; sabFecha = new Date(fecha); sabFecha.setDate(sabFecha.getDate()-1); }
+        var fdsCheck = turno.tienda === 'granvia' ? getFdsGV(sabFecha) : getFdsIS(sabFecha);
+        var turnosFdsCheck = ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T'];
+        var fechasTurnos = {SAB_M: sabFecha, SAB_T: sabFecha, DOM_M: domFecha, DOM_T: domFecha};
+        for (var t = 0; t < turnosFdsCheck.length; t++) {
+          var tk = turnosFdsCheck[t];
+          if (tk === turno.turnoFds) continue;
+          if (fdsCheck[tk] && fdsCheck[tk][alias]) {
             var minimos = MINIMOS_FDS[turno.tienda];
+            var fechaTk = fechasTurnos[tk];
             var actual = 0;
-            for (var e2 in fdsCheck[turnos[t]]) { if (!estaAusente(e2, fecha)) actual++; }
-            if (actual - 1 < minimos[turnos[t]]) { dejaBajoMin = true; break; }
+            for (var e2 in fdsCheck[tk]) {
+              if (estaAusente(e2, fechaTk)) continue;
+              // Descontar empleados ya movidos por propuestas anteriores
+              var yaMovido = false;
+              for (var ss = 0; ss < sustitucionesSimuladas.length; ss++) {
+                var sim = sustitucionesSimuladas[ss];
+                if (sim.sustituto === e2 && sim.tienda === turno.tienda && sim.turnoFds && sim.turnoFds !== tk) {
+                  var diffD = Math.abs(Math.round((parseFechaLocal(sim.fecha) - fechaTk) / (24*60*60*1000)));
+                  if (diffD <= 1) { yaMovido = true; break; }
+                }
+              }
+              if (!yaMovido) actual++;
+            }
+            if (actual - 1 < minimos[tk]) { dejaBajoMin = true; break; }
           }
         }
       }
