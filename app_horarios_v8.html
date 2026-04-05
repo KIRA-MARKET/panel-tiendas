@@ -2026,6 +2026,7 @@ function generarCandidatos(fecha,empAusente,turnoAusente,franja,fs){
     }
     var entradaSust=turnoAusente[0];
     var salidaSust=entradaSust+horasSust;
+    var ajuste=ajustarHorarioSustituto(entradaSust,salidaSust);entradaSust=ajuste.entrada;salidaSust=ajuste.salida;
 
     if(!error&&e.restriccion==='max-15'&&salidaSust>15){error='No puede salir después de 15:00';}
 
@@ -2259,8 +2260,9 @@ function confirmarAusencia(){
       if(turno){
         var horasSust=calcularHorasDiarias(sust,f);
         var salidaSust=turno[0]+horasSust;
-        var franja=tiendaActual==='granvia'?getFranja(turno[0],salidaSust):getFranjaIS(turno[0],salidaSust);
-        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:turno[0],salida:salidaSust,franja:franja,tienda:tiendaActual});
+        var ajuste=ajustarHorarioSustituto(turno[0],salidaSust);
+        var franja=tiendaActual==='granvia'?getFranja(ajuste.entrada,ajuste.salida):getFranjaIS(ajuste.entrada,ajuste.salida);
+        sustituciones.push({fecha:fechaStr,ausente:emp,sustituto:sust,entrada:ajuste.entrada,salida:ajuste.salida,franja:franja,tienda:tiendaActual});
       }
     }
   }
@@ -2370,6 +2372,17 @@ function abrirAsignarSustituto(fechaStr,empAusente,turnoFds,mantenerSeleccion){
   document.getElementById('asignar-sust-body').setAttribute('data-turnofds',turnoFds||'');
   abrirModal('modal-asignar-sust');
 }
+function ajustarHorarioSustituto(entrada, salida) {
+  // Salida máxima 22:15 (22.25). Si se pasa, adelantar entrada manteniendo horas.
+  var MAX_SALIDA = 22.25;
+  if (salida > MAX_SALIDA) {
+    var horas = salida - entrada;
+    salida = MAX_SALIDA;
+    entrada = MAX_SALIDA - horas;
+  }
+  return {entrada: entrada, salida: salida};
+}
+
 function editarHorarioSustituto(fechaStr, ausente, turnoFds) {
   // Buscar la sustitución
   for (var i = 0; i < sustituciones.length; i++) {
@@ -2446,8 +2459,9 @@ function confirmarAsignarSustituto(){
         if(horasOtra>horasSust) horasSust=horasOtra;
       }
       var salidaSust=turno[0]+horasSust;
-      var franja=tiendaActual==='granvia'?getFranja(turno[0],salidaSust):getFranjaIS(turno[0],salidaSust);
-      sustituciones.push({fecha:fechaStr,ausente:empAusente,sustituto:sust,entrada:turno[0],salida:salidaSust,franja:franja,tienda:tiendaActual});
+      var ajuste=ajustarHorarioSustituto(turno[0],salidaSust);
+      var franja=tiendaActual==='granvia'?getFranja(ajuste.entrada,ajuste.salida):getFranjaIS(ajuste.entrada,ajuste.salida);
+      sustituciones.push({fecha:fechaStr,ausente:empAusente,sustituto:sust,entrada:ajuste.entrada,salida:ajuste.salida,franja:franja,tienda:tiendaActual});
     }
   }
   cerrarModal('modal-asignar-sust');
@@ -3700,6 +3714,9 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
       entradaSust = turno.entrada;
       salidaSust = entradaSust + horasSust;
     }
+    var ajusteSust = ajustarHorarioSustituto(entradaSust, salidaSust);
+    entradaSust = ajusteSust.entrada;
+    salidaSust = ajusteSust.salida;
 
     // Max-15
     if (!error && e.restriccion === 'max-15' && salidaSust > 15) error = 'max-15';
