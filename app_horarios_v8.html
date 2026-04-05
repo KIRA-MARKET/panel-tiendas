@@ -3353,9 +3353,9 @@ function exportarPDF(modo) {
   
   html += '</body></html>';
 
-  var ventana = window.open('', '_blank');
-  ventana.document.write(html);
-  ventana.document.close();
+  var blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 }
 
 // ==================== GOOGLE SHEETS SYNC ====================
