@@ -3100,22 +3100,22 @@ function generarCalendarioFdS() {
     
     // Sábado Mañana
     html += '<div class="fds-turno sab-m"><div class="fds-turno-header">SAB ' + sab.getDate() + ' Mañana</div>';
-    html += renderTurnosFdsParaPDF(sab, fdsData.SAB_M || {});
+    html += renderTurnosFdsParaPDF(sab, fdsData.SAB_M || {}, 'SAB_M');
     html += '</div>';
-    
+
     // Domingo Mañana
     html += '<div class="fds-turno dom-m"><div class="fds-turno-header">DOM ' + dom.getDate() + ' Mañana</div>';
-    html += renderTurnosFdsParaPDF(dom, fdsData.DOM_M || {});
+    html += renderTurnosFdsParaPDF(dom, fdsData.DOM_M || {}, 'DOM_M');
     html += '</div>';
-    
+
     // Sábado Tarde
     html += '<div class="fds-turno sab-t"><div class="fds-turno-header">SAB ' + sab.getDate() + ' Tarde</div>';
-    html += renderTurnosFdsParaPDF(sab, fdsData.SAB_T || {});
+    html += renderTurnosFdsParaPDF(sab, fdsData.SAB_T || {}, 'SAB_T');
     html += '</div>';
-    
+
     // Domingo Tarde
     html += '<div class="fds-turno dom-t"><div class="fds-turno-header">DOM ' + dom.getDate() + ' Tarde</div>';
-    html += renderTurnosFdsParaPDF(dom, fdsData.DOM_T || {});
+    html += renderTurnosFdsParaPDF(dom, fdsData.DOM_T || {}, 'DOM_T');
     html += '</div>';
     
     html += '</div></div>';
@@ -3130,17 +3130,23 @@ function generarCalendarioFdS() {
 
 function renderTurnosParaPDF(dia, horarios) {
   if (!horarios) return '';
+  var horariosAjustados = aplicarModificacionesHorario(horarios, dia);
   var html = '<div class="turnos-wrap">';
   var franjas = {descarga: [], mañanas: [], tardes: [], cierre: []};
-  
-  for (var n in horarios) {
-    var h = horarios[n];
+
+  for (var n in horariosAjustados) {
+    var h = horariosAjustados[n];
     var franja = tiendaActual === 'granvia' ? getFranja(h[0], h[1]) : getFranjaIS(h[0], h[1]);
     var aus = estaAusente(n, dia);
     var sust = getSustituto(dia, n);
+
+    // Ocultar si está sustituyendo en otro turno
+    var sustInfo = estaSustituyendo(n, dia, franja);
+    if (sustInfo.sustituyendo) continue;
+
     franjas[franja].push({nombre: n, h: h, aus: aus, sust: sust});
   }
-  
+
   for (var f in franjas) {
     if (franjas[f].length > 0) {
       for (var i = 0; i < franjas[f].length; i++) {
@@ -3162,16 +3168,31 @@ function renderTurnosParaPDF(dia, horarios) {
   return html;
 }
 
-function renderTurnosFdsParaPDF(dia, horarios) {
+function renderTurnosFdsParaPDF(dia, horarios, turnoKey) {
   if (!horarios) return '';
   var html = '';
+  var fs = formatFechaLocal(dia);
   for (var n in horarios) {
     var h = horarios[n];
     var aus = estaAusente(n, dia);
+
+    // Ocultar si está sustituyendo en otro turno FdS
+    var estaSust = estaSustituyendoFds(n, dia, turnoKey);
+    if (estaSust) continue;
+
     html += '<div class="turno fds' + (aus ? ' ausente' : '') + '">';
     html += '<span class="turno-nombre">' + n + '</span>';
     html += '<span class="turno-hora">' + formatHora(h[0]) + '-' + formatHora(h[1]) + '</span>';
     html += '</div>';
+
+    // Mostrar sustituto si lo hay
+    var sust = getSustitutoFds(dia, n, turnoKey);
+    if (sust) {
+      html += '<div class="turno sustituto">';
+      html += '<span class="turno-nombre">→ ' + sust.sustituto + '</span>';
+      html += '<span class="turno-hora">' + formatHora(sust.entrada) + '-' + formatHora(sust.salida) + '</span>';
+      html += '</div>';
+    }
   }
   return html;
 }
