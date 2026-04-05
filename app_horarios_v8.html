@@ -1293,6 +1293,24 @@ function calcularHorasSemanales(emp, fechaLunes) {
 
   var totalGV = 0, totalIS = 0;
 
+  // Helper: ¿está sustituyendo en esta tienda este día L-V?
+  function sustEnTiendaDia(emp, fs, tienda) {
+    for (var i = 0; i < sustituciones.length; i++) {
+      var s = sustituciones[i];
+      if (s.sustituto === emp && s.fecha === fs && s.tienda === tienda && !s.turnoFds) return true;
+    }
+    return false;
+  }
+
+  // Helper: ¿está sustituyendo en FdS de esta tienda este fin de semana?
+  function sustEnTiendaFds(emp, fsSab, fsDom, tienda) {
+    for (var i = 0; i < sustituciones.length; i++) {
+      var s = sustituciones[i];
+      if (s.sustituto === emp && s.tienda === tienda && s.turnoFds && (s.fecha === fsSab || s.fecha === fsDom)) return true;
+    }
+    return false;
+  }
+
   // L-V (5 días desde el lunes)
   for (var d = 0; d < 5; d++) {
     var dia = new Date(fechaLunes);
@@ -1300,21 +1318,21 @@ function calcularHorasSemanales(emp, fechaLunes) {
     var fs = formatFechaLocal(dia);
     var dow = dia.getDay();
 
-    // Horas en Gran Vía L-V
+    // Horas en Gran Vía L-V (no contar si sustituye en GV ese día)
     var semAB = getSemanaAB(dia);
     var horariosGV = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
     if (horariosGV && horariosGV[emp]) {
       var hGV = aplicarModificacionesHorario(horariosGV, dia);
-      if (hGV[emp] && !estaAusente(emp, dia)) {
+      if (hGV[emp] && !estaAusente(emp, dia) && !sustEnTiendaDia(emp, fs, 'granvia')) {
         totalGV += hGV[emp][1] - hGV[emp][0];
       }
     }
 
-    // Horas en Isabel L-V
+    // Horas en Isabel L-V (no contar si sustituye en Isabel ese día)
     var horariosIS = getHorariosIS(dia);
     if (horariosIS && horariosIS[emp]) {
       var hIS = aplicarModificacionesHorario(horariosIS, dia);
-      if (hIS[emp] && !estaAusente(emp, dia)) {
+      if (hIS[emp] && !estaAusente(emp, dia) && !sustEnTiendaDia(emp, fs, 'isabel')) {
         totalIS += hIS[emp][1] - hIS[emp][0];
       }
     }
@@ -1326,15 +1344,18 @@ function calcularHorasSemanales(emp, fechaLunes) {
   sab.setDate(sab.getDate() + 5);
   var dom = new Date(fechaLunes);
   dom.setDate(dom.getDate() + 6);
+  var fsSab = formatFechaLocal(sab);
+  var fsDom = formatFechaLocal(dom);
 
-  // FdS Gran Vía
+  // FdS Gran Vía (no contar si sustituye en GV FdS)
   var fdsGV = getFdsGV(sab);
   if (fdsGV) {
+    var sustGVFds = sustEnTiendaFds(emp, fsSab, fsDom, 'granvia');
     var turnosFds = ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T'];
     var diasFds = [sab, sab, dom, dom];
     for (var t = 0; t < 4; t++) {
       var turnoData = fdsGV[turnosFds[t]];
-      if (turnoData && turnoData[emp] && !estaAusente(emp, diasFds[t])) {
+      if (turnoData && turnoData[emp] && !estaAusente(emp, diasFds[t]) && !sustGVFds) {
         totalGV += turnoData[emp][1] - turnoData[emp][0];
       }
     }
@@ -1347,7 +1368,8 @@ function calcularHorasSemanales(emp, fechaLunes) {
     var diasFds = [sab, sab, dom, dom];
     for (var t = 0; t < 4; t++) {
       var turnoData = fdsIS[turnosFds[t]];
-      if (turnoData && turnoData[emp] && !estaAusente(emp, diasFds[t])) {
+      var sustISFds = sustEnTiendaFds(emp, fsSab, fsDom, 'isabel');
+      if (turnoData && turnoData[emp] && !estaAusente(emp, diasFds[t]) && !sustISFds) {
         totalIS += turnoData[emp][1] - turnoData[emp][0];
       }
     }
@@ -1415,22 +1437,20 @@ function generarTooltipHoras(emp, fecha) {
   if (h.contratoGV > 0 || h.totalGV > 0) {
     var clsGV = h.diffGV > 0 ? 'tooltip-danger' : 'tooltip-ok';
     lines += '<br><span class="' + clsGV + '">KIRA: ' + h.totalGV + 'h / ' + h.contratoGV + 'h';
-    if (h.diffGV > 0) lines += ' (⚠️+' + h.diffGV + 'h)';
+    if (h.diffGV > 0) lines += ' (⚠️+' + h.diffGV + 'h extra)';
     else if (h.diffGV === 0) lines += ' ✓';
     else lines += ' (' + h.diffGV + 'h)';
     lines += '</span>';
-    if (h.sustGV > 0) lines += ' <span class="tooltip-warn">(sust: +' + h.sustGV + 'h)</span>';
   }
 
   // Mostrar IS si tiene contrato o horas
   if (h.contratoIS > 0 || h.totalIS > 0) {
     var clsIS = h.diffIS > 0 ? 'tooltip-danger' : 'tooltip-ok';
     lines += '<br><span class="' + clsIS + '">REYPIK: ' + h.totalIS + 'h / ' + h.contratoIS + 'h';
-    if (h.diffIS > 0) lines += ' (⚠️+' + h.diffIS + 'h)';
+    if (h.diffIS > 0) lines += ' (⚠️+' + h.diffIS + 'h extra)';
     else if (h.diffIS === 0) lines += ' ✓';
     else lines += ' (' + h.diffIS + 'h)';
     lines += '</span>';
-    if (h.sustIS > 0) lines += ' <span class="tooltip-warn">(sust: +' + h.sustIS + 'h)</span>';
   }
 
   // Determinar estado del punto indicador
@@ -1546,11 +1566,19 @@ function getSustitutoFds(f,n,turnoKey){
 }
 
 function estaSustituyendoFds(emp,fecha,turnoKeyActual){
-  var fs=formatFechaLocal(fecha);
+  // Buscar en todo el fin de semana (sábado y domingo)
+  var dow=fecha.getDay();
+  var sab,dom;
+  if(dow===6){sab=fecha;dom=new Date(fecha);dom.setDate(dom.getDate()+1);}
+  else{dom=fecha;sab=new Date(fecha);sab.setDate(sab.getDate()-1);}
+  var fsSab=formatFechaLocal(sab);
+  var fsDom=formatFechaLocal(dom);
   for(var i=0;i<sustituciones.length;i++){
     var sust=sustituciones[i];
-    if(sust.sustituto===emp && sust.fecha===fs && sust.tienda===tiendaActual && sust.turnoFds && sust.turnoFds!==turnoKeyActual){
-      return true;
+    if(sust.sustituto===emp && sust.tienda===tiendaActual && sust.turnoFds){
+      if((sust.fecha===fsSab || sust.fecha===fsDom) && sust.turnoFds!==turnoKeyActual){
+        return true;
+      }
     }
   }
   return false;
@@ -3298,7 +3326,7 @@ function syncSustituciones() {
 }
 
 function guardarHistorialPropuestas(propuestas, aplicadas) {
-  var h = ['fechaCalculo','tienda','fecha','ausente','turno','propuestoMotor','elegidoUsuario','decision'];
+  var h = ['fechaCalculo','tienda','fecha','ausente','turno','propuestoMotor','elegidoUsuario','decision','motivo'];
   var rows = [];
   var ahora = new Date().toISOString().slice(0, 19);
   for (var i = 0; i < propuestas.length; i++) {
@@ -3323,7 +3351,7 @@ function guardarHistorialPropuestas(propuestas, aplicadas) {
       decision = 'cambiada';
       elegido = aplicada.sustituto;
     }
-    rows.push({fechaCalculo:ahora, tienda:p.tienda, fecha:p.fecha, ausente:p.ausente, turno:turno, propuestoMotor:p.sustituto, elegidoUsuario:elegido, decision:decision});
+    rows.push({fechaCalculo:ahora, tienda:p.tienda, fecha:p.fecha, ausente:p.ausente, turno:turno, propuestoMotor:p.sustituto, elegidoUsuario:elegido, decision:decision, motivo:''});
   }
   if (rows.length > 0) {
     // Append: leer existentes y añadir
@@ -3335,6 +3363,33 @@ function guardarHistorialPropuestas(propuestas, aplicadas) {
       guardarEnSheets('historialPropuestas', h, rows);
     });
   }
+}
+
+function guardarMotivoRechazo(propuesta, motivo) {
+  var h = ['fechaCalculo','tienda','fecha','ausente','turno','propuestoMotor','motivo'];
+  var row = {
+    fechaCalculo: new Date().toISOString().slice(0, 19),
+    tienda: propuesta.tienda,
+    fecha: propuesta.fecha,
+    ausente: propuesta.ausente,
+    turno: propuesta.turnoFds || propuesta.franja,
+    propuestoMotor: propuesta.sustituto,
+    motivo: motivo
+  };
+  // Añadir al historial existente
+  fetch(SHEETS_API + '?action=readAll').then(function(r){return r.json();}).then(function(data){
+    var existentes = data.historialPropuestas || [];
+    // Buscar la entrada correspondiente y añadir motivo
+    for (var i = existentes.length - 1; i >= 0; i--) {
+      var e = existentes[i];
+      if (e.fecha === row.fecha && e.ausente === row.ausente && e.propuestoMotor === row.propuestoMotor && e.tienda === row.tienda) {
+        existentes[i].motivo = motivo;
+        break;
+      }
+    }
+    var hFull = ['fechaCalculo','tienda','fecha','ausente','turno','propuestoMotor','elegidoUsuario','decision','motivo'];
+    guardarEnSheets('historialPropuestas', hFull, existentes);
+  }).catch(function(){});
 }
 
 function syncModificaciones() {
@@ -3483,10 +3538,11 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
     // Max-15
     if (!error && e.restriccion === 'max-15' && salidaSust > 15) error = 'max-15';
 
-    // Solapamiento entre tiendas
+    // Solapamiento entre tiendas (aviso, no bloqueo — permite excepciones como EDU comodín)
+    var tieneSolape = false;
     if (!error && e.tienda === 'ambas') {
       var solape = verificarSolapamientoSustituto(alias, fecha, turno.tienda, entradaSust, salidaSust);
-      if (solape.solapamiento) error = 'solape';
+      if (solape.solapamiento) tieneSolape = true;
     }
 
     // Verificar si moverlo deja su turno bajo mínimos
@@ -3547,6 +3603,7 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
         salida: salidaSust,
         margen: margen,
         dejaBajoMin: dejaBajoMin,
+        tieneSolape: tieneSolape,
         excedente: excedenteTurnoOrigen,
         vieneDeDOMT: vieneDeDOMT,
         esPropio: esPropio,
@@ -3558,6 +3615,7 @@ function obtenerCandidatosValidos(turno, sustitucionesSimuladas) {
   // Ordenar: 1) no deja bajo mínimos, 2) empleados propios primero, 3) no viene de DOM_T, 4) mayor excedente, 5) mayor margen horas
   candidatos.sort(function(a, b) {
     if (a.dejaBajoMin !== b.dejaBajoMin) return a.dejaBajoMin ? 1 : -1;
+    if (a.tieneSolape !== b.tieneSolape) return a.tieneSolape ? 1 : -1;
     if (a.esPropio !== b.esPropio) return a.esPropio ? -1 : 1;
     if (a.vieneDeDOMT !== b.vieneDeDOMT) return a.vieneDeDOMT ? 1 : -1;
     if (a.excedente !== b.excedente) return b.excedente - a.excedente;
@@ -3669,7 +3727,8 @@ function mostrarPropuestaSustituciones(sinSolucion) {
             html += '<option value="' + p.sustituto + '">' + p.sustituto + '</option>';
             for (var a = 0; a < p.alternativas.length; a++) {
               var alt = p.alternativas[a];
-              html += '<option value="' + alt.alias + '">' + alt.alias + (alt.dejaBajoMin ? ' ⚠️' : '') + '</option>';
+              var avisoAlt = alt.dejaBajoMin ? ' ⚠️min' : (alt.tieneSolape ? ' 🔄solape' : '');
+              html += '<option value="' + alt.alias + '">' + alt.alias + avisoAlt + '</option>';
             }
             html += '</select>';
           }
@@ -3717,6 +3776,15 @@ function cambiarPropuesta(idx, nuevoSustituto) {
 }
 
 function quitarPropuesta(idx) {
+  var p = _propuestaSustituciones[idx];
+  var motivo = prompt('¿Por qué rechazas a ' + p.sustituto + ' para cubrir a ' + p.ausente + '?\n(Escribe el motivo para que el sistema aprenda, o deja vacío)');
+  if (motivo === null) return; // Canceló
+  // Guardar rechazo en historial con motivo
+  guardarHistorialPropuestas([p], []);
+  // Guardar motivo aparte si lo hay
+  if (motivo) {
+    guardarMotivoRechazo(p, motivo);
+  }
   _propuestaSustituciones.splice(idx, 1);
   mostrarPropuestaSustituciones([]);
 }
@@ -3724,8 +3792,9 @@ function quitarPropuesta(idx) {
 function aplicarSeleccionadas() {
   if (_propuestaSustituciones.length === 0) { cerrarModal('modal-auto-sust'); return; }
 
-  var todasPropuestas = _propuestaSustituciones.slice(); // Copia para historial
+  var todasPropuestas = _propuestaSustituciones.slice();
   var aplicadas = [];
+  var rechazadas = [];
   var count = 0;
   var restantes = [];
   for (var i = 0; i < _propuestaSustituciones.length; i++) {
@@ -3737,7 +3806,18 @@ function aplicarSeleccionadas() {
       aplicadas.push(sust);
       count++;
     } else {
+      rechazadas.push(_propuestaSustituciones[i]);
       restantes.push(_propuestaSustituciones[i]);
+    }
+  }
+
+  // Pedir motivos de las rechazadas
+  if (rechazadas.length > 0) {
+    var motivo = prompt('Has desmarcado ' + rechazadas.length + ' propuesta(s).\n¿Motivo general? (para que el sistema aprenda)\n\nDeja vacío si no quieres comentar.');
+    if (motivo) {
+      for (var r = 0; r < rechazadas.length; r++) {
+        guardarMotivoRechazo(rechazadas[r], motivo);
+      }
     }
   }
 
