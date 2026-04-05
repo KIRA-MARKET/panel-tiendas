@@ -1534,7 +1534,7 @@ function renderTurnos(dia,horarios){
         var cls='turno '+fr+(t[i].ausente?' ausente':'')+(t[i].modificado?' modificado':'');
         var dataAttr='data-emp="'+t[i].nombre+'" data-fecha="'+fs+'" data-entrada="'+t[i].e+'" data-salida="'+t[i].s+'" data-franja="'+fr+'"';
         html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+t[i].nombre+(t[i].modificado?' ✎':'')+generarTooltipHoras(t[i].nombre,dia)+'</span><span class="turno-hora">'+formatHora(t[i].e)+'-'+formatHora(t[i].s)+'</span></div>';
-        if(t[i].sustData){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+t[i].sustData.sustituto+generarTooltipHoras(t[i].sustData.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
+        if(t[i].sustData){html+='<div class="turno sustituto" style="cursor:pointer" onclick="editarHorarioSustituto(\''+fs+'\',\''+t[i].sustData.ausente+'\',\''+(t[i].sustData.turnoFds||'')+'\')"><span class="turno-nombre">→ '+t[i].sustData.sustituto+generarTooltipHoras(t[i].sustData.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
       }
       html+='</div>';
     }
@@ -1554,7 +1554,7 @@ function renderTurnos(dia,horarios){
       var cls='turno '+fr+(t[i].ausente?' ausente':'')+(t[i].modificado?' modificado':'');
       var dataAttr='data-emp="'+t[i].nombre+'" data-fecha="'+fs+'" data-entrada="'+t[i].e+'" data-salida="'+t[i].s+'" data-franja="'+fr+'"';
       html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+t[i].nombre+(t[i].modificado?' ✎':'')+generarTooltipHoras(t[i].nombre,dia)+'</span><span class="turno-hora">'+formatHora(t[i].e)+'-'+formatHora(t[i].s)+'</span></div>';
-      if(t[i].sustData){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+t[i].sustData.sustituto+generarTooltipHoras(t[i].sustData.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
+      if(t[i].sustData){html+='<div class="turno sustituto" style="cursor:pointer" onclick="editarHorarioSustituto(\''+fs+'\',\''+t[i].sustData.ausente+'\',\''+(t[i].sustData.turnoFds||'')+'\')"><span class="turno-nombre">→ '+t[i].sustData.sustituto+generarTooltipHoras(t[i].sustData.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(t[i].sustData.entrada)+'-'+formatHora(t[i].sustData.salida)+'</span></div>';}
     }
     html+='</div>';
   }
@@ -1584,7 +1584,7 @@ function renderTurnosFds(dia,horarios,turnoKey){
     var cls='turno fds'+(aus?' ausente':'')+(tieneModificacion?' modificado':'');
     var dataAttr='data-emp="'+n+'" data-fecha="'+fs+'" data-entrada="'+h[0]+'" data-salida="'+h[1]+'" data-turno-fds="'+turnoKey+'"';
     html+='<div class="'+cls+'" '+dataAttr+' onclick="abrirMenuEmpleado(event, this)"><span class="turno-nombre">'+n+(tieneModificacion?' ✎':'')+generarTooltipHoras(n,dia)+'</span><span class="turno-hora">'+formatHora(h[0])+'-'+formatHora(h[1])+'</span></div>';
-    if(sust){html+='<div class="turno sustituto"><span class="turno-nombre">→ '+sust.sustituto+generarTooltipHoras(sust.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(sust.entrada)+'-'+formatHora(sust.salida)+'</span></div>';}
+    if(sust){html+='<div class="turno sustituto" style="cursor:pointer" onclick="editarHorarioSustituto(\''+fs+'\',\''+sust.ausente+'\',\''+(sust.turnoFds||'')+'\')"><span class="turno-nombre">→ '+sust.sustituto+generarTooltipHoras(sust.sustituto,dia)+'</span><span class="turno-hora">'+formatHora(sust.entrada)+'-'+formatHora(sust.salida)+'</span></div>';}
   }
   return html;
 }
@@ -2349,6 +2349,29 @@ function abrirAsignarSustituto(fechaStr,empAusente,turnoFds){
   document.getElementById('asignar-sust-body').setAttribute('data-turnofds',turnoFds||'');
   abrirModal('modal-asignar-sust');
 }
+function editarHorarioSustituto(fechaStr, ausente, turnoFds) {
+  // Buscar la sustitución
+  for (var i = 0; i < sustituciones.length; i++) {
+    var s = sustituciones[i];
+    if (s.fecha === fechaStr && s.ausente === ausente && s.tienda === tiendaActual) {
+      if (turnoFds && s.turnoFds !== turnoFds) continue;
+      if (!turnoFds && s.turnoFds) continue;
+
+      var nuevaEntrada = prompt('Editar horario de ' + s.sustituto + ' sustituyendo a ' + ausente + '\n' + formatFechaES(fechaStr) + (turnoFds ? ' (' + turnoFds.replace('_',' ') + ')' : '') + '\n\nEntrada actual: ' + formatHora(s.entrada) + '\nNueva entrada (formato decimal, ej: 10.5 = 10:30):', s.entrada);
+      if (nuevaEntrada === null) return;
+
+      var nuevaSalida = prompt('Salida actual: ' + formatHora(s.salida) + '\nNueva salida:', s.salida);
+      if (nuevaSalida === null) return;
+
+      s.entrada = parseFloat(nuevaEntrada);
+      s.salida = parseFloat(nuevaSalida);
+      renderCalendario();
+      syncSustituciones();
+      return;
+    }
+  }
+}
+
 function noSustituirTurno(){
   var body=document.getElementById('asignar-sust-body');
   var fechaStr=body.getAttribute('data-fecha');
