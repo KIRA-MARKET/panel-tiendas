@@ -1271,9 +1271,32 @@ function estaSustituyendo(emp, fecha, franjaOriginal) {
     var sust = sustituciones[i];
     if(sust.sustituto === emp && sust.fecha === fs) {
       if(sust.tienda === tiendaActual) {
-        // Sustitución en esta misma tienda → siempre ocultar del turno original
-        var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
-        return { sustituyendo: true, a: sust.ausente, franja: frSust };
+        // Comprobar si es comodín (reemplaza horas de la OTRA tienda, no de esta)
+        var esComodin = false;
+        var empData = tiendaActual === 'granvia' ? EMPLEADOS_GV[emp] : EMPLEADOS_IS[emp];
+        if(empData && empData.tienda === 'ambas') {
+          var otraTienda = tiendaActual === 'granvia' ? 'isabel' : 'granvia';
+          var dow = fecha.getDay();
+          var horarioOtra = null;
+          if(dow >= 1 && dow <= 5) {
+            if(otraTienda === 'granvia') {
+              var semAB = getSemanaAB(fecha);
+              var hOtra = HORARIOS_GV[semAB][dow === 5 ? 'V' : 'LJ'];
+              if(hOtra && hOtra[emp]) horarioOtra = hOtra[emp];
+            } else {
+              var hOtra = getHorariosIS(fecha);
+              if(hOtra && hOtra[emp]) horarioOtra = hOtra[emp];
+            }
+          }
+          if(horarioOtra && !(sust.salida <= horarioOtra[0] || horarioOtra[1] <= sust.entrada)) {
+            esComodin = true;
+          }
+        }
+        if(!esComodin) {
+          var frSust = tiendaActual === 'granvia' ? getFranja(sust.entrada, sust.salida) : getFranjaIS(sust.entrada, sust.salida);
+          return { sustituyendo: true, a: sust.ausente, franja: frSust };
+        }
+        // Comodín: no ocultar (hace ambos turnos secuenciales)
       }
       // Compartido sustituyendo en la OTRA tienda: solo ocultar si hay solapamiento horario
       var emps = tiendaActual === 'granvia' ? EMPLEADOS_GV : EMPLEADOS_IS;
@@ -3354,7 +3377,8 @@ function cargarDesdeSheets() {
         sustituciones = [];
         for (var i = 0; i < data.sustituciones.length; i++) {
           var s = data.sustituciones[i];
-          sustituciones.push({fecha:s.fecha,ausente:s.ausente,sustituto:s.sustituto,entrada:s.entrada,salida:s.salida,franja:s.franja||'',turnoFds:s.turnoFds||'',tienda:s.tienda});
+          var ajCarga = ajustarHorarioSustituto(s.entrada, s.salida);
+          sustituciones.push({fecha:s.fecha,ausente:s.ausente,sustituto:s.sustituto,entrada:ajCarga.entrada,salida:ajCarga.salida,franja:s.franja||'',turnoFds:s.turnoFds||'',tienda:s.tienda});
         }
       }
       // Modificaciones
