@@ -246,6 +246,20 @@ Abrir `YOLANDA_HP/tests/tests.html` en el navegador. Verde = todo pasó. Rojo = 
 
 ---
 
+## Modo de ejecución y flujo de git
+
+Nacho lanza Claude Code con `claude --dangerously-skip-permissions`, así que ejecuto herramientas (edit, bash, write) sin pedir aprobación cada vez. **Esto exige disciplina con git**:
+
+1. **Antes de empezar trabajo importante** → comprobar `git status`. Si no está limpio, avisar a Nacho y proponer commit/stash antes de tocar nada.
+2. **Después de cada bloque validado** ("OK", "todo verde", "perfecto") → proponer commit con mensaje descriptivo. No commitear sin que Nacho lo apruebe.
+3. **Acciones destructivas** (`rm`, `git reset --hard`, `git checkout .`, borrar archivos sin trackear, `git push --force`) → SEGUIR pidiendo confirmación explícita aunque el flag esté activo. El flag salta permisos del harness, no mi criterio.
+4. **Nunca mezclar** mis cambios con cambios previos sin commitear de Nacho — avisar primero.
+5. **`.gitignore`** ya excluye: `*.app/`, `*.xlsx` (datos LOPD), `SELLO*.png`, `Icono*.png`, `icono_*.png`, `Gemini_Generated_*.png`. Si Nacho añade un archivo nuevo con datos personales, recordarle ignorarlo.
+
+**Estado del repo al iniciar:** rama `main`, último commit relevante = `4e82336` (snapshot inicial Fases 1-3 + auditoría + CLAUDE.md, 7 abril 2026).
+
+---
+
 ## Memoria persistente
 
 Las preferencias de Nacho y decisiones del proyecto viven en
