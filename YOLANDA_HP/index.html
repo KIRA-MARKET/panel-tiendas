@@ -102,6 +102,7 @@
 <script src="js/auditor.js"></script>
 <script src="js/calendario-ui.js"></script>
 <script src="js/modales-ui.js"></script>
+<script src="js/pdf.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -219,7 +220,8 @@ const App = {
   },
 
   exportarPDF(modo) {
-    CalendarioUI.toast('Exportar PDF: pr\u00f3ximamente (Fase 4)', 'info');
+    document.querySelectorAll('.dropdown-menu').forEach(d => d.classList.remove('show'));
+    PDFExport.exportar(modo);
   },
 
   // ── Diagnóstico (temporal) ─────────────────────────────
