@@ -156,6 +156,20 @@ const Reglas = {
       errores.push(candidato + ' solo sustituye en Isabel los viernes');
     }
 
+    // ── DAVID/LETI: exclusión mutua mismo viernes Isabel ───
+    // Solo uno de los dos puede sustituir en Isabel el mismo viernes.
+    if ((candidato === 'DAVID' || candidato === 'LETI') &&
+        turno.tienda === 'isabel' && esLV && dow === 5) {
+      const otro = candidato === 'DAVID' ? 'LETI' : 'DAVID';
+      const susts = Store.getSustituciones();
+      const yaEstaOtro = susts.some(s =>
+        s.sustituto === otro && s.fecha === fs && s.tienda === 'isabel'
+      );
+      if (yaEstaOtro) {
+        errores.push(otro + ' ya sustituye este viernes en Isabel (excl. mutua)');
+      }
+    }
+
     // ── REGLA 16: Solapamiento entre tiendas (BLOQUEO) ─────
     // Si físicamente está en la otra tienda, no puede sustituir aquí
     if (empData.tienda === 'ambas') {

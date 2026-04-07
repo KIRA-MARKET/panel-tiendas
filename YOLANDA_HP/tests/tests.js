@@ -638,6 +638,71 @@
     });
   });
 
+  suite('Reglas: DAVID/LETI exclusión mutua viernes Isabel', function () {
+    // Viernes 10 abril 2026
+    const viernes = new Date(2026, 3, 10);
+    const turnoBase = {
+      tienda: 'isabel',
+      fecha: viernes,
+      ausente: 'JESSICA',
+      franja: 'mañanas',
+      turnoFds: null,
+      entrada: 9,
+      salida: 14
+    };
+    const fs = Utils.formatFecha(viernes);
+
+    // Snapshot/restauración mínima del Store
+    const sustsBackup = Store._state.sustituciones.slice();
+    const isBackup = Store._state.empleadosIS;
+    // Seed mínimo
+    Store._state.empleadosIS = Object.assign({}, isBackup, {
+      DAVID: { alias: 'DAVID', tienda: 'ambas', contrato: 12, restriccion: '' },
+      LETI:  { alias: 'LETI',  tienda: 'ambas', contrato: 12, restriccion: '' },
+      JESSICA: { alias: 'JESSICA', tienda: 'isabel', contrato: 30, restriccion: '' }
+    });
+
+    test('DAVID puede sustituir si LETI no está', () => {
+      Store._state.sustituciones = [];
+      const r = Reglas.validarCandidato('DAVID', turnoBase, { verificarCadena: false });
+      const tieneErrorExcl = r.errores.some(e => e.includes('excl. mutua'));
+      assert(!tieneErrorExcl, 'no debe haber error de exclusión: ' + r.errores.join('|'));
+    });
+
+    test('DAVID NO puede si LETI ya sustituye ese viernes en Isabel', () => {
+      Store._state.sustituciones = [{
+        sustituto: 'LETI', ausente: 'X', fecha: fs, tienda: 'isabel',
+        entrada: 9, salida: 14
+      }];
+      const r = Reglas.validarCandidato('DAVID', turnoBase, { verificarCadena: false });
+      const tieneErrorExcl = r.errores.some(e => e.includes('excl. mutua'));
+      assert(tieneErrorExcl, 'debe bloquear por exclusión mutua. errores=' + JSON.stringify(r.errores) + ' susts=' + JSON.stringify(Store.getSustituciones()) + ' fs=' + fs);
+    });
+
+    test('LETI NO puede si DAVID ya sustituye ese viernes en Isabel', () => {
+      Store._state.sustituciones = [{
+        sustituto: 'DAVID', ausente: 'X', fecha: fs, tienda: 'isabel',
+        entrada: 9, salida: 14
+      }];
+      const r = Reglas.validarCandidato('LETI', turnoBase, { verificarCadena: false });
+      const tieneErrorExcl = r.errores.some(e => e.includes('excl. mutua'));
+      assert(tieneErrorExcl, 'debe bloquear por exclusión mutua');
+    });
+
+    test('Sustitución de LETI en GV el mismo día NO bloquea a DAVID en Isabel', () => {
+      Store._state.sustituciones = [{
+        sustituto: 'LETI', ausente: 'X', fecha: fs, tienda: 'granvia',
+        entrada: 9, salida: 14
+      }];
+      const r = Reglas.validarCandidato('DAVID', turnoBase, { verificarCadena: false });
+      const tieneErrorExcl = r.errores.some(e => e.includes('excl. mutua'));
+      assert(!tieneErrorExcl, 'la exclusión solo aplica en Isabel');
+    });
+
+    Store._state.sustituciones = sustsBackup;
+    Store._state.empleadosIS = isBackup;
+  });
+
   // ============================================================
   // RESUMEN
   // ============================================================
