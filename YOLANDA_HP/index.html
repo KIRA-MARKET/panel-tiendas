@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YOLANDA HP · Gesti&oacute;n de Horarios</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/calendario.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+     ═══════════════════════════════════════════════════════════ -->
+<header class="header no-print">
+  <div class="header-left">
+    <div class="logo"><span>YOLANDA</span> HP</div>
+    <div class="store-selector">
+      <button class="store-btn active" id="btn-granvia" onclick="App.cambiarTienda('granvia')">Gran V&iacute;a</button>
+      <button class="store-btn" id="btn-isabel" onclick="App.cambiarTienda('isabel')">Isabel</button>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" id="tab-btn-calendario" onclick="App.mostrarTab('calendario')">Calendario</button>
+      <button class="nav-tab" id="tab-btn-empleados" onclick="App.mostrarTab('empleados')">Empleados</button>
+      <button class="nav-tab" id="tab-btn-ausencias" onclick="App.mostrarTab('ausencias')">Ausencias</button>
+      <button class="nav-tab" id="tab-btn-festivos" onclick="App.mostrarTab('festivos')">Festivos</button>
+      <button class="nav-tab" id="tab-btn-control" onclick="App.mostrarTab('control')">Control</button>
+    </nav>
+  </div>
+  <div class="header-right">
+    <span class="sync-status" id="sync-status">Cargando...</span>
+    <div class="dropdown">
+      <button class="btn btn-secondary" onclick="App.toggleDropdown('dropdown-export', event)">Exportar &#9662;</button>
+      <div class="dropdown-menu" id="dropdown-export">
+        <button onclick="App.exportarPDF('lv')">Lunes a Viernes</button>
+        <button onclick="App.exportarPDF('fds')">Fines de Semana</button>
+      </div>
+    </div>
+    <button class="btn btn-orange" onclick="App.calcularSustituciones()">Calcular sustituciones</button>
+    <button class="btn btn-purple" onclick="App.auditar()">Auditar</button>
+    <button class="btn btn-secondary" onclick="App.diagnosticar()" style="background:#ffc107">🔧 Diagnóstico</button>
+    <button class="btn btn-primary" onclick="App.abrirModalAusencia()">+ Ausencia</button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CONTENIDO PRINCIPAL
+     ═══════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- Tab: Calendario -->
+  <div id="tab-calendario" class="tab-content active">
+    <div class="calendar-header no-print">
+      <div class="month-nav">
+        <button onclick="App.mesAnterior()">&#8249;</button>
+        <h2 id="mes-actual">Abril 2026</h2>
+        <button onclick="App.mesSiguiente()">&#8250;</button>
+      </div>
+    </div>
+    <div id="calendar-container"></div>
+  </div>
+
+  <!-- Tab: Empleados (placeholder) -->
+  <div id="tab-empleados" class="tab-content">
+    <div style="padding:40px;text-align:center;color:var(--text-muted)">
+      <p style="font-size:16px;margin-bottom:8px">Empleados</p>
+      <p>Fase 2 — pr&oacute;ximamente</p>
+    </div>
+  </div>
+
+  <!-- Tab: Ausencias (placeholder) -->
+  <div id="tab-ausencias" class="tab-content">
+    <div style="padding:40px;text-align:center;color:var(--text-muted)">
+      <p style="font-size:16px;margin-bottom:8px">Ausencias</p>
+      <p>Fase 2 — pr&oacute;ximamente</p>
+    </div>
+  </div>
+
+  <!-- Tab: Festivos -->
+  <div id="tab-festivos" class="tab-content"></div>
+
+  <!-- Tab: Control -->
+  <div id="tab-control" class="tab-content"></div>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPTS (orden importa)
+     ═══════════════════════════════════════════════════════════ -->
+<script src="js/utilidades.js"></script>
+<script src="js/config.js"></script>
+<script src="js/datos.js"></script>
+<script src="js/empleados.js"></script>
+<script src="js/rotaciones.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/cobertura.js"></script>
+<script src="js/reglas.js"></script>
+<script src="js/ausencias.js"></script>
+<script src="js/motor-sustituciones.js"></script>
+<script src="js/festivos.js"></script>
+<script src="js/control.js"></script>
+<script src="js/auditor.js"></script>
+<script src="js/calendario-ui.js"></script>
+<script src="js/modales-ui.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// App — Controlador principal
+// ═══════════════════════════════════════════════════════════
+
+const App = {
+
+  init() {
+    // Cargar datos por defecto
+    EmpleadosDefault.init();
+
+    // Escuchar eventos del Store
+    Store.on('cambioVista', () => CalendarioUI.render());
+    Store.on('syncStatus', (status) => App._updateSyncUI(status));
+
+    // Renderizar calendario inicial
+    CalendarioUI.render();
+
+    // Cargar datos de Sheets (async)
+    Sync.cargar().then(() => {
+      CalendarioUI.render();
+    });
+
+    // Cerrar dropdowns al click fuera
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu').forEach(d => d.classList.remove('show'));
+      }
+    });
+
+    // Cerrar modales con Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+      }
+    });
+  },
+
+  // ── Navegación ─────────────────────────────────────────
+
+  cambiarTienda(tienda) {
+    Store.setTienda(tienda);
+    document.getElementById('btn-granvia').classList.toggle('active', tienda === 'granvia');
+    document.getElementById('btn-isabel').classList.toggle('active', tienda === 'isabel');
+  },
+
+  mostrarTab(tab) {
+    const tabs = ['calendario', 'empleados', 'ausencias', 'festivos', 'control'];
+    for (const t of tabs) {
+      const btn = document.getElementById('tab-btn-' + t);
+      const content = document.getElementById('tab-' + t);
+      if (btn) btn.classList.toggle('active', t === tab);
+      if (content) content.classList.toggle('active', t === tab);
+    }
+    if (tab === 'festivos') FestivosUI.render();
+    if (tab === 'control') ControlUI.render();
+  },
+
+  mesAnterior() {
+    let mes = Store.getMes() - 1;
+    let año = Store.getAño();
+    if (mes < 0) { mes = 11; año--; }
+    Store.setAño(año);
+    Store.setMes(mes);
+  },
+
+  mesSiguiente() {
+    let mes = Store.getMes() + 1;
+    let año = Store.getAño();
+    if (mes > 11) { mes = 0; año++; }
+    Store.setAño(año);
+    Store.setMes(mes);
+  },
+
+  // ── Dropdowns ──────────────────────────────────────────
+
+  toggleDropdown(id, event) {
+    if (event) event.stopPropagation();
+    document.querySelectorAll('.dropdown-menu').forEach(d => {
+      if (d.id !== id) d.classList.remove('show');
+    });
+    document.getElementById(id).classList.toggle('show');
+  },
+
+  // ── Sync UI ────────────────────────────────────────────
+
+  _updateSyncUI(status) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    el.className = 'sync-status ' + status;
+    if (status === 'ok') el.textContent = 'Sincronizado';
+    else if (status === 'error') el.textContent = 'Sin conexi\u00f3n';
+    else el.textContent = 'Cargando...';
+  },
+
+  // ── Ausencias ──────────────────────────────────────────
+
+  abrirModalAusencia() {
+    Modales.nuevaAusencia();
+  },
+
+  // ── Motor de sustituciones ─────────────────────────────
+
+  calcularSustituciones() {
+    const resultado = Motor.analizarMes();
+    Modales.mostrarPropuestas(resultado.propuestas, resultado.sinSolucion);
+  },
+
+  // ── Placeholders (Fase 3+) ─────────────────────────────
+
+  auditar() {
+    const problemas = Auditor.auditarMes();
+    Auditor.mostrar(problemas);
+  },
+
+  exportarPDF(modo) {
+    CalendarioUI.toast('Exportar PDF: pr\u00f3ximamente (Fase 4)', 'info');
+  },
+
+  // ── Diagnóstico (temporal) ─────────────────────────────
+
+  diagnosticar() {
+    const tienda = Store.getTienda();
+    const mes = Store.getMes();
+    const año = Store.getAño();
+
+    let info = '═══ DIAGNÓSTICO YOLANDA HP ═══\n\n';
+    info += 'Tienda: ' + tienda + '\n';
+    info += 'Mes: ' + Utils.MESES[mes] + ' ' + año + '\n\n';
+
+    const ultimoDia = Utils.ultimoDiaMes(año, mes);
+    let hayAlertas = false;
+
+    for (let d = 1; d <= ultimoDia.getDate(); d++) {
+      const fecha = new Date(año, mes, d);
+      const dow = fecha.getDay();
+      if (dow < 1 || dow > 5) continue;
+
+      const alertas = Cobertura.verificarMinimosLV(fecha, tienda);
+      if (alertas.length === 0) continue;
+
+      hayAlertas = true;
+      const numSem = Utils.getNumSemana(fecha);
+      info += '── ' + Utils.DIAS[dow] + ' ' + d + ' (sem ' + numSem + ') ──\n';
+
+      const cob = Cobertura.calcularLV(fecha, tienda);
+      const horarios = Rotaciones.getHorariosLV(fecha, tienda);
+
+      // Mostrar sustituciones de ese día (todas las tiendas)
+      const fs = Utils.formatFecha(fecha);
+      const sustsDelDia = Store.getSustituciones().filter(s => s.fecha === fs);
+      if (sustsDelDia.length > 0) {
+        info += '  >> SUSTITUCIONES cargadas:\n';
+        for (const s of sustsDelDia) {
+          info += '     ' + s.tienda + ': ' + s.sustituto + ' sust. a ' + s.ausente + ' (' + Utils.formatHora(s.entrada) + '-' + Utils.formatHora(s.salida) + ')' + (s.turnoFds ? ' [' + s.turnoFds + ']' : '') + '\n';
+        }
+      }
+
+      for (const fr of ['descarga', 'mañanas', 'tardes', 'cierre']) {
+        const min = CONFIG.getMinimoLV(tienda, fr, dow);
+        const actual = cob[fr].length;
+        const flag = actual < min ? ' ⚠️ BAJO MÍN' : '';
+        info += '  ' + fr.toUpperCase() + ' (' + actual + '/' + min + ')' + flag + ': ';
+        if (cob[fr].length > 0) {
+          const detalles = cob[fr].map(emp => {
+            const h = horarios[emp];
+            return emp + (h ? ' [' + Utils.formatHora(h[0]) + '-' + Utils.formatHora(h[1]) + ']' : '');
+          });
+          info += detalles.join(', ');
+        } else {
+          info += '(vacío)';
+        }
+        info += '\n';
+      }
+      info += '\n';
+    }
+
+    if (!hayAlertas) {
+      info += '✓ Sin alertas de mínimos en este mes para ' + tienda;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active';
+    overlay.innerHTML = '<div class="modal" style="max-width:700px"><div class="modal-header"><h3>Diagnóstico de cobertura</h3><button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">×</button></div><div class="modal-body"><pre style="font-family:monospace;font-size:11px;white-space:pre-wrap;line-height:1.5">' + Utils.escapeHtml(info) + '</pre></div><div class="modal-footer"><button class="btn btn-secondary" onclick="this.closest(\'.modal-overlay\').remove()">Cerrar</button></div></div>';
+    document.body.appendChild(overlay);
+  }
+};
+
+// ── Arrancar ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => App.init());
+</script>
+
+</body>
+</html>

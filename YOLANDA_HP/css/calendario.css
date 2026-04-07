@@ -1,0 +1,293 @@
+/* ============================================================
+   YOLANDA HP — calendario.css
+   Estilos del calendario semanal
+   ============================================================ */
+
+/* ── Navegación del mes ──────────────────────────────────── */
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.month-nav { display: flex; align-items: center; gap: 12px; }
+.month-nav h2 { font-size: 18px; font-weight: 600; min-width: 180px; text-align: center; }
+.month-nav button {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.month-nav button:hover { background: var(--bg); }
+
+/* ── Vista semanal ───────────────────────────────────────── */
+.week-view {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.week-header {
+  display: flex;
+  background: #f0f0f0;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.week-header .col-sem {
+  width: 50px;
+  padding: 10px 4px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.week-header .col-dia {
+  flex: 1;
+  padding: 10px 4px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.week-header .col-fds {
+  width: 280px;
+  padding: 10px 4px;
+  text-align: center;
+}
+.week-row {
+  display: flex;
+  border-bottom: 1px solid var(--border-light);
+  align-items: stretch;
+}
+
+/* ── Columna semana ──────────────────────────────────────── */
+.col-sem {
+  width: 50px;
+  padding: 6px 4px;
+  background: #f8f8f8;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.col-sem .num { font-size: 14px; font-weight: 700; color: var(--primary); }
+
+/* ── Columna día ─────────────────────────────────────────── */
+.col-dia {
+  flex: 1;
+  min-height: 180px;
+  border-right: 1px solid var(--border-light);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.dia-num { font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+
+/* ── Columna FdS ─────────────────────────────────────────── */
+.col-fds {
+  width: 280px;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+}
+
+/* ── Boxes FdS ───────────────────────────────────────────── */
+.fds-box { border-radius: var(--radius-sm); padding: 4px; border: 2px solid; }
+.fds-box.sab-m { border-color: var(--fds-sab-m); background: var(--fds-sab-m-light); }
+.fds-box.dom-m { border-color: var(--fds-dom-m); background: var(--fds-dom-m-light); }
+.fds-box.sab-t { border-color: var(--fds-sab-t); background: var(--fds-sab-t-light); }
+.fds-box.dom-t { border-color: var(--fds-dom-t); background: var(--fds-dom-t-light); }
+.fds-header {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 3px;
+  padding: 2px;
+  border-radius: 2px;
+  color: #fff;
+}
+.fds-box.sab-m .fds-header { background: var(--fds-sab-m); }
+.fds-box.sab-t .fds-header { background: var(--fds-sab-t); }
+.fds-box.dom-m .fds-header { background: var(--fds-dom-m); }
+.fds-box.dom-t .fds-header { background: var(--fds-dom-t); }
+
+/* ── Franjas ─────────────────────────────────────────────── */
+.franja { margin-bottom: 3px; }
+.franja-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-bottom: 2px;
+  display: inline-block;
+}
+.franja-label.descarga { background: var(--descarga-light); color: var(--descarga); }
+.franja-label.mañanas { background: var(--mañanas-light); color: var(--mañanas); }
+.franja-label.tardes { background: var(--tardes-light); color: var(--tardes); }
+.franja-label.cierre { background: var(--cierre-light); color: var(--cierre); }
+
+/* Grid de franjas */
+.franjas-grid-gv { display: flex; flex-direction: column; }
+.franjas-grid-gv .franja { margin-bottom: 2px; }
+.franjas-grid-is { display: grid; grid-template-rows: 1fr 1fr 1fr 1fr; height: 100%; gap: 2px; }
+.franjas-grid-is .franja { margin-bottom: 0; }
+
+/* ── Turnos ──────────────────────────────────────────────── */
+.turno {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-bottom: 1px;
+  font-size: 9px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.turno:hover { transform: scale(1.02); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+
+.turno.descarga { background: var(--descarga); color: #fff; }
+.turno.mañanas { background: var(--mañanas); color: #fff; }
+.turno.tardes { background: var(--tardes); color: #fff; }
+.turno.cierre { background: var(--cierre); color: #fff; }
+.turno.fds { background: #444; color: #fff; }
+
+.turno.ausente {
+  opacity: 0.5;
+  text-decoration: line-through;
+  background: var(--err-light) !important;
+  color: var(--err) !important;
+  border: 1px dashed var(--err);
+}
+.turno.sustituto {
+  background: var(--sustituto) !important;
+  color: #000 !important;
+  font-weight: 700;
+  border: 2px solid var(--sustituto-dark);
+}
+.turno.modificado {
+  background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%) !important;
+  color: #fff !important;
+  border: 2px solid #c71585 !important;
+  box-shadow: 0 2px 8px rgba(255,105,180,0.5);
+}
+
+.turno-nombre { font-weight: 600; }
+.turno-hora { font-family: var(--font-mono); font-size: 8px; }
+
+/* ── Avisos en calendario ────────────────────────────────── */
+.aviso-solapamiento {
+  background: #ff5252; color: #fff;
+  padding: 4px 6px; border-radius: 4px;
+  font-size: 8px; font-weight: 700;
+  margin-top: 4px; cursor: pointer;
+}
+.aviso-solapamiento:hover { background: #d32f2f; }
+
+.aviso-minimos {
+  background: #ff9800; color: #fff;
+  padding: 4px 6px; border-radius: 4px;
+  font-size: 8px; font-weight: 700;
+  margin-top: 4px; cursor: pointer;
+}
+.aviso-minimos:hover { background: #f57c00; }
+
+.aviso-sin-cubrir {
+  background: #e53935; color: #fff;
+  padding: 4px 6px; border-radius: 4px;
+  font-size: 8px; font-weight: 700;
+  margin-top: 4px; cursor: pointer;
+  animation: pulse-soft 2s infinite;
+  box-shadow: 0 0 4px rgba(229,57,53,0.6);
+}
+.aviso-sin-cubrir:hover { background: #c62828; }
+.aviso-sin-cubrir.ok-minimos {
+  background: #ff9800;
+  animation: none;
+  box-shadow: 0 0 4px rgba(255,152,0,0.4);
+}
+.aviso-sin-cubrir.ok-minimos:hover { background: #f57c00; }
+.aviso-sin-cubrir.descartado {
+  background: #78909c;
+  animation: none;
+  box-shadow: none;
+  opacity: 0.8;
+}
+.aviso-sin-cubrir.descartado:hover { background: #546e7a; }
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ── Tooltip horas semanales ─────────────────────────────── */
+.turno-nombre { position: relative; }
+.tooltip-horas {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 500;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  line-height: 1.4;
+}
+.tooltip-horas::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1a1a2e;
+}
+.turno:hover .tooltip-horas { display: block; }
+.tooltip-ok { color: #81c784; }
+.tooltip-warn { color: #ffb74d; }
+.tooltip-danger { color: #ef5350; }
+
+.horas-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+.horas-dot.ok { background: #4caf50; }
+.horas-dot.warn { background: #ff9800; }
+.horas-dot.danger { background: #f44336; }
+
+/* ── Responsive calendario ───────────────────────────────── */
+@media (max-width: 1200px) {
+  .col-fds { width: 220px; }
+  .week-header .col-fds { width: 220px; }
+}
+
+@media (max-width: 900px) {
+  .week-row { flex-wrap: wrap; }
+  .col-fds { width: 100%; }
+  .week-header .col-fds { width: 100%; }
+  .col-dia { min-height: 140px; }
+}
+
+@media print {
+  .tooltip-horas { display: none !important; }
+  .horas-dot { display: none !important; }
+}

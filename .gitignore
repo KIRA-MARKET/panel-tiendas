@@ -4,3 +4,20 @@ token*.json
 *.pdf
 .clasp.json
 .claspignore
+
+# Aplicaciones / ejecutables
+*.app/
+
+# Datos sensibles (LOPD): plantillas de trabajadores, horarios reales
+*.xlsx
+
+# Firmas y sellos digitales (datos personales)
+SELLO*.png
+SELLO*.PNG
+
+# Iconos sueltos de otras apps (no forman parte de YOLANDA HP)
+icono_*.png
+Icono*.png
+
+# Imágenes generadas sueltas
+Gemini_Generated_*.png

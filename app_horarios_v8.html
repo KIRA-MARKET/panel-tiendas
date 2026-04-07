@@ -529,10 +529,11 @@ var MINIMOS_FDS = {
 };
 
 // Rotación FDS Gran Vía - cálculo dinámico
-// Descarga A=DAVID, B=LETI, C=EDU - ciclo 3: SAB_M(descarga) -> DOM_T -> SAB_T
+// Descarga B=LETI, A=DAVID, C=EDU - ciclo 3: SAB_M(descarga) -> DOM_T -> SAB_T
+// Inicio ciclo: 18 abril 2026 (LETI descarga)
 // Rotación 1-7: FRANCIS, ALEX, SILVIA, SARA, MORILLA, VANESA, ABDEL - ciclo 7: SAB_M(2) -> DOM_M(2) -> DOM_T(2) -> SAB_T(1)
 // FIJOS: ANTONIO (sab mañana), ELI (dom mañana), ALFREDO+ALEX VERA (sab/dom tarde)
-var DESCARGA_GV = ['DAVID','LETI','EDU']; // A, B, C
+var DESCARGA_GV = ['LETI','DAVID','EDU']; // B, A, C
 var ROTACION_GV = ['FRANCIS','ALEX','SILVIA','SARA','MORILLA','VANESA','ABDEL']; // 1-7
 
 function getTurnoRotacion(empIndex, fi) {
@@ -547,9 +548,10 @@ function getTurnoRotacion(empIndex, fi) {
 }
 
 function getTurnoABC(empIndex, fi) {
-  // empIndex: 0=DAVID(A), 1=LETI(B), 2=EDU(C)
+  // empIndex: 0=LETI(B), 1=DAVID(A), 2=EDU(C)
   // Ciclo 3: SAB_M(descarga) -> DOM_T -> SAB_T
-  var pos = (fi + empIndex * 2) % 3; // desfase de 2 entre cada uno
+  // fi=0 (18 abril 2026): LETI=SAB_M, DAVID=SAB_T, EDU=DOM_T
+  var pos = (fi + empIndex * 2) % 3;
   if (pos === 0) return 'SAB_M';
   if (pos === 1) return 'DOM_T';
   return 'SAB_T';
@@ -559,6 +561,10 @@ function getFdsGV(fecha) {
   var inicioFecha = SHEETS_FDS_GV && SHEETS_FDS_GV.fecha_inicio ? parseFechaLocal(SHEETS_FDS_GV.fecha_inicio) : new Date(2026, 1, 28);
   var fi = Math.floor((fecha - inicioFecha) / (7 * 24 * 60 * 60 * 1000));
   if (fi < 0) fi = ((fi % 21) + 21) % 21;
+  // fiABC separado: referencia 18 abril 2026 para ciclo C,A,B (EDU,DAVID,LETI)
+  var inicioABC = new Date(2026, 3, 18);
+  var fiABC = Math.floor((fecha - inicioABC) / (7 * 24 * 60 * 60 * 1000));
+  if (fiABC < 0) fiABC = ((fiABC % 3) + 3) % 3;
 
   var result = { SAB_M: {}, SAB_T: {}, DOM_M: {}, DOM_T: {} };
 
@@ -569,10 +575,10 @@ function getFdsGV(fecha) {
       result[f.turno][f.emp] = [f.entrada, f.salida];
     }
     // Descarga ABC
-    var dOrden = SHEETS_FDS_GV.descarga.orden.length > 0 ? SHEETS_FDS_GV.descarga.orden : DESCARGA_GV;
+    var dOrden = DESCARGA_GV; // Orden fijo: LETI, DAVID, EDU (B,A,C) desde 18 abril 2026
     var dH = SHEETS_FDS_GV.descarga.horarios;
     for (var i = 0; i < dOrden.length; i++) {
-      var turno = getTurnoABC(i, fi);
+      var turno = getTurnoABC(i, fiABC);
       var h = dH[turno] || [14.75, 22.25];
       result[turno][dOrden[i]] = h;
     }
@@ -593,7 +599,7 @@ function getFdsGV(fecha) {
     result.DOM_T['ALFREDO'] = [14.75, 22.25];
     result.DOM_T['ALEX VERA'] = [14.75, 22.25];
     for (var i = 0; i < 3; i++) {
-      var emp = DESCARGA_GV[i]; var turno = getTurnoABC(i, fi);
+      var emp = DESCARGA_GV[i]; var turno = getTurnoABC(i, fiABC);
       if (turno === 'SAB_M') result.SAB_M[emp] = [5, 12.5];
       else if (turno === 'DOM_T') result.DOM_T[emp] = [14.75, 22.25];
       else result.SAB_T[emp] = [14.75, 22.25];
@@ -631,10 +637,11 @@ var EMPLEADOS_IS = {
 };
 
 // Rotación Isabel L-V: Carolina/Alvaro/Ceci ciclo 4 semanas
-// Sem 1: Carolina mañana, Alvaro tarde, Ceci cierre
-// Sem 2: Alvaro mañana, Carolina tarde, Ceci cierre
-// Sem 3: Carolina mañana, Ceci tarde, Alvaro cierre
-// Sem 4: Ceci mañana, Carolina tarde, Alvaro cierre
+// Sem 1: Carolina mañana, Ceci tarde, Alvaro cierre
+// Sem 2: Ceci mañana, Carolina tarde, Alvaro cierre
+// Sem 3: Carolina mañana, Alvaro tarde, Ceci cierre
+// Sem 4: Alvaro mañana, Carolina tarde, Ceci cierre
+// Referencia: semana ISO 15 (6 abril 2026) = sem 3
 var ROTACION_IS = [
   {mañana:'CAROLINA', tarde:'CECI', cierre:'ALVARO'},
   {mañana:'CECI', tarde:'CAROLINA', cierre:'ALVARO'},
@@ -655,26 +662,20 @@ function getHorariosIS(fecha) {
         horarios[fijos[i].empleado] = [fijos[i].entrada, fijos[i].salida];
       }
     }
-    var rot = SHEETS_HORARIOS_IS.rotacion;
+    // Rotación L-V: usar ROTACION_IS (hardcoded) - semana ISO 15 = sem 3
     var numSem = getNumSemana(fecha);
-    var cicloLen = Object.keys(rot).length;
-    if (cicloLen > 0) {
-      var semIdx = ((numSem - 1) % cicloLen);
-      var semKey = 'sem' + (semIdx + 1);
-      var semData = rot[semKey];
-      if (semData) {
-        for (var rol in semData) {
-          var r = semData[rol];
-          horarios[r.emp] = [r.entrada, r.salida];
-        }
-      }
-    }
+    var semIdx = ((numSem - 15 + 2) % 4 + 4) % 4;
+    var rotIS = ROTACION_IS[semIdx];
+    horarios[rotIS.mañana] = [10, 14.5];
+    horarios[rotIS.tarde] = [15, 19.5];
+    horarios[rotIS.cierre] = [17.75, 22.25];
     return horarios;
   }
 
   // --- Fallback hardcoded ---
   var numSem = getNumSemana(fecha);
-  var semIdx = (numSem - 1) % 4;
+  // Offset: semana ISO 15 (6 abril 2026) = rotación sem 3 (índice 2)
+  var semIdx = ((numSem - 15 + 2) % 4 + 4) % 4;
   var rot = ROTACION_IS[semIdx];
   var horarios = {};
   if (dow === 1 || dow === 3 || dow === 5) horarios['DAVID'] = [11, 15];
@@ -792,7 +793,7 @@ function getFdsIS(fecha) {
 }
 var MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 var DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-var mesActual=2,añoActual=2026,tiendaActual='granvia';
+var mesActual=new Date().getMonth(),añoActual=new Date().getFullYear(),tiendaActual='granvia';
 var ausenciasGV=[],ausenciasIS=[],sustituciones=[];
 var pasoActual=1,seleccionesDias={},empleadoViendo=null;
 
@@ -3408,7 +3409,7 @@ function cargarDesdeSheets() {
         var rotConfig = parseRotacionesFdS(data.rotaciones);
         if (rotConfig.granvia) {
           SHEETS_FDS_GV = rotConfig.granvia;
-          if (rotConfig.granvia.descarga.orden.length > 0) DESCARGA_GV = rotConfig.granvia.descarga.orden;
+          // Orden descarga fijado en código: LETI, DAVID, EDU (B,A,C) desde 18 abril 2026
           if (rotConfig.granvia.rotacion7.orden.length > 0) ROTACION_GV = rotConfig.granvia.rotacion7.orden;
         }
         if (rotConfig.isabel) {
