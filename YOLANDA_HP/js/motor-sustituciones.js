@@ -339,7 +339,8 @@ const Motor = {
         salida: p.salida,
         franja: p.franja || '',
         turnoFds: p.turnoFds || '',
-        tienda: p.tienda
+        tienda: p.tienda,
+        tipo: p.tipo || 'movimiento'
       };
       Store.addSustitucion(sust);
       count++;

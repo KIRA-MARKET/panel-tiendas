@@ -307,6 +307,10 @@ const Modales = {
                   → <strong style="color:#2e7d32">${Utils.escapeHtml(p.sustituto)}</strong>
                   <span style="color:#888">(${turnoLabel} · ${Utils.formatHora(p.entrada)}-${Utils.formatHora(p.salida)})</span>
                 </div>
+                <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#e65100;cursor:pointer;white-space:nowrap" title="Marcar si el sustituto hace estas horas como extra (no las tenía en su turno habitual)">
+                  <input type="checkbox" id="prop-extra-${item.idx}">
+                  Hora extra
+                </label>
               </div>
             `;
           }
@@ -358,7 +362,11 @@ const Modales = {
           const seleccionadas = [];
           for (let i = 0; i < propuestas.length; i++) {
             const cb = overlay.querySelector('#prop-check-' + i);
-            if (cb && cb.checked) seleccionadas.push(propuestas[i]);
+            if (cb && cb.checked) {
+              const cbExtra = overlay.querySelector('#prop-extra-' + i);
+              const tipo = cbExtra && cbExtra.checked ? 'extra' : 'movimiento';
+              seleccionadas.push(Object.assign({}, propuestas[i], { tipo }));
+            }
           }
           const count = Motor.aplicarPropuestas(seleccionadas);
           Modales._cerrarOverlay(overlay);

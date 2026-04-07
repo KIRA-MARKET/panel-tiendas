@@ -88,7 +88,8 @@ const Sync = {
           sust.push({
             fecha: s.fecha, ausente: s.ausente, sustituto: s.sustituto,
             entrada: aj.entrada, salida: aj.salida,
-            franja: s.franja || '', turnoFds: s.turnoFds || '', tienda: s.tienda
+            franja: s.franja || '', turnoFds: s.turnoFds || '', tienda: s.tienda,
+            tipo: s.tipo || 'movimiento'
           });
         }
         Store.set('sustituciones', sust);
@@ -203,7 +204,7 @@ const Sync = {
   },
 
   syncSustituciones() {
-    const h = ['tienda', 'fecha', 'ausente', 'sustituto', 'entrada', 'salida', 'franja', 'turnoFds'];
+    const h = ['tienda', 'fecha', 'ausente', 'sustituto', 'entrada', 'salida', 'franja', 'turnoFds', 'tipo'];
     Sync.guardar('sustituciones', h, Store.get('sustituciones'));
   },
 
