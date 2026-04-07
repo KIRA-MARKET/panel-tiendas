@@ -101,6 +101,7 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 3. ~~**DAVID/LETI exclusión mutua viernes Isabel.**~~ ✓ Resuelto en `reglas.js` + tests (commit `ef2a845`).
 4. **Capa 2 del motor:** aprender de las decisiones históricas de Nacho.
 5. **Tema oscuro:** intento inicial revertido (7 abril 2026). El calendario tiene muchos colores hardcodeados (cabeceras, celdas vacías, líneas de ausencia rojas que sobre fondo oscuro casi no se ven). Requiere repaso completo de `calendario.css` antes de reintentarlo. Pendiente de Fase 4 cuando haya tiempo.
+6. **Sustituciones tipo movimiento vs extra:** la pestaña Horas ya distingue entre los dos tipos (`tipo: 'movimiento'` por defecto = no suma horas; `tipo: 'extra'` = suma como horas adicionales). Falta añadir el toggle en el modal de sustituciones para que Nacho lo marque al crear cada una. Mientras tanto, todas las sustituciones se asumen como movimiento.
 
 ---
 

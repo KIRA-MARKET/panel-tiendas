@@ -148,7 +148,7 @@ const PDFExport = {
     const horariosAjustados = {};
     for (const n in horarios) {
       const mod = Store.getModificacion(n, fs, tienda, null);
-      horariosAjustados[n] = mod ? [mod.entrada, mod.salida] : horarios[n];
+      horariosAjustados[n] = mod ? [mod.nuevaEntrada, mod.nuevaSalida] : horarios[n];
     }
 
     const franjas = { descarga: [], mañanas: [], tardes: [], cierre: [] };

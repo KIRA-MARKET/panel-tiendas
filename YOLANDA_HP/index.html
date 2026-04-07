@@ -25,6 +25,7 @@
       <button class="nav-tab" id="tab-btn-ausencias" onclick="App.mostrarTab('ausencias')">Ausencias</button>
       <button class="nav-tab" id="tab-btn-festivos" onclick="App.mostrarTab('festivos')">Festivos</button>
       <button class="nav-tab" id="tab-btn-control" onclick="App.mostrarTab('control')">Control</button>
+      <button class="nav-tab" id="tab-btn-horas" onclick="App.mostrarTab('horas')">Horas</button>
     </nav>
   </div>
   <div class="header-right">
@@ -82,6 +83,9 @@
   <!-- Tab: Control -->
   <div id="tab-control" class="tab-content"></div>
 
+  <!-- Tab: Horas -->
+  <div id="tab-horas" class="tab-content"></div>
+
 </main>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -99,6 +103,7 @@
 <script src="js/motor-sustituciones.js"></script>
 <script src="js/festivos.js"></script>
 <script src="js/control.js"></script>
+<script src="js/horas.js"></script>
 <script src="js/auditor.js"></script>
 <script src="js/calendario-ui.js"></script>
 <script src="js/modales-ui.js"></script>
@@ -151,7 +156,7 @@ const App = {
   },
 
   mostrarTab(tab) {
-    const tabs = ['calendario', 'empleados', 'ausencias', 'festivos', 'control'];
+    const tabs = ['calendario', 'empleados', 'ausencias', 'festivos', 'control', 'horas'];
     for (const t of tabs) {
       const btn = document.getElementById('tab-btn-' + t);
       const content = document.getElementById('tab-' + t);
@@ -160,6 +165,7 @@ const App = {
     }
     if (tab === 'festivos') FestivosUI.render();
     if (tab === 'control') ControlUI.render();
+    if (tab === 'horas') HorasUI.render();
   },
 
   mesAnterior() {

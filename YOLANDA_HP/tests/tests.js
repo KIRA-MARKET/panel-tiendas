@@ -703,6 +703,75 @@
     Store._state.empleadosIS = isBackup;
   });
 
+  suite('HorasUI: calcularMes', function () {
+    test('Suma horas de rotación L-V de un empleado básico', () => {
+      // Snapshot
+      const sustsBackup = Store._state.sustituciones.slice();
+      const ausGVBackup = Store._state.ausenciasGV.slice();
+      Store._state.sustituciones = [];
+      Store._state.ausenciasGV = [];
+
+      // Abril 2026 — usamos rotaciones reales del Store
+      const tot = HorasUI.calcularMes(2026, 3, 'granvia').totales;
+
+      // Debe haber al menos un empleado con horas > 0
+      const algunEmpleado = Object.values(tot).find(r => r.total > 0);
+      assert(algunEmpleado, 'al menos un empleado debe sumar horas');
+      assert(algunEmpleado.dias > 0, 'debe contar días');
+
+      // Restaurar
+      Store._state.sustituciones = sustsBackup;
+      Store._state.ausenciasGV = ausGVBackup;
+    });
+
+    test('Vacaciones cuentan como tiempo trabajado (mismo total)', () => {
+      const sustsBackup = Store._state.sustituciones.slice();
+      const ausGVBackup = Store._state.ausenciasGV.slice();
+      Store._state.sustituciones = [];
+
+      Store._state.ausenciasGV = [];
+      const sin = HorasUI.calcularMes(2026, 3, 'granvia').totales;
+      const alias = Object.keys(sin).find(a => sin[a].dias > 0);
+      const horasSin = sin[alias].total;
+
+      Store._state.ausenciasGV = [{
+        empleado: alias, tipo: 'vacaciones',
+        desde: '2026-04-01', hasta: '2026-04-30'
+      }];
+      const con = HorasUI.calcularMes(2026, 3, 'granvia').totales;
+      const horasCon = (con[alias] && con[alias].total) || 0;
+
+      assertEq(horasCon, horasSin, alias + ' debe sumar igual con vacaciones');
+
+      Store._state.sustituciones = sustsBackup;
+      Store._state.ausenciasGV = ausGVBackup;
+    });
+
+    test('Sustitución tipo extra suma horas al sustituto', () => {
+      const sustsBackup = Store._state.sustituciones.slice();
+      Store._state.sustituciones = [{
+        sustituto: 'TESTSUB', ausente: 'X', fecha: '2026-04-15', tienda: 'granvia',
+        entrada: 9, salida: 14, tipo: 'extra'
+      }];
+      const tot = HorasUI.calcularMes(2026, 3, 'granvia').totales;
+      assert(tot['TESTSUB'], 'debe crear entrada para el sustituto');
+      assertEq(tot['TESTSUB'].sustituciones, 5);
+      Store._state.sustituciones = sustsBackup;
+    });
+
+    test('Sustitución tipo movimiento NO suma horas extra', () => {
+      const sustsBackup = Store._state.sustituciones.slice();
+      Store._state.sustituciones = [{
+        sustituto: 'TESTMOV', ausente: 'X', fecha: '2026-04-15', tienda: 'granvia',
+        entrada: 9, salida: 14, tipo: 'movimiento'
+      }];
+      const tot = HorasUI.calcularMes(2026, 3, 'granvia').totales;
+      // No debe aparecer entrada (porque no tiene rotación ni extras)
+      assert(!tot['TESTMOV'], 'movimiento no debe crear horas extra');
+      Store._state.sustituciones = sustsBackup;
+    });
+  });
+
   // ============================================================
   // RESUMEN
   // ============================================================
