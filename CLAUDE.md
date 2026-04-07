@@ -98,8 +98,9 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 
 1. ~~**EVA debe contar en descarga + mañanas.**~~ ✓ Resuelto. Cobertura ahora es multi-franja: un empleado cuenta en cada franja cuya ventana cubre íntegramente. Ventanas en `CONFIG.FRANJAS_GV/IS`.
 2. **Estrategia "reorganizar plantilla":** cuando falta alguien, sugerir alargar el horario base de otro en vez de mover sustituto.
-3. **DAVID/LETI exclusión mutua viernes Isabel:** solo uno de los dos puede sustituir el mismo viernes.
+3. ~~**DAVID/LETI exclusión mutua viernes Isabel.**~~ ✓ Resuelto en `reglas.js` + tests (commit `ef2a845`).
 4. **Capa 2 del motor:** aprender de las decisiones históricas de Nacho.
+5. **Tema oscuro:** intento inicial revertido (7 abril 2026). El calendario tiene muchos colores hardcodeados (cabeceras, celdas vacías, líneas de ausencia rojas que sobre fondo oscuro casi no se ven). Requiere repaso completo de `calendario.css` antes de reintentarlo. Pendiente de Fase 4 cuando haya tiempo.
 
 ---
 
