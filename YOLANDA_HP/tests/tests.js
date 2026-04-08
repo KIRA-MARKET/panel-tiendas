@@ -759,6 +759,56 @@
       Store._state.sustituciones = sustsBackup;
     });
 
+    test('Falta descuenta las horas programadas de ese día', () => {
+      const sustsBackup = Store._state.sustituciones.slice();
+      const ausGVBackup = Store._state.ausenciasGV.slice();
+      const faltasBackup = Store._state.faltasGV.slice();
+      Store._state.sustituciones = [];
+      Store._state.ausenciasGV = [];
+      Store._state.faltasGV = [];
+
+      const sin = HorasUI.calcularMes(2026, 3, 'granvia').totales;
+
+      // Buscar empleado + día (L-V o FdS) con horas reales en abril
+      let alias = null, fechaFalta = null, horasDia = 0;
+      for (let d = 1; d <= 30 && !fechaFalta; d++) {
+        const f = new Date(2026, 3, d);
+        const dow = f.getDay();
+        if (dow >= 1 && dow <= 5) {
+          const horarios = Rotaciones.getHorariosLV(f, 'granvia') || {};
+          for (const a in horarios) {
+            const h = horarios[a];
+            if (h && typeof h[0] === 'number' && h[1] > h[0]) {
+              alias = a; fechaFalta = Utils.formatFecha(f); horasDia = h[1] - h[0]; break;
+            }
+          }
+        } else {
+          const fds = Rotaciones.getFds(f, 'granvia') || {};
+          const turnos = dow === 6 ? ['SAB_M','SAB_T'] : ['DOM_M','DOM_T'];
+          for (const tk of turnos) {
+            for (const a in (fds[tk] || {})) {
+              const h = fds[tk][a];
+              if (h && typeof h[0] === 'number' && h[1] > h[0]) {
+                alias = a; fechaFalta = Utils.formatFecha(f); horasDia = h[1] - h[0]; break;
+              }
+            }
+            if (alias) break;
+          }
+        }
+      }
+      assert(alias && fechaFalta, 'debe encontrar empleado con horas en abril');
+      const horasSin = sin[alias].total;
+
+      Store._state.faltasGV = [{ empleado: alias, fecha: fechaFalta }];
+      const con = HorasUI.calcularMes(2026, 3, 'granvia').totales;
+      assertEq(+con[alias].faltasHoras.toFixed(2), +horasDia.toFixed(2));
+      assertEq(+con[alias].total.toFixed(2), +(horasSin - horasDia).toFixed(2));
+
+      Store._state.sustituciones = sustsBackup;
+      Store._state.ausenciasGV = ausGVBackup;
+      Store._state.faltasGV = faltasBackup;
+    });
+
     test('Sustitución tipo movimiento NO suma horas extra', () => {
       const sustsBackup = Store._state.sustituciones.slice();
       Store._state.sustituciones = [{
