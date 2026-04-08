@@ -36,7 +36,8 @@
 }
 .week-header {
   display: flex;
-  background: #f0f0f0;
+  background: var(--table-head-bg);
+  color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
   font-weight: 600;
   font-size: 11px;
@@ -69,7 +70,7 @@
 .col-sem {
   width: 50px;
   padding: 6px 4px;
-  background: #f8f8f8;
+  background: var(--col-sem-bg);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -160,14 +161,20 @@
 .turno.mañanas { background: var(--mañanas); color: #fff; }
 .turno.tardes { background: var(--tardes); color: #fff; }
 .turno.cierre { background: var(--cierre); color: #fff; }
-.turno.fds { background: #444; color: #fff; }
+.turno.fds { background: var(--turno-fds-bg); color: #fff; }
 
 .turno.ausente {
-  opacity: 0.5;
+  opacity: 0.65;
   text-decoration: line-through;
   background: var(--err-light) !important;
   color: var(--err) !important;
   border: 1px dashed var(--err);
+}
+[data-theme="dark"] .turno.ausente {
+  opacity: 0.95;
+  background: #4a1d22 !important;
+  color: #ffb3b8 !important;
+  border-color: #ff6b73;
 }
 .turno.sustituto {
   background: var(--sustituto) !important;
@@ -187,38 +194,38 @@
 
 /* ── Avisos en calendario ────────────────────────────────── */
 .aviso-solapamiento {
-  background: #ff5252; color: #fff;
+  background: var(--aviso-solapa); color: #fff;
   padding: 4px 6px; border-radius: 4px;
   font-size: 8px; font-weight: 700;
   margin-top: 4px; cursor: pointer;
 }
-.aviso-solapamiento:hover { background: #d32f2f; }
+.aviso-solapamiento:hover { background: var(--aviso-solapa-hover); }
 
 .aviso-minimos {
-  background: #ff9800; color: #fff;
+  background: var(--aviso-warn); color: #fff;
   padding: 4px 6px; border-radius: 4px;
   font-size: 8px; font-weight: 700;
   margin-top: 4px; cursor: pointer;
 }
-.aviso-minimos:hover { background: #f57c00; }
+.aviso-minimos:hover { background: var(--aviso-warn-hover); }
 
 .aviso-sin-cubrir {
-  background: #e53935; color: #fff;
+  background: var(--aviso-danger); color: #fff;
   padding: 4px 6px; border-radius: 4px;
   font-size: 8px; font-weight: 700;
   margin-top: 4px; cursor: pointer;
   animation: pulse-soft 2s infinite;
   box-shadow: 0 0 4px rgba(229,57,53,0.6);
 }
-.aviso-sin-cubrir:hover { background: #c62828; }
+.aviso-sin-cubrir:hover { background: var(--aviso-danger-hover); }
 .aviso-sin-cubrir.ok-minimos {
-  background: #ff9800;
+  background: var(--aviso-warn);
   animation: none;
   box-shadow: 0 0 4px rgba(255,152,0,0.4);
 }
-.aviso-sin-cubrir.ok-minimos:hover { background: #f57c00; }
+.aviso-sin-cubrir.ok-minimos:hover { background: var(--aviso-warn-hover); }
 .aviso-sin-cubrir.descartado {
-  background: #78909c;
+  background: var(--aviso-descartado);
   animation: none;
   box-shadow: none;
   opacity: 0.8;
@@ -238,8 +245,8 @@
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: #1a1a2e;
-  color: #fff;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 10px;
@@ -256,7 +263,7 @@
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #1a1a2e;
+  border-top-color: var(--tooltip-bg);
 }
 .turno:hover .tooltip-horas { display: block; }
 .tooltip-ok { color: #81c784; }

@@ -30,6 +30,7 @@
   </div>
   <div class="header-right">
     <span class="sync-status" id="sync-status">Cargando...</span>
+    <button class="btn btn-ghost" id="btn-tema" onclick="App.toggleTema()" title="Cambiar tema" style="font-size:16px;padding:6px 10px">🌙</button>
     <div class="dropdown">
       <button class="btn btn-secondary" onclick="App.toggleDropdown('dropdown-export', event)">Exportar &#9662;</button>
       <div class="dropdown-menu" id="dropdown-export">
@@ -109,6 +110,9 @@
 const App = {
 
   init() {
+    // Aplicar tema guardado antes de renderizar
+    App._aplicarTema(localStorage.getItem('yolanda-tema') || 'light');
+
     // Cargar datos por defecto
     EmpleadosDefault.init();
 
@@ -160,6 +164,19 @@ const App = {
     if (tab === 'horas') HorasUI.render();
     if (tab === 'empleados') EmpleadosUI.render();
     if (tab === 'ausencias') AusenciasUI.render();
+  },
+
+  toggleTema() {
+    const actual = document.documentElement.getAttribute('data-theme') || 'light';
+    App._aplicarTema(actual === 'dark' ? 'light' : 'dark');
+  },
+
+  _aplicarTema(tema) {
+    if (tema === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('yolanda-tema', tema);
+    const btn = document.getElementById('btn-tema');
+    if (btn) btn.textContent = tema === 'dark' ? '☀️' : '🌙';
   },
 
   mesAnterior() {
