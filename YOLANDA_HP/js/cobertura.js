@@ -27,7 +27,7 @@ const Cobertura = {
 
     // Helpers locales: meter/sacar a un empleado en TODAS las franjas que cubre
     const meter = (emp, entrada, salida) => {
-      const frs = Utils.franjasQueCubre(entrada, salida, tienda);
+      const frs = Utils.franjasQueCubre(entrada, salida, tienda, dow);
       for (const fr of frs) {
         if (!cobertura[fr].includes(emp)) cobertura[fr].push(emp);
       }
@@ -68,10 +68,97 @@ const Cobertura = {
     return cobertura;
   },
 
+  // ── Intervalos efectivos del día (interno) ─────────────────
+
+  /**
+   * Devuelve la lista de intervalos [entrada, salida, alias] efectivos
+   * de un día L-V tras aplicar ausencias, modificaciones puntuales y
+   * sustituciones. Es la fuente cruda para sweep-line de mínimos.
+   */
+  _intervalosLV(fecha, tienda) {
+    const fs = Utils.formatFecha(fecha);
+    const horarios = Rotaciones.getHorariosLV(fecha, tienda);
+    if (!horarios) return [];
+
+    const intervalos = []; // {alias, e, s}
+
+    // 1. Base: rotación con modificaciones, sin ausentes
+    for (const emp in horarios) {
+      if (Store.estaAusente(emp, fs, tienda)) continue;
+      const mod = Store.getModificacion(emp, fs, tienda, '');
+      const h = mod ? [mod.nuevaEntrada, mod.nuevaSalida] : horarios[emp];
+      if (!h || typeof h[0] !== 'number' || h[1] <= h[0]) continue;
+      intervalos.push({ alias: emp, e: h[0], s: h[1] });
+    }
+
+    // 2. Sustituciones del día (L-V, no FdS)
+    const susts = Store.getSustituciones();
+    for (const sust of susts) {
+      if (sust.fecha !== fs || sust.tienda !== tienda || sust.turnoFds) continue;
+
+      // Si el sustituto ya tenía un turno base que SOLAPA con la sustitución → se mueve (sustituye su intervalo)
+      // Si no solapa → comodín, suma turno extra
+      const idxBase = intervalos.findIndex(it => it.alias === sust.sustituto);
+      if (idxBase >= 0) {
+        const it = intervalos[idxBase];
+        const seSolapan = !(sust.salida <= it.e || it.s <= sust.entrada);
+        if (seSolapan) intervalos.splice(idxBase, 1);
+      }
+      intervalos.push({ alias: sust.sustituto, e: sust.entrada, s: sust.salida });
+    }
+
+    return intervalos;
+  },
+
+  /**
+   * Cobertura mínima REAL en una franja (sweep line):
+   * recorre todos los puntos de evento (entradas/salidas) dentro de la
+   * ventana de la franja y devuelve el menor número de empleados
+   * presentes simultáneamente. Detecta huecos como el de MORILLA solo
+   * 15-16:45 cuando SILVIA falta.
+   */
+  _minCoberturaEnFranja(intervalos, ventana) {
+    const [w0, w1] = ventana;
+    // Eventos dentro de la ventana
+    const eventos = [];
+    for (const it of intervalos) {
+      const e = Math.max(it.e, w0);
+      const s = Math.min(it.s, w1);
+      if (s <= e) continue; // no toca la ventana
+      eventos.push({ t: e, d: +1 });
+      eventos.push({ t: s, d: -1 });
+    }
+    if (eventos.length === 0) return 0;
+
+    // Ordenar; en empate, primero las salidas (-1) que las entradas (+1)
+    // para detectar huecos puntuales correctamente
+    eventos.sort((a, b) => a.t - b.t || a.d - b.d);
+
+    let activos = 0;
+    let minActivos = Infinity;
+    let cursor = w0;
+
+    for (const ev of eventos) {
+      // Si avanzamos en el tiempo, evaluamos el tramo [cursor, ev.t)
+      if (ev.t > cursor && cursor < w1) {
+        // Hay un tramo dentro de la ventana donde había `activos` personas
+        if (activos < minActivos) minActivos = activos;
+      }
+      activos += ev.d;
+      cursor = ev.t;
+    }
+    // Tramo final hasta w1
+    if (cursor < w1 && activos < minActivos) minActivos = activos;
+
+    return minActivos === Infinity ? 0 : minActivos;
+  },
+
   // ── Verificar mínimos L-V ──────────────────────────────────
 
   /**
    * Devuelve un array de alertas de franjas bajo mínimos.
+   * Usa sweep-line dentro de la ventana de cada franja, NO solapamiento
+   * simple, para detectar discontinuidades (ej: MORILLA solo 15-16:45).
    * [{franja, actual, minimo, falta}]
    */
   verificarMinimosLV(fecha, tienda) {
@@ -79,15 +166,16 @@ const Cobertura = {
     const dow = fecha.getDay();
     if (dow < 1 || dow > 5) return [];
 
-    const cobertura = Cobertura.calcularLV(fecha, tienda);
-    if (!cobertura) return [];
+    const intervalos = Cobertura._intervalosLV(fecha, tienda);
 
     const alertas = [];
     const franjas = ['descarga', 'mañanas', 'tardes', 'cierre'];
 
     for (const fr of franjas) {
-      const actual = cobertura[fr].length;
       const min = CONFIG.getMinimoLV(tienda, fr, dow);
+      const ventana = CONFIG.getFranjaVentana(tienda, fr, dow);
+      if (!ventana) continue;
+      const actual = Cobertura._minCoberturaEnFranja(intervalos, ventana);
       if (actual < min) {
         alertas.push({ franja: fr, actual, minimo: min, falta: min - actual });
       }

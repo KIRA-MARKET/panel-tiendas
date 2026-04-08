@@ -110,11 +110,10 @@ const Utils = {
    * (intervalos abiertos por la derecha — tocarse en frontera no cuenta).
    * Ejemplo: EVA 7-15 en GV → ['descarga','mañanas'] porque 7-9 y 9-15 solapan.
    */
-  franjasQueCubre(entrada, salida, tienda) {
-    const def = tienda === 'granvia' ? CONFIG.FRANJAS_GV : CONFIG.FRANJAS_IS;
+  franjasQueCubre(entrada, salida, tienda, dow) {
     const out = [];
     for (const fr of ['descarga', 'mañanas', 'tardes', 'cierre']) {
-      const w = def[fr];
+      const w = CONFIG.getFranjaVentana(tienda, fr, dow);
       if (!w) continue;
       // Solape de [entrada, salida) con [w[0], w[1])
       if (entrada < w[1] && salida > w[0]) out.push(fr);

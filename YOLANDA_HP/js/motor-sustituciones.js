@@ -51,6 +51,7 @@ const Motor = {
         // El mejor candidato (ordenado por prioridad)
         const mejor = candidatos[0];
         const propuesta = {
+          accion: 'sustituir',
           tienda: turno.tienda,
           fecha: turno.fecha,
           ausente: turno.emp,
@@ -65,8 +66,15 @@ const Motor = {
         Motor._propuestas.push(propuesta);
         sustSimuladas.push(propuesta);
       } else {
-        // Sin solución → "necesitas eventual"
-        Motor._sinSolucion.push(turno);
+        // Estrategia 2: REORGANIZAR — mover a alguien que ya trabaja ese
+        // día desde otra franja, manteniendo sus horas totales.
+        const reorg = Motor._reorganizar(turno);
+        if (reorg) {
+          Motor._propuestas.push(reorg);
+        } else {
+          // Sin solución → "necesitas eventual"
+          Motor._sinSolucion.push(turno);
+        }
       }
     }
 
@@ -282,6 +290,106 @@ const Motor = {
     return candidatos;
   },
 
+  // ── Estrategia 2: REORGANIZAR ──────────────────────────────
+
+  /**
+   * Intenta cubrir un turno bajo mínimos moviendo la franja horaria
+   * de un empleado que ya trabaja ese día en otra franja, manteniendo
+   * sus horas totales. Solo L-V por ahora.
+   *
+   * Devuelve una propuesta {accion: 'reorganizar', ...} o null.
+   */
+  _reorganizar(turno) {
+    if (turno.turnoFds) return null; // FdS rígido — no por ahora
+
+    const tienda = turno.tienda;
+    const fecha = turno.fecha;
+    const dow = fecha.getDay();
+    const fs = turno.fechaStr;
+    const franjaBuscada = turno.franja;
+
+    const horariosDia = Rotaciones.getHorariosLV(fecha, tienda);
+    if (!horariosDia) return null;
+
+    // Cobertura actual (con sustituciones ya aplicadas en Store)
+    const cob = Cobertura.calcularLV(fecha, tienda);
+    if (!cob) return null;
+
+    const candidatos = [];
+
+    for (const alias in horariosDia) {
+      if (alias === turno.emp) continue;
+      if (Store.estaAusente(alias, fs, tienda)) continue;
+
+      // Horario actual aplicando modificaciones
+      const mod = Store.getModificacion(alias, fs, tienda, '');
+      const hOrig = mod ? [mod.nuevaEntrada, mod.nuevaSalida] : horariosDia[alias];
+      if (!hOrig || typeof hOrig[0] !== 'number') continue;
+
+      const horasOrig = hOrig[1] - hOrig[0];
+      if (horasOrig <= 0) continue;
+
+      const frOrig = Utils.getFranja(hOrig[0], hOrig[1], tienda);
+      if (frOrig === franjaBuscada) continue; // ya está en la franja
+
+      // ¿Su franja origen aguanta perderlo?
+      const minOrig = CONFIG.getMinimoLV(tienda, frOrig, dow);
+      const actualOrig = (cob[frOrig] || []).length;
+      const excedente = actualOrig - 1 - minOrig;
+      if (excedente < 0) continue; // se rompería el origen
+
+      // Calcular nuevo horario: misma duración, empezando en turno.entrada
+      const nuevaEntrada = turno.entrada;
+      const nuevaSalida = nuevaEntrada + horasOrig;
+      if (nuevaSalida > 22.5 || nuevaEntrada < 5) continue;
+
+      // El nuevo intervalo debe caer en la franja buscada
+      const nuevaFr = Utils.getFranja(nuevaEntrada, nuevaSalida, tienda);
+      if (nuevaFr !== franjaBuscada) continue;
+
+      // Validar con Reglas (descanso, restricciones del empleado)
+      const turnoVal = {
+        tienda, fecha, ausente: turno.emp,
+        franja: franjaBuscada, turnoFds: '',
+        entrada: nuevaEntrada, salida: nuevaSalida
+      };
+      const v = Reglas.validarCandidato(alias, turnoVal);
+      if (!v.valido) continue;
+
+      candidatos.push({
+        alias,
+        hOrig,
+        nuevaEntrada, nuevaSalida,
+        excedente,
+        avisos: v.avisos.length
+      });
+    }
+
+    if (candidatos.length === 0) return null;
+
+    // Mejor: sin avisos primero, luego mayor excedente
+    candidatos.sort((a, b) => {
+      if (a.avisos !== b.avisos) return a.avisos - b.avisos;
+      return b.excedente - a.excedente;
+    });
+
+    const c = candidatos[0];
+    return {
+      accion: 'reorganizar',
+      tienda,
+      fecha: turno.fecha,
+      ausente: turno.emp,
+      sustituto: c.alias, // el "movido" (reusamos campo para el modal)
+      entrada: c.nuevaEntrada,
+      salida: c.nuevaSalida,
+      entradaOriginal: c.hOrig[0],
+      salidaOriginal: c.hOrig[1],
+      franja: franjaBuscada,
+      turnoFds: '',
+      bajoMinimos: turno.bajoMinimos
+    };
+  },
+
   // ── Cálculo simple de horas semanales ──────────────────────
 
   _calcularHorasSemanales(alias, fechaLunes) {
@@ -330,9 +438,30 @@ const Motor = {
 
   aplicarPropuestas(propuestasAplicar) {
     let count = 0;
+    let huboReorg = false;
+    let huboSust = false;
     for (const p of propuestasAplicar) {
-      const sust = {
-        fecha: typeof p.fecha === 'string' ? p.fecha : Utils.formatFecha(p.fecha),
+      const fechaStr = typeof p.fecha === 'string' ? p.fecha : Utils.formatFecha(p.fecha);
+
+      if (p.accion === 'reorganizar') {
+        Store.addModificacion({
+          tienda: p.tienda,
+          empleado: p.sustituto, // el movido
+          fecha: fechaStr,
+          turnoFds: '',
+          entradaOriginal: p.entradaOriginal,
+          salidaOriginal: p.salidaOriginal,
+          nuevaEntrada: p.entrada,
+          nuevaSalida: p.salida,
+          motivo: 'Reorganización: cubrir mínimos por ausencia de ' + p.ausente
+        });
+        huboReorg = true;
+        count++;
+        continue;
+      }
+
+      Store.addSustitucion({
+        fecha: fechaStr,
         ausente: p.ausente,
         sustituto: p.sustituto,
         entrada: p.entrada,
@@ -341,11 +470,12 @@ const Motor = {
         turnoFds: p.turnoFds || '',
         tienda: p.tienda,
         tipo: p.tipo || 'movimiento'
-      };
-      Store.addSustitucion(sust);
+      });
+      huboSust = true;
       count++;
     }
-    if (count > 0) Sync.syncSustituciones();
+    if (huboSust && typeof Sync !== 'undefined' && Sync.syncSustituciones) Sync.syncSustituciones();
+    if (huboReorg && typeof Sync !== 'undefined' && Sync.syncModificaciones) Sync.syncModificaciones();
     return count;
   },
 

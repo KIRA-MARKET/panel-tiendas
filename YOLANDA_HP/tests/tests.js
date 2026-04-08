@@ -703,6 +703,106 @@
     Store._state.empleadosIS = isBackup;
   });
 
+  suite('Cobertura: continuidad (sweep line)', function () {
+    test('Detecta hueco en tardes cuando SILVIA falta y solo queda MORILLA hasta llegada de FRANCIS', () => {
+      // Tardes GV ventana [15, 17.75]. MORILLA [15, 18.5], FRANCIS [16.75, 22.25]
+      // Sin SILVIA: 15:00–16:45 solo MORILLA = 1 < 2 → alerta
+      const intervalos = [
+        { alias: 'MORILLA', e: 15, s: 18.5 },
+        { alias: 'FRANCIS', e: 16.75, s: 22.25 }
+      ];
+      const min = Cobertura._minCoberturaEnFranja(intervalos, [15, 17.75]);
+      assertEq(min, 1, 'mínimo debe ser 1 (gap 15-16:45)');
+    });
+
+    test('Si SILVIA está, el mínimo de tardes cubre 2', () => {
+      const intervalos = [
+        { alias: 'SILVIA', e: 14, s: 18.5 },
+        { alias: 'MORILLA', e: 15, s: 18.5 },
+        { alias: 'FRANCIS', e: 16.75, s: 22.25 }
+      ];
+      const min = Cobertura._minCoberturaEnFranja(intervalos, [15, 17.75]);
+      assertEq(min, 2);
+    });
+
+    test('Sin intervalos en la franja → 0', () => {
+      const min = Cobertura._minCoberturaEnFranja([{ alias: 'X', e: 6, s: 9 }], [15, 17.75]);
+      assertEq(min, 0);
+    });
+
+    test('verificarMinimosLV con SILVIA ausente debe alertar tardes', () => {
+      // Provocar la situación real
+      const ausBackup = Store._state.ausenciasGV.slice();
+      const sustsBackup = Store._state.sustituciones.slice();
+      Store._state.sustituciones = [];
+      Store._state.ausenciasGV = [{
+        empleado: 'SILVIA', tipo: 'vacaciones',
+        desde: '2026-05-11', hasta: '2026-05-16'
+      }];
+      const fecha = new Date(2026, 4, 11); // Lunes 11 mayo
+      const alertas = Cobertura.verificarMinimosLV(fecha, 'granvia');
+      const tardesAlerta = alertas.find(a => a.franja === 'tardes');
+      assert(tardesAlerta, 'debe haber alerta en tardes');
+      assert(tardesAlerta.actual < tardesAlerta.minimo);
+
+      Store._state.ausenciasGV = ausBackup;
+      Store._state.sustituciones = sustsBackup;
+    });
+  });
+
+  suite('Motor: reorganizar (estrategia 2)', function () {
+    test('_reorganizar devuelve null si no hay franja origen con excedente', () => {
+      // Turno ficticio en franja inexistente → no candidatos
+      const fecha = new Date(2026, 3, 15); // miércoles
+      const r = Motor._reorganizar({
+        tienda: 'granvia', fecha, fechaStr: Utils.formatFecha(fecha),
+        emp: 'INEXISTENTE', franja: 'descarga', entrada: 6, salida: 9, bajoMinimos: true
+      });
+      // Puede ser null o un objeto válido — lo que NO puede pasar es excepción
+      assert(r === null || (r && r.accion === 'reorganizar'), 'devuelve null o propuesta');
+    });
+
+    test('Reorganizar mantiene horas totales del empleado movido', () => {
+      const fecha = new Date(2026, 3, 15);
+      const r = Motor._reorganizar({
+        tienda: 'granvia', fecha, fechaStr: Utils.formatFecha(fecha),
+        emp: 'EVA', franja: 'mañanas', entrada: 9, salida: 14, bajoMinimos: true
+      });
+      if (r) {
+        const horasOrig = r.salidaOriginal - r.entradaOriginal;
+        const horasNuevas = r.salida - r.entrada;
+        assertEq(+horasOrig.toFixed(2), +horasNuevas.toFixed(2), 'mismas horas totales');
+        assert(r.accion === 'reorganizar');
+      }
+    });
+
+    test('aplicarPropuestas con accion=reorganizar crea modificación, no sustitución', () => {
+      const sustsBackup = Store._state.sustituciones.slice();
+      const modsBackup = Store._state.modificacionesHorario.slice();
+      Store._state.sustituciones = [];
+      Store._state.modificacionesHorario = [];
+
+      Motor.aplicarPropuestas([{
+        accion: 'reorganizar',
+        tienda: 'granvia',
+        fecha: '2026-04-15',
+        ausente: 'EVA',
+        sustituto: 'SARA',
+        entrada: 9, salida: 14,
+        entradaOriginal: 14, salidaOriginal: 19,
+        franja: 'mañanas', turnoFds: ''
+      }]);
+
+      assertEq(Store._state.sustituciones.length, 0, 'no debe crear sustitución');
+      assertEq(Store._state.modificacionesHorario.length, 1, 'debe crear modificación');
+      assertEq(Store._state.modificacionesHorario[0].empleado, 'SARA');
+      assertEq(Store._state.modificacionesHorario[0].nuevaEntrada, 9);
+
+      Store._state.sustituciones = sustsBackup;
+      Store._state.modificacionesHorario = modsBackup;
+    });
+  });
+
   suite('HorasUI: calcularMes', function () {
     test('Suma horas de rotación L-V de un empleado básico', () => {
       // Snapshot

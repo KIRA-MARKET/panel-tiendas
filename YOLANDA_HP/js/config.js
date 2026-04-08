@@ -19,7 +19,8 @@ const CONFIG = {
   // cubre TODA la ventana de la franja (entrada ≤ inicio && salida ≥ fin).
   // Un mismo empleado puede contar en varias franjas (ej: EVA 7-15 → descarga + mañanas).
   FRANJAS_GV: {
-    descarga: [5,    9],
+    // Descarga: viernes empieza a las 5 (entran LETI/ANTONIO), L-J empieza a las 6
+    descarga: { default: [6, 9], 5: [5, 9] },
     mañanas:  [9,    15],
     tardes:   [15,   17.75],
     cierre:   [17.75, 22]
@@ -223,6 +224,19 @@ const CONFIG = {
   // ── Helpers de config ──────────────────────────────────────
 
   /** Obtener mínimo L-V para una tienda, franja y día de la semana */
+  /**
+   * Devuelve la ventana [entrada, salida] de una franja, opcionalmente
+   * variable por día de la semana. Acepta tanto formato simple [a,b]
+   * como objeto {default: [a,b], 5: [c,d]}.
+   */
+  getFranjaVentana(tienda, franja, dow) {
+    const def = tienda === 'granvia' ? CONFIG.FRANJAS_GV : CONFIG.FRANJAS_IS;
+    const v = def[franja];
+    if (!v) return null;
+    if (Array.isArray(v)) return v;
+    return v[dow] || v.default;
+  },
+
   getMinimoLV(tienda, franja, dow) {
     if (tienda === 'granvia') {
       return CONFIG.MINIMOS_LV_GV[franja] || 0;

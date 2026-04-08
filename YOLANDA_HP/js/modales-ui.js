@@ -298,19 +298,32 @@ const Modales = {
             const turnoLabel = p.turnoFds || p.franja;
             const tiendaColor = p.tienda === 'granvia' ? '#1a1a2e' : '#4a90d9';
 
+            const esReorg = p.accion === 'reorganizar';
+            const tagAccion = esReorg
+              ? `<span style="background:#5c6bc0;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">REORGANIZAR</span>`
+              : `<span style="background:#2e7d32;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">SUSTITUIR</span>`;
+            const detalleReorg = esReorg
+              ? ` <span style="color:#5c6bc0">(antes ${Utils.formatHora(p.entradaOriginal)}-${Utils.formatHora(p.salidaOriginal)})</span>`
+              : '';
+            const labelExtra = esReorg
+              ? ''  // reorganizar nunca añade horas extra (mantiene total)
+              : `<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#e65100;cursor:pointer;white-space:nowrap" title="Marcar si el sustituto hace estas horas como extra (no las tenía en su turno habitual)">
+                   <input type="checkbox" id="prop-extra-${item.idx}">
+                   Hora extra
+                 </label>`;
+
             html += `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin-bottom:3px;background:#fff;border-radius:6px;border:1px solid #e0e0e0;font-size:11px">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                   <input type="checkbox" id="prop-check-${item.idx}" checked>
                   <span style="background:${tiendaColor};color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">${tiendaLabel}</span>
+                  ${tagAccion}
                   <span style="color:#c62828;text-decoration:line-through">${Utils.escapeHtml(p.ausente)}</span>
                   → <strong style="color:#2e7d32">${Utils.escapeHtml(p.sustituto)}</strong>
                   <span style="color:#888">(${turnoLabel} · ${Utils.formatHora(p.entrada)}-${Utils.formatHora(p.salida)})</span>
+                  ${detalleReorg}
                 </div>
-                <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#e65100;cursor:pointer;white-space:nowrap" title="Marcar si el sustituto hace estas horas como extra (no las tenía en su turno habitual)">
-                  <input type="checkbox" id="prop-extra-${item.idx}">
-                  Hora extra
-                </label>
+                ${labelExtra}
               </div>
             `;
           }
