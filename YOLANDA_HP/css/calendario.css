@@ -287,6 +287,62 @@
   .col-dia { min-height: 140px; }
 }
 
+/* ── Móvil: stack vertical de días ──────────────────────────
+   Por debajo de 640px las 5 columnas L-V no caben. Cada día
+   se convierte en una fila completa, con la etiqueta de semana
+   integrada en la primera celda. */
+@media (max-width: 640px) {
+  .month-nav h2 { font-size: 15px; min-width: 0; }
+  .calendar-header { flex-wrap: wrap; gap: 8px; }
+
+  .week-header { display: none; }
+  .week-view { box-shadow: none; background: transparent; margin-bottom: 8px; }
+
+  .week-row {
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    margin-bottom: 10px;
+    padding: 6px;
+    gap: 4px;
+  }
+  .week-row .col-sem {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    background: var(--bg);
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+  }
+  .col-sem .num { font-size: 13px; }
+
+  .col-dia {
+    width: 100%;
+    min-height: 0;
+    border-right: none;
+    border-bottom: 1px dashed var(--border-light);
+    padding: 6px 4px;
+  }
+  .col-dia:last-child { border-bottom: none; }
+  .dia-num { font-size: 12px; font-weight: 700; color: var(--text); }
+
+  .col-fds {
+    width: 100%;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 4px;
+  }
+  .fds-box { padding: 6px; }
+  .fds-header { font-size: 10px; }
+
+  .turno { font-size: 11px; padding: 4px 6px; }
+  .turno-hora { font-size: 10px; }
+}
+
 @media print {
   .tooltip-horas { display: none !important; }
   .horas-dot { display: none !important; }

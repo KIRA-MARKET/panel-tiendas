@@ -61,21 +61,11 @@
     <div id="calendar-container"></div>
   </div>
 
-  <!-- Tab: Empleados (placeholder) -->
-  <div id="tab-empleados" class="tab-content">
-    <div style="padding:40px;text-align:center;color:var(--text-muted)">
-      <p style="font-size:16px;margin-bottom:8px">Empleados</p>
-      <p>Fase 2 — pr&oacute;ximamente</p>
-    </div>
-  </div>
+  <!-- Tab: Empleados -->
+  <div id="tab-empleados" class="tab-content"></div>
 
-  <!-- Tab: Ausencias (placeholder) -->
-  <div id="tab-ausencias" class="tab-content">
-    <div style="padding:40px;text-align:center;color:var(--text-muted)">
-      <p style="font-size:16px;margin-bottom:8px">Ausencias</p>
-      <p>Fase 2 — pr&oacute;ximamente</p>
-    </div>
-  </div>
+  <!-- Tab: Ausencias -->
+  <div id="tab-ausencias" class="tab-content"></div>
 
   <!-- Tab: Festivos -->
   <div id="tab-festivos" class="tab-content"></div>
@@ -104,6 +94,8 @@
 <script src="js/festivos.js"></script>
 <script src="js/control.js"></script>
 <script src="js/horas.js"></script>
+<script src="js/empleados-ui.js"></script>
+<script src="js/ausencias-ui.js"></script>
 <script src="js/auditor.js"></script>
 <script src="js/calendario-ui.js"></script>
 <script src="js/modales-ui.js"></script>
@@ -166,6 +158,8 @@ const App = {
     if (tab === 'festivos') FestivosUI.render();
     if (tab === 'control') ControlUI.render();
     if (tab === 'horas') HorasUI.render();
+    if (tab === 'empleados') EmpleadosUI.render();
+    if (tab === 'ausencias') AusenciasUI.render();
   },
 
   mesAnterior() {

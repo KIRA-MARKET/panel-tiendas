@@ -377,6 +377,142 @@ const Modales = {
     });
   },
 
+  // ── Modal de edición de empleado ───────────────────────────
+
+  editarEmpleado(alias, tienda) {
+    return new Promise((resolve) => {
+      const emp = Store.getEmpleado(alias, tienda);
+      if (!emp) { resolve(null); return; }
+
+      const overlay = Modales._crearOverlay();
+      const e = (v) => Utils.escapeHtml(v == null ? '' : String(v));
+
+      const franjas = ['descarga', 'mañanas', 'tardes', 'cierre', 'rotativo'];
+      const tiendas = [['granvia', 'Solo Gran Vía'], ['isabel', 'Solo Isabel'], ['ambas', 'Ambas']];
+
+      let optFranjas = '';
+      for (const f of franjas) optFranjas += `<option value="${f}"${emp.franja === f ? ' selected' : ''}>${f}</option>`;
+      let optTiendas = '';
+      for (const t of tiendas) optTiendas += `<option value="${t[0]}"${emp.tienda === t[0] ? ' selected' : ''}>${t[1]}</option>`;
+
+      const html = `
+        <div class="modal modal-lg">
+          <div class="modal-header">
+            <h3>Editar empleado — ${e(alias)}</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="form-group"><label>Alias</label><input type="text" id="emp-alias" value="${e(emp.alias)}"></div>
+              <div class="form-group"><label>Color</label><input type="color" id="emp-color" value="${e(emp.color || '#333333')}" style="height:36px"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Nombre</label><input type="text" id="emp-nombre" value="${e(emp.nombre)}"></div>
+              <div class="form-group"><label>Apellidos</label><input type="text" id="emp-apellidos" value="${e(emp.apellidos)}"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Contrato (h/sem)</label><input type="number" step="0.5" id="emp-contrato" value="${e(emp.contrato || 0)}"></div>
+              <div class="form-group"><label>Franja</label><select id="emp-franja">${optFranjas}</select></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Tienda(s)</label><select id="emp-tienda">${optTiendas}</select></div>
+              <div class="form-group"><label>Restricción</label><input type="text" id="emp-restriccion" value="${e(emp.restriccion)}" placeholder="ej: solo-mañanas"></div>
+            </div>
+            <div class="form-group">
+              <label>Teléfono</label><input type="text" id="emp-telefono" value="${e(emp.telefono)}">
+            </div>
+
+            <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <strong style="font-size:13px">🔒 Datos sensibles</strong>
+                <button type="button" class="btn btn-secondary" id="emp-unlock-btn" style="padding:4px 12px;font-size:11px">Desbloquear edición</button>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>DNI</label><input type="text" id="emp-dni" value="${e(emp.dni)}" disabled></div>
+                <div class="form-group"><label>Email</label><input type="email" id="emp-email" value="${e(emp.email)}" disabled></div>
+              </div>
+              <div class="form-group">
+                <label>Fecha de alta</label><input type="date" id="emp-fechaAlta" value="${e(emp.fechaAlta)}" disabled>
+              </div>
+              <p id="emp-unlock-status" class="sub" style="margin-top:6px;font-size:11px">Bloqueado. Pulsa "Desbloquear edición" para modificar estos campos.</p>
+            </div>
+
+            <div id="emp-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-success" data-action="ok">Guardar cambios</button>
+          </div>
+        </div>
+      `;
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const errEl = overlay.querySelector('#emp-error');
+      const showErr = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+
+      // Desbloqueo de campos sensibles (segunda confirmación)
+      const sensitiveIds = ['emp-dni', 'emp-email', 'emp-fechaAlta'];
+      let desbloqueado = false;
+      overlay.querySelector('#emp-unlock-btn').onclick = () => {
+        if (desbloqueado) return;
+        Modales.confirmar(
+          'Vas a habilitar la edición de DNI, email y fecha de alta. Estos campos son sensibles (LOPD). ¿Continuar?',
+          'Desbloquear datos sensibles'
+        ).then(ok => {
+          if (!ok) return;
+          desbloqueado = true;
+          for (const id of sensitiveIds) overlay.querySelector('#' + id).disabled = false;
+          overlay.querySelector('#emp-unlock-btn').textContent = '✓ Desbloqueado';
+          overlay.querySelector('#emp-unlock-btn').classList.remove('btn-secondary');
+          overlay.querySelector('#emp-unlock-btn').classList.add('btn-success');
+          overlay.querySelector('#emp-unlock-status').textContent = 'Edición habilitada. Ten cuidado al modificar.';
+        });
+      };
+
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => {
+        b.onclick = () => { Modales._cerrarOverlay(overlay); resolve(null); };
+      });
+
+      overlay.querySelector('[data-action="ok"]').onclick = () => {
+        const v = (id) => overlay.querySelector('#' + id).value;
+        const nuevoAlias = v('emp-alias').trim();
+        if (!nuevoAlias) return showErr('El alias no puede estar vacío');
+        const contrato = parseFloat(v('emp-contrato')) || 0;
+        if (contrato < 0 || contrato > 60) return showErr('Contrato fuera de rango (0–60 h/sem)');
+
+        const actualizado = Object.assign({}, emp, {
+          alias: nuevoAlias,
+          nombre: v('emp-nombre').trim(),
+          apellidos: v('emp-apellidos').trim(),
+          contrato,
+          franja: v('emp-franja'),
+          tienda: v('emp-tienda'),
+          restriccion: v('emp-restriccion').trim(),
+          telefono: v('emp-telefono').trim(),
+          color: v('emp-color')
+        });
+        if (desbloqueado) {
+          actualizado.dni = v('emp-dni').trim();
+          actualizado.email = v('emp-email').trim();
+          actualizado.fechaAlta = v('emp-fechaAlta');
+        }
+
+        // Aplicar al store (puede haber cambio de alias)
+        const empsKey = tienda === 'granvia' ? 'empleadosGV' : 'empleadosIS';
+        const emps = Object.assign({}, Store.get(empsKey));
+        if (nuevoAlias !== alias) delete emps[alias];
+        emps[nuevoAlias] = actualizado;
+        Store.set(empsKey, emps);
+        if (Sync && Sync.syncEmpleados) Sync.syncEmpleados();
+
+        Modales._cerrarOverlay(overlay);
+        resolve(actualizado);
+      };
+    });
+  },
+
   // ── Helpers internos ───────────────────────────────────────
 
   _crearOverlay() {
