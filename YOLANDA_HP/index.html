@@ -135,6 +135,21 @@ const App = {
       }
     });
 
+    // Click en turno del calendario → menú de acciones de empleado
+    document.addEventListener('click', (e) => {
+      const turnoEl = e.target.closest('.turno[data-emp]');
+      if (!turnoEl) return;
+      // Ignorar sustitutos (no tienen data-emp)
+      const alias = turnoEl.getAttribute('data-emp');
+      const fecha = turnoEl.getAttribute('data-fecha');
+      if (!alias || !fecha) return;
+      const entrada = parseFloat(turnoEl.getAttribute('data-entrada'));
+      const salida = parseFloat(turnoEl.getAttribute('data-salida'));
+      const turnoFds = turnoEl.getAttribute('data-turno-fds') || '';
+      const tienda = Store.getTienda();
+      Modales.accionesEmpleado(alias, fecha, tienda, { entrada, salida, turnoFds });
+    });
+
     // Cerrar modales con Escape
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {

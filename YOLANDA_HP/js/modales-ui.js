@@ -377,6 +377,162 @@ const Modales = {
     });
   },
 
+  // ── Menú de acciones por empleado (click en nombre) ────────
+
+  accionesEmpleado(alias, fecha, tienda, ctx) {
+    // ctx = { entrada, salida, turnoFds }
+    return new Promise((resolve) => {
+      const overlay = Modales._crearOverlay();
+      const fechaES = Utils.formatFechaES ? Utils.formatFechaES(fecha) : fecha;
+      const tiendaTxt = tienda === 'granvia' ? 'Gran Vía' : 'Isabel';
+      const horario = (typeof ctx.entrada === 'number' && typeof ctx.salida === 'number')
+        ? Utils.formatHora(ctx.entrada) + '–' + Utils.formatHora(ctx.salida) : '';
+
+      const html = `
+        <div class="modal" style="max-width:380px">
+          <div class="modal-header">
+            <h3>${Utils.escapeHtml(alias)}</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="sub" style="margin-bottom:14px;font-size:12px">${Utils.escapeHtml(fechaES)} · ${Utils.escapeHtml(tiendaTxt)}${horario ? ' · ' + horario : ''}${ctx.turnoFds ? ' · ' + ctx.turnoFds : ''}</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <button class="btn btn-secondary" data-action="modificar" style="justify-content:flex-start;padding:12px 14px">✎ Modificar horario hoy</button>
+              <button class="btn btn-secondary" data-action="ausencia" style="justify-content:flex-start;padding:12px 14px">📅 Registrar ausencia</button>
+              <button class="btn btn-secondary" data-action="ficha" style="justify-content:flex-start;padding:12px 14px">👤 Ficha del empleado</button>
+            </div>
+          </div>
+        </div>
+      `;
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const close = (val) => { Modales._cerrarOverlay(overlay); resolve(val); };
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => b.onclick = () => close(null));
+      overlay.onclick = (e) => { if (e.target === overlay) close(null); };
+
+      overlay.querySelector('[data-action="modificar"]').onclick = () => {
+        close('modificar');
+        Modales.modificarHorario(alias, fecha, tienda, ctx).then(() => CalendarioUI.render());
+      };
+      overlay.querySelector('[data-action="ausencia"]').onclick = () => {
+        close('ausencia');
+        Modales.nuevaAusencia(alias).then(() => CalendarioUI.render());
+      };
+      overlay.querySelector('[data-action="ficha"]').onclick = () => {
+        close('ficha');
+        Modales.editarEmpleado(alias, tienda).then(() => CalendarioUI.render());
+      };
+    });
+  },
+
+  // ── Modal: modificar horario puntual de un día ─────────────
+
+  modificarHorario(alias, fecha, tienda, ctx) {
+    return new Promise((resolve) => {
+      const overlay = Modales._crearOverlay();
+      const eIni = (typeof ctx.entrada === 'number') ? ctx.entrada : '';
+      const sIni = (typeof ctx.salida === 'number') ? ctx.salida : '';
+      const horasBase = (typeof ctx.entrada === 'number' && typeof ctx.salida === 'number')
+        ? (ctx.salida - ctx.entrada).toFixed(2) : '?';
+
+      const html = `
+        <div class="modal" style="max-width:460px">
+          <div class="modal-header">
+            <h3>Modificar horario — ${Utils.escapeHtml(alias)}</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="sub" style="font-size:12px;margin-bottom:12px">${Utils.escapeHtml(Utils.formatFechaES ? Utils.formatFechaES(fecha) : fecha)} · ${tienda === 'granvia' ? 'Gran Vía' : 'Isabel'}${ctx.turnoFds ? ' · ' + ctx.turnoFds : ''}</p>
+            <p style="font-size:12px;margin-bottom:12px">Horario base: <strong>${horasBase} h</strong> (${eIni !== '' ? Utils.formatHora(eIni) : '—'}–${sIni !== '' ? Utils.formatHora(sIni) : '—'})</p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nueva entrada (h)</label>
+                <input type="number" step="0.25" id="mod-entrada" value="${eIni}">
+              </div>
+              <div class="form-group">
+                <label>Nueva salida (h)</label>
+                <input type="number" step="0.25" id="mod-salida" value="${sIni}">
+              </div>
+            </div>
+            <p id="mod-resumen" class="sub" style="font-size:11px;margin-bottom:10px"></p>
+            <div class="form-group">
+              <label>Motivo (opcional)</label>
+              <input type="text" id="mod-motivo" placeholder="Motivo del cambio...">
+            </div>
+            <div id="mod-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-danger" data-action="quitar" style="margin-right:auto">Quitar modificación</button>
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-success" data-action="ok">Guardar</button>
+          </div>
+        </div>
+      `;
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const errEl = overlay.querySelector('#mod-error');
+      const showErr = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+      const resumenEl = overlay.querySelector('#mod-resumen');
+      const refrescar = () => {
+        const e = parseFloat(overlay.querySelector('#mod-entrada').value);
+        const s = parseFloat(overlay.querySelector('#mod-salida').value);
+        if (isNaN(e) || isNaN(s) || s <= e) { resumenEl.textContent = ''; return; }
+        const nuevas = (s - e).toFixed(2);
+        const base = parseFloat(horasBase);
+        let extra = '';
+        if (!isNaN(base)) {
+          const diff = (s - e) - base;
+          if (Math.abs(diff) < 0.01) extra = ' · sin horas extra';
+          else if (diff > 0) extra = ' · +' + diff.toFixed(2) + 'h EXTRA';
+          else extra = ' · ' + diff.toFixed(2) + 'h menos';
+        }
+        resumenEl.textContent = 'Nuevo total: ' + nuevas + ' h' + extra;
+      };
+      overlay.querySelector('#mod-entrada').oninput = refrescar;
+      overlay.querySelector('#mod-salida').oninput = refrescar;
+      refrescar();
+
+      const close = (val) => { Modales._cerrarOverlay(overlay); resolve(val); };
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => b.onclick = () => close(null));
+
+      overlay.querySelector('[data-action="quitar"]').onclick = () => {
+        Store.removeModificacion(alias, Utils.formatFecha(typeof fecha === 'string' ? Utils.parseFecha(fecha) : fecha), tienda, ctx.turnoFds || '');
+        if (Sync && Sync.syncModificaciones) Sync.syncModificaciones();
+        CalendarioUI.toast && CalendarioUI.toast('Modificación eliminada', 'success');
+        close('quitada');
+      };
+
+      overlay.querySelector('[data-action="ok"]').onclick = () => {
+        const e = parseFloat(overlay.querySelector('#mod-entrada').value);
+        const s = parseFloat(overlay.querySelector('#mod-salida').value);
+        const motivo = overlay.querySelector('#mod-motivo').value.trim();
+        if (isNaN(e) || isNaN(s)) return showErr('Entrada y salida son obligatorias');
+        if (s <= e) return showErr('La salida debe ser posterior a la entrada');
+        if (e < 0 || s > 24) return showErr('Horas fuera de rango (0–24)');
+
+        const fechaStr = typeof fecha === 'string' ? fecha : Utils.formatFecha(fecha);
+        Store.addModificacion({
+          tienda,
+          empleado: alias,
+          fecha: fechaStr,
+          turnoFds: ctx.turnoFds || '',
+          entradaOriginal: ctx.entrada,
+          salidaOriginal: ctx.salida,
+          nuevaEntrada: e,
+          nuevaSalida: s,
+          motivo
+        });
+        if (Sync && Sync.syncModificaciones) Sync.syncModificaciones();
+        CalendarioUI.toast && CalendarioUI.toast('Horario modificado para ' + alias, 'success');
+        close('guardada');
+      };
+    });
+  },
+
   // ── Modal de edición de empleado ───────────────────────────
 
   editarEmpleado(alias, tienda) {
