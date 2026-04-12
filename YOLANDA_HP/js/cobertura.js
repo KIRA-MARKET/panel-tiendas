@@ -164,11 +164,53 @@ const Cobertura = {
     return count;
   },
 
+  /**
+   * Simula una sustitución y verifica con sweep line que TODAS las
+   * franjas mantienen continuidad (mínimo simultáneo ≥ requerido).
+   * Devuelve array de alertas (vacío = la sustitución es segura).
+   *
+   * Para tipo 'movimiento' (default), retira al sustituto de su
+   * intervalo original antes de añadir el nuevo.
+   */
+  verificarContinuidadConSustitucion(fecha, tienda, sustAlias, sustEntrada, sustSalida, tipo) {
+    const dow = fecha.getDay();
+    if (dow < 1 || dow > 5) return []; // Solo L-V por ahora
+
+    // Obtener intervalos actuales (ya descuenta ausentes y subs aplicadas)
+    const intervalos = Cobertura._intervalosLV(fecha, tienda);
+
+    // Simular: quitar intervalo original del sustituto (movimiento)
+    const esMovimiento = !tipo || tipo === 'movimiento';
+    if (esMovimiento) {
+      const idx = intervalos.findIndex(it => it.alias === sustAlias);
+      if (idx >= 0) intervalos.splice(idx, 1);
+    }
+
+    // Simular: añadir el intervalo de la sustitución
+    intervalos.push({ alias: sustAlias, e: sustEntrada, s: sustSalida });
+
+    // Verificar sweep line en todas las franjas
+    const alertas = [];
+    for (const fr of ['descarga', 'mañanas', 'tardes', 'cierre']) {
+      const min = CONFIG.getMinimoLV(tienda, fr, dow);
+      const ventana = CONFIG.getFranjaVentana(tienda, fr, dow);
+      if (!ventana || min === 0) continue;
+      const actual = Cobertura._minCoberturaEnFranja(intervalos, ventana);
+      if (actual < min) {
+        alertas.push({ franja: fr, actual, minimo: min });
+      }
+    }
+
+    return alertas;
+  },
+
   // ── Verificar mínimos L-V ──────────────────────────────────
 
   /**
    * Devuelve un array de alertas de franjas bajo mínimos.
-   * Cuenta empleados con overlap significativo (≥1h) con cada franja.
+   * Usa sweep line estricto: cero tolerancia, ni 1 minuto bajo mínimo.
+   * Las ventanas de franja deben estar ajustadas a cuando los empleados
+   * realmente están (no antes del primer turno de la franja).
    * [{franja, actual, minimo, falta}]
    */
   verificarMinimosLV(fecha, tienda) {
@@ -185,7 +227,7 @@ const Cobertura = {
       const min = CONFIG.getMinimoLV(tienda, fr, dow);
       const ventana = CONFIG.getFranjaVentana(tienda, fr, dow);
       if (!ventana) continue;
-      const actual = Cobertura._coberturaSignificativa(intervalos, ventana);
+      const actual = Cobertura._minCoberturaEnFranja(intervalos, ventana);
       if (actual < min) {
         alertas.push({ franja: fr, actual, minimo: min, falta: min - actual });
       }

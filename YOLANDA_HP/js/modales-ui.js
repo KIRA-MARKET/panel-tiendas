@@ -264,18 +264,28 @@ const Modales = {
           <div class="modal-body" style="max-height:60vh">
       `;
 
-      // Resumen
+      // Resumen + filtro por tienda
       if (propuestas.length === 0 && sinSolucion.length === 0) {
         html += `<p style="text-align:center;padding:20px;color:#2e7d32"><strong>\u2713 Todos los m\u00ednimos cumplidos.</strong><br>No hace falta ninguna sustituci\u00f3n este mes.</p>`;
       } else {
+        const nGV = propuestas.filter(p => p.tienda === 'granvia').length;
+        const nIS = propuestas.filter(p => p.tienda === 'isabel').length;
+        const nSinGV = sinSolucion.filter(s => s.tienda === 'granvia').length;
+        const nSinIS = sinSolucion.filter(s => s.tienda === 'isabel').length;
+
         html += `<div style="margin-bottom:12px;padding:10px;background:#f5f5f5;border-radius:8px;font-size:12px">`;
         if (propuestas.length > 0) {
           html += `<strong>${propuestas.length}</strong> sustituciones propuestas`;
         }
         if (sinSolucion.length > 0) {
           html += (propuestas.length > 0 ? ' · ' : '') +
-                  `<span style="color:#c62828"><strong>${sinSolucion.length}</strong> sin soluci\u00f3n (necesitas eventual)</span>`;
+                  `<span style="color:#c62828"><strong>${sinSolucion.length}</strong> sin soluci\u00f3n</span>`;
         }
+        html += `<div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn-filtro-tienda active" data-filtro="ambas" style="padding:4px 12px;border-radius:4px;border:1px solid #ccc;background:#1a1a2e;color:#fff;cursor:pointer;font-size:11px;font-weight:700">Ambas (${propuestas.length})</button>
+          <button class="btn-filtro-tienda" data-filtro="granvia" style="padding:4px 12px;border-radius:4px;border:1px solid #ccc;background:#fff;color:#1a1a2e;cursor:pointer;font-size:11px;font-weight:700">Gran V\u00eda (${nGV}${nSinGV ? '+' + nSinGV + ' sin sol.' : ''})</button>
+          <button class="btn-filtro-tienda" data-filtro="isabel" style="padding:4px 12px;border-radius:4px;border:1px solid #ccc;background:#fff;color:#4a90d9;cursor:pointer;font-size:11px;font-weight:700">Isabel (${nIS}${nSinIS ? '+' + nSinIS + ' sin sol.' : ''})</button>
+        </div>`;
         html += `</div>`;
       }
 
@@ -294,6 +304,7 @@ const Modales = {
 
           for (const item of porFecha[fecha]) {
             const p = item.prop;
+            const tiendaId = p.tienda;
             const tiendaLabel = p.tienda === 'granvia' ? 'GV' : 'IS';
             const turnoLabel = p.turnoFds || p.franja;
             const tiendaColor = p.tienda === 'granvia' ? '#1a1a2e' : '#4a90d9';
@@ -313,7 +324,7 @@ const Modales = {
                  </label>`;
 
             html += `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin-bottom:3px;background:#fff;border-radius:6px;border:1px solid #e0e0e0;font-size:11px">
+              <div class="prop-row" data-tienda="${tiendaId}" style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin-bottom:3px;background:#fff;border-radius:6px;border:1px solid #e0e0e0;font-size:11px">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                   <input type="checkbox" id="prop-check-${item.idx}" checked>
                   <span style="background:${tiendaColor};color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">${tiendaLabel}</span>
@@ -340,7 +351,7 @@ const Modales = {
           const fechaObj = Utils.parseFecha(fechaStr);
           const tiendaLabel = s.tienda === 'granvia' ? 'GV' : 'IS';
           const turnoLabel = s.turnoFds || s.franja;
-          html += `<div style="font-size:11px;padding:2px 0">· ${tiendaLabel} — ${Utils.DIAS[fechaObj.getDay()]} ${Utils.formatFechaES(fechaStr)}: <strong>${Utils.escapeHtml(s.emp)}</strong> (${turnoLabel})</div>`;
+          html += `<div class="prop-row" data-tienda="${s.tienda}" style="font-size:11px;padding:2px 0">· ${tiendaLabel} — ${Utils.DIAS[fechaObj.getDay()]} ${Utils.formatFechaES(fechaStr)}: <strong>${Utils.escapeHtml(s.emp)}</strong> (${turnoLabel})</div>`;
         }
         html += `</div>`;
       }
@@ -361,6 +372,29 @@ const Modales = {
       overlay.innerHTML = html;
       document.body.appendChild(overlay);
       requestAnimationFrame(() => overlay.classList.add('active'));
+
+      // Filtro por tienda
+      overlay.querySelectorAll('.btn-filtro-tienda').forEach(btn => {
+        btn.onclick = () => {
+          const filtro = btn.dataset.filtro;
+          overlay.querySelectorAll('.btn-filtro-tienda').forEach(b => {
+            b.style.background = '#fff';
+            b.style.color = b.dataset.filtro === 'isabel' ? '#4a90d9' : '#1a1a2e';
+            b.classList.remove('active');
+          });
+          btn.style.background = btn.dataset.filtro === 'isabel' ? '#4a90d9' : '#1a1a2e';
+          btn.style.color = '#fff';
+          btn.classList.add('active');
+
+          overlay.querySelectorAll('.prop-row').forEach(row => {
+            if (filtro === 'ambas') {
+              row.style.display = '';
+            } else {
+              row.style.display = row.dataset.tienda === filtro ? '' : 'none';
+            }
+          });
+        };
+      });
 
       overlay.querySelectorAll('[data-action="cancel"]').forEach(b => {
         b.onclick = () => {

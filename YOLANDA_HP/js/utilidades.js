@@ -80,9 +80,9 @@ const Utils = {
 
   // ── Franjas horarias ───────────────────────────────────────
 
-  /** Determinar franja para Gran Vía */
+  /** Determinar franja para Gran Vía (display) */
   getFranjaGV(entrada, salida) {
-    if (entrada < 7 && salida <= 13) return 'descarga';
+    if (entrada <= 7) return 'descarga'; // Entra a las 7 o antes → descarga (EVA, ANTONIO, LETI, DAVID)
     if (salida <= 15) return 'mañanas';
     if (entrada >= 16) return 'cierre';
     return 'tardes';

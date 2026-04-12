@@ -39,6 +39,7 @@
       </div>
     </div>
     <button class="btn btn-orange" onclick="App.calcularSustituciones()">Calcular sustituciones</button>
+    <button class="btn btn-secondary" onclick="App.borrarSustitucionesMes()" style="background:#e53935;color:#fff">Borrar sust. mes</button>
     <button class="btn btn-purple" onclick="App.auditar()">Auditar</button>
     <button class="btn btn-secondary" onclick="App.diagnosticar()" style="background:#ffc107">🔧 Diagnóstico</button>
     <button class="btn btn-primary" onclick="App.abrirModalAusencia()">+ Ausencia</button>
@@ -242,6 +243,55 @@ const App = {
   calcularSustituciones() {
     const resultado = Motor.analizarMes();
     Modales.mostrarPropuestas(resultado.propuestas, resultado.sinSolucion);
+  },
+
+  borrarSustitucionesMes() {
+    const mes = Store.getMes();
+    const año = Store.getAño();
+    const tienda = Store.getTienda();
+    const tiendaLabel = tienda === 'granvia' ? 'Gran Vía' : 'Isabel';
+    const mesLabel = Utils.MESES[mes] + ' ' + año;
+
+    // Calcular rango de fechas del mes
+    const primerDia = año + '-' + String(mes + 1).padStart(2, '0') + '-01';
+    const ultimoDia = año + '-' + String(mes + 1).padStart(2, '0') + '-' + String(Utils.ultimoDiaMes(año, mes).getDate()).padStart(2, '0');
+
+    // Contar cuántas hay
+    const susts = Store.getSustituciones().filter(s =>
+      s.tienda === tienda && s.fecha >= primerDia && s.fecha <= ultimoDia
+    );
+    const mods = Store.get('modificacionesHorario').filter(m =>
+      m.tienda === tienda && m.fecha >= primerDia && m.fecha <= ultimoDia && m.motivo && m.motivo.startsWith('Reorganización')
+    );
+
+    if (susts.length === 0 && mods.length === 0) {
+      CalendarioUI.toast('No hay sustituciones en ' + mesLabel + ' · ' + tiendaLabel, 'info');
+      return;
+    }
+
+    const texto = 'Se borrarán ' + susts.length + ' sustituciones' +
+      (mods.length > 0 ? ' y ' + mods.length + ' reorganizaciones' : '') +
+      ' de ' + tiendaLabel + ' en ' + mesLabel + '. Esta acción sincronizará con Sheets.';
+
+    Modales.confirmar(texto, 'Borrar sustituciones de ' + mesLabel).then(function(ok) {
+      if (!ok) return;
+      // Borrar sustituciones del mes/tienda
+      Store.removeSustitucion(function(s) {
+        return s.tienda === tienda && s.fecha >= primerDia && s.fecha <= ultimoDia;
+      });
+      // Borrar modificaciones de reorganización del mes/tienda
+      if (mods.length > 0) {
+        Store._state.modificacionesHorario = Store._state.modificacionesHorario.filter(function(m) {
+          return !(m.tienda === tienda && m.fecha >= primerDia && m.fecha <= ultimoDia && m.motivo && m.motivo.startsWith('Reorganización'));
+        });
+        Store._emit('modificaciones', Store._state.modificacionesHorario);
+      }
+      // Sync a Sheets
+      if (Sync && Sync.syncSustituciones) Sync.syncSustituciones();
+      if (mods.length > 0 && Sync && Sync.syncModificaciones) Sync.syncModificaciones();
+      CalendarioUI.render();
+      CalendarioUI.toast(susts.length + ' sustituciones borradas', 'success');
+    });
   },
 
   // ── Placeholders (Fase 3+) ─────────────────────────────

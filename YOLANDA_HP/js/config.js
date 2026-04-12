@@ -19,17 +19,17 @@ const CONFIG = {
   // cubre TODA la ventana de la franja (entrada ≤ inicio && salida ≥ fin).
   // Un mismo empleado puede contar en varias franjas (ej: EVA 7-15 → descarga + mañanas).
   FRANJAS_GV: {
-    // Descarga: viernes empieza a las 5 (entran LETI/ANTONIO), L-J empieza a las 6
-    descarga: { default: [6, 9], 5: [5, 9] },
+    // Descarga: min=3 se cumple desde las 7 (cuando EVA llega). Antes hay 2 personas en ramp-up.
+    descarga: [7, 9],
     mañanas:  [9,    15],
     tardes:   [15,   17.75],
     cierre:   [17.75, 22]
   },
   FRANJAS_IS: {
-    descarga: [5,    10],
+    descarga: [7,    10],  // Min se cumple desde las 7 (SILVIA/VANESA). Antes hay ramp-up.
     mañanas:  [10,   14.5],
-    tardes:   [14.5, 17.5],
-    cierre:   [17.5, 22]
+    tardes:   [14.75, 17.5],  // ABDEL 14:30 + ALEX 14:45 → min 2 desde 14:45
+    cierre:   { default: [18.75, 22], 5: [18.25, 22] }  // L-J: 3 desde 18:45. V: 3 desde 18:15
   },
 
   // ── Mínimos L-V Gran Vía (iguales todos los días) ─────────

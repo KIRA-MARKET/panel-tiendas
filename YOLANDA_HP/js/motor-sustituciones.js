@@ -45,7 +45,21 @@ const Motor = {
       }
 
       // Buscar candidatos válidos
-      const candidatos = Motor._obtenerCandidatos(turno, sustSimuladas);
+      let candidatos = Motor._obtenerCandidatos(turno, sustSimuladas);
+
+      // Filtrar candidatos que rompen continuidad de mínimos (sweep line)
+      if (!turno.turnoFds && candidatos.length > 0) {
+        const candidatosFiltrados = [];
+        for (const c of candidatos) {
+          const alertas = Cobertura.verificarContinuidadConSustitucion(
+            turno.fecha, turno.tienda, c.alias, c.entrada, c.salida, 'movimiento'
+          );
+          if (alertas.length === 0) {
+            candidatosFiltrados.push(c);
+          }
+        }
+        candidatos = candidatosFiltrados;
+      }
 
       if (candidatos.length > 0) {
         // El mejor candidato (ordenado por prioridad)
