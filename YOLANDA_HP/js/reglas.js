@@ -25,7 +25,9 @@ const Reglas = {
     const esFds = (dow === 0 || dow === 6);
     const esLV = !esFds;
 
-    const empData = Store.getEmpleado(candidato, turno.tienda);
+    // Buscar en la tienda del turno, si no en la otra (empleados FdS cross-tienda)
+    let empData = Store.getEmpleado(candidato, turno.tienda);
+    if (!empData) empData = Store.getEmpleado(candidato, turno.tienda === 'granvia' ? 'isabel' : 'granvia');
     if (!empData) {
       errores.push('No existe en la plantilla');
       return { valido: false, errores, avisos };
@@ -345,15 +347,19 @@ const Reglas = {
       if (tk === turnoDestino) continue;
       // ¿Tiene el sustituto turno habitual en este otro turno FdS?
       if (fdsSab[tk] && fdsSab[tk][sustituto]) {
-        // Calcular cuántas personas habría sin él
+        // Contar cobertura usando fdsSab (rotación correcta) + ausencias del día real
         const fechaTk = fechasTurnos[tk];
-        const cob = Cobertura.calcularFds(fechaTk, tk, tienda);
+        const fsTk = Utils.formatFecha(fechaTk);
+        let cobCount = 0;
+        for (const emp in fdsSab[tk]) {
+          if (!Store.estaAusente(emp, fsTk, tienda)) cobCount++;
+        }
         const min = CONFIG.getMinimoFds(tienda, tk);
-        if (cob.length - 1 < min) {
+        if (cobCount - 1 < min) {
           return {
             turno: tk,
-            actual: cob.length,
-            sinSustituto: cob.length - 1,
+            actual: cobCount,
+            sinSustituto: cobCount - 1,
             minimo: min
           };
         }

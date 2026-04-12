@@ -166,6 +166,23 @@ const Motor = {
       }
     }
 
+    // FdS: incluir TODOS los empleados de la rotación FdS de esta tienda,
+    // aunque su ficha diga otra tienda (ej: ALEX trabaja Isabel L-V pero GV FdS)
+    if (turno.turnoFds) {
+      const fdsRotacion = Rotaciones.getFds(turno.fecha, tienda);
+      for (const tk of ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T']) {
+        if (fdsRotacion[tk]) {
+          for (const emp in fdsRotacion[tk]) {
+            if (!candidatosPosibles[emp]) {
+              const empData = Store.getEmpleado(emp, tienda) ||
+                              Store.getEmpleado(emp, tienda === 'granvia' ? 'isabel' : 'granvia');
+              if (empData) candidatosPosibles[emp] = empData;
+            }
+          }
+        }
+      }
+    }
+
     for (const alias in candidatosPosibles) {
       if (alias === turno.emp) continue;
 
@@ -247,26 +264,26 @@ const Motor = {
       // Cuanto más excedente tenga su origen sobre el mínimo,
       // mejor candidato es (porque al moverse no deja problemas).
       let excedenteOrigen = 0;
+      let turnoOrigen = null;
+      let coberturaOrigenTotal = 0;
       if (turno.turnoFds) {
         // ── FdS: excedente del turno de origen del candidato ──
         const fdsData = Rotaciones.getFds(turno.fecha, tienda);
         const dow = turno.fecha.getDay();
         const turnosFds = dow === 6 ? ['SAB_M', 'SAB_T'] : ['DOM_M', 'DOM_T'];
         // También buscar en el otro día del FdS
+        // IMPORTANTE: usar fdsData (del sábado) para rotación, igual que el display.
+        // Solo usar otroDia para comprobar ausencias del otro día.
         const otroDia = new Date(turno.fecha);
         if (dow === 6) otroDia.setDate(otroDia.getDate() + 1);
         else otroDia.setDate(otroDia.getDate() - 1);
         const otroDow = otroDia.getDay();
         const turnosOtroDia = otroDow === 6 ? ['SAB_M', 'SAB_T'] : ['DOM_M', 'DOM_T'];
-        const fdsDataOtro = Rotaciones.getFds(otroDia, tienda);
-
-        let turnoOrigen = null;
-        let cobOrigen = 0;
-        let minOrigen = 0;
+        const otroDiaFs = Utils.formatFecha(otroDia);
 
         // Buscar en qué turno FdS está este candidato (mismo día y otro día)
         for (const tk of turnosFds) {
-          if (tk === turno.turnoFds) continue; // no contar el turno que necesita sub
+          if (tk === turno.turnoFds) continue;
           if (fdsData[tk] && fdsData[tk][alias]) {
             const cob = Cobertura.calcularFds(turno.fecha, tk, tienda);
             const min = CONFIG.getMinimoFds(tienda, tk);
@@ -274,17 +291,23 @@ const Motor = {
             if (exc > excedenteOrigen) {
               excedenteOrigen = exc;
               turnoOrigen = tk;
+              coberturaOrigenTotal = cob.length;
             }
           }
         }
         for (const tk of turnosOtroDia) {
-          if (fdsDataOtro[tk] && fdsDataOtro[tk][alias]) {
-            const cob = Cobertura.calcularFds(otroDia, tk, tienda);
+          if (fdsData[tk] && fdsData[tk][alias]) {
+            // Contar cobertura usando rotación de fdsData + ausencias del otro día
+            let cobCount = 0;
+            for (const emp in fdsData[tk]) {
+              if (!Store.estaAusente(emp, otroDiaFs, tienda)) cobCount++;
+            }
             const min = CONFIG.getMinimoFds(tienda, tk);
-            const exc = cob.length - min;
+            const exc = cobCount - min;
             if (exc > excedenteOrigen) {
               excedenteOrigen = exc;
               turnoOrigen = tk;
+              coberturaOrigenTotal = cobCount;
             }
           }
         }
@@ -319,6 +342,8 @@ const Motor = {
         salida: salidaSust,
         margen,
         excedenteOrigen,
+        turnoOrigenFds: turno.turnoFds ? (turnoOrigen || '') : '',
+        coberturaOrigenTotal: turno.turnoFds ? (coberturaOrigenTotal || 0) : 0,
         esPropio,
         esGrupoDescarga,
         tieneAvisos,
@@ -328,13 +353,22 @@ const Motor = {
     }
 
     // Ordenar por prioridad:
-    // 1) Sin avisos antes que con avisos
-    // 2) Si turno es descarga GV, priorizar grupo descarga (LETI/DAVID/EDU)
-    // 3) Empleados propios antes que prestados
-    // 4) MAYOR EXCEDENTE en franja origen (mover a quien sobra más)
-    // 5) Mayor margen de horas vs contrato
+    // ── FdS: DOM_M primero, luego turno con más personas ──
+    // ── L-V: sin avisos, grupo descarga, propios, excedente, margen ──
     candidatos.sort((a, b) => {
-      // Si turno descarga GV, priorizar LETI/DAVID/EDU entre ellos
+      if (turno.turnoFds) {
+        // FdS: 1) DOM_M primero (si tiene excedente)
+        const aEsDomM = a.turnoOrigenFds === 'DOM_M';
+        const bEsDomM = b.turnoOrigenFds === 'DOM_M';
+        if (aEsDomM !== bEsDomM) return aEsDomM ? -1 : 1;
+        // 2) Más personas totales en turno origen
+        if (a.coberturaOrigenTotal !== b.coberturaOrigenTotal) return b.coberturaOrigenTotal - a.coberturaOrigenTotal;
+        // 3) Sin avisos antes que con avisos
+        if (a.tieneAvisos !== b.tieneAvisos) return a.tieneAvisos ? 1 : -1;
+        return 0;
+      }
+
+      // L-V
       if (turno.tienda === 'granvia' && turno.franja === 'descarga') {
         if (a.esGrupoDescarga !== b.esGrupoDescarga) {
           return a.esGrupoDescarga ? -1 : 1;
