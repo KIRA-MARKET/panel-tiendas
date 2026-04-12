@@ -201,6 +201,17 @@ const Cobertura = {
       }
     }
 
+    // Cobertura GLOBAL: nunca una persona sola en toda la jornada
+    // Ventana dinámica: primer empleado → último empleado
+    if (intervalos.length > 0 && CONFIG.COBERTURA_GLOBAL_MINIMO) {
+      const inicio = Math.min(...intervalos.map(it => it.e));
+      const fin = Math.max(...intervalos.map(it => it.s));
+      const minGlobal = Cobertura._minCoberturaEnFranja(intervalos, [inicio, fin]);
+      if (minGlobal < CONFIG.COBERTURA_GLOBAL_MINIMO) {
+        alertas.push({ franja: 'GLOBAL', actual: minGlobal, minimo: CONFIG.COBERTURA_GLOBAL_MINIMO });
+      }
+    }
+
     return alertas;
   },
 
@@ -230,6 +241,21 @@ const Cobertura = {
       const actual = Cobertura._minCoberturaEnFranja(intervalos, ventana);
       if (actual < min) {
         alertas.push({ franja: fr, actual, minimo: min, falta: min - actual });
+      }
+    }
+
+    // Cobertura GLOBAL: nunca una persona sola en toda la jornada
+    if (intervalos.length > 0 && CONFIG.COBERTURA_GLOBAL_MINIMO) {
+      const inicio = Math.min(...intervalos.map(it => it.e));
+      const fin = Math.max(...intervalos.map(it => it.s));
+      const minGlobal = Cobertura._minCoberturaEnFranja(intervalos, [inicio, fin]);
+      if (minGlobal < CONFIG.COBERTURA_GLOBAL_MINIMO) {
+        alertas.push({
+          franja: 'persona sola',
+          actual: minGlobal,
+          minimo: CONFIG.COBERTURA_GLOBAL_MINIMO,
+          falta: CONFIG.COBERTURA_GLOBAL_MINIMO - minGlobal
+        });
       }
     }
 
@@ -396,7 +422,12 @@ const Cobertura = {
         const horarios = Rotaciones.getHorariosLV(fecha, tienda);
         if (horarios && horarios[emp]) {
           const tieneSust = Store.getSustituto(fs, emp, tienda);
-          if (!tieneSust) {
+          // También comprobar si hay una reorganización que cubra a este ausente
+          const tieneReorg = !tieneSust && Store.get('modificacionesHorario').some(m =>
+            m.fecha === fs && m.tienda === tienda &&
+            m.motivo && m.motivo.includes('ausencia de ' + emp)
+          );
+          if (!tieneSust && !tieneReorg) {
             const franja = Utils.getFranja(horarios[emp][0], horarios[emp][1], tienda);
             const alertasMin = Cobertura.verificarMinimosLV(fecha, tienda);
             const bajoMin = alertasMin.some(al => al.franja === franja);

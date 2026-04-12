@@ -47,18 +47,19 @@ const Motor = {
       // Buscar candidatos válidos
       let candidatos = Motor._obtenerCandidatos(turno, sustSimuladas);
 
-      // Filtrar candidatos que rompen continuidad de mínimos (sweep line)
+      // Verificar continuidad de mínimos (sweep line) — AVISO, no bloqueante
       if (!turno.turnoFds && candidatos.length > 0) {
-        const candidatosFiltrados = [];
         for (const c of candidatos) {
           const alertas = Cobertura.verificarContinuidadConSustitucion(
             turno.fecha, turno.tienda, c.alias, c.entrada, c.salida, 'movimiento'
           );
-          if (alertas.length === 0) {
-            candidatosFiltrados.push(c);
+          if (alertas.length > 0) {
+            const detalle = alertas.map(a => a.franja + ' ' + a.actual + '/' + a.minimo).join(', ');
+            c.avisos = c.avisos || [];
+            c.avisos.push('\u26a0 Gap: ' + detalle);
+            c.tieneAvisos = true;
           }
         }
-        candidatos = candidatosFiltrados;
       }
 
       if (candidatos.length > 0) {
@@ -194,12 +195,6 @@ const Motor = {
       } else {
         horasSust = Reglas.calcularHorasDiarias(alias, turno.fecha, tienda);
         // Caso comodín: si es compartido y tiene más horas en la otra tienda, usar esas
-        const empData = candidatosPosibles[alias];
-        if (empData.tienda === 'ambas') {
-          const otraTienda = tienda === 'granvia' ? 'isabel' : 'granvia';
-          const horasOtra = Reglas.calcularHorasDiarias(alias, turno.fecha, otraTienda);
-          if (horasOtra > horasSust) horasSust = horasOtra;
-        }
         entradaSust = turno.entrada;
         salidaSust = entradaSust + horasSust;
       }

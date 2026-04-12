@@ -434,7 +434,7 @@ const Modales = {
               'onmouseover="this.style.background=\'#e3f2fd\'" onmouseout="this.style.background=\'transparent\'">' +
               '<strong>' + Utils.escapeHtml(alt.alias) + '</strong>' +
               ' <span style="color:#888">' + Utils.formatHora(alt.entrada) + '-' + Utils.formatHora(alt.salida) + '</span>' +
-              ' <span style="color:#666;font-size:9px">excedente:' + alt.excedenteOrigen + '</span>' +
+              ' <span style="color:#666;font-size:9px">' + (alt.excedenteOrigen >= 99 ? 'disponible' : 'excedente:' + alt.excedenteOrigen) + '</span>' +
               avisosStr +
               '</div>';
           }
@@ -492,8 +492,14 @@ const Modales = {
       const btnAplicar = overlay.querySelector('[data-action="aplicar"]');
       if (btnAplicar) {
         btnAplicar.onclick = () => {
+          // Detectar filtro activo
+          const filtroActivo = overlay.querySelector('.btn-filtro-tienda.active');
+          const filtroTienda = filtroActivo ? filtroActivo.dataset.filtro : 'ambas';
+
           const seleccionadas = [];
           for (let i = 0; i < propuestas.length; i++) {
+            // Solo aplicar propuestas de la tienda filtrada
+            if (filtroTienda !== 'ambas' && propuestas[i].tienda !== filtroTienda) continue;
             const cb = overlay.querySelector('#prop-check-' + i);
             if (cb && cb.checked) {
               const cbExtra = overlay.querySelector('#prop-extra-' + i);

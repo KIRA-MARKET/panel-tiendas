@@ -213,6 +213,11 @@ const CONFIG = {
   // ── Solapes entre tiendas ──────────────────────────────────
   TIENDA_FLEXIBLE: 'granvia', // GV siempre cede en caso de solape
 
+  // ── Cobertura global: nunca una persona sola ────────────────
+  // Mínimo absoluto de personas en todo momento durante la jornada.
+  // La ventana se calcula automáticamente (primer empleado → último).
+  COBERTURA_GLOBAL_MINIMO: 2,
+
   // ── Salida máxima ──────────────────────────────────────────
   SALIDA_MAXIMA: 22.25, // 22:15
 

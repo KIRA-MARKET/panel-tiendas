@@ -393,9 +393,10 @@ const Reglas = {
       }
     }
 
-    // Fallback: contrato/5
-    const emp = Store.getEmpleado(alias, tienda);
-    return emp ? (emp.contrato || 30) / 5 : 4;
+    // Fallback: contrato/5, redondeado al cuarto de hora
+    const emp = Store.getEmpleado(alias, tienda) || Store.getEmpleado(alias);
+    const raw = emp ? (emp.contrato || 30) / 5 : 4;
+    return Math.round(raw * 4) / 4; // redondear a 0.25h (15 min)
   },
 
   // ── Pertenece al grupo de descarga GV ──────────────────────
