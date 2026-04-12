@@ -54,10 +54,11 @@ const Cobertura = {
       // ¿El sustituto tiene turno propio ese día en esta tienda?
       if (horarios[sust.sustituto]) {
         const hOrig = horarios[sust.sustituto];
-        // Si los horarios se SOLAPAN → se mueve: reemplazar todas sus franjas.
-        // Si NO (consecutivos o separados) → comodín: mantiene las del original y suma las nuevas.
+        // Movimiento (default): siempre se saca de origen
+        // Extra: solo se saca si los horarios solapan
+        const esMovimiento = !sust.tipo || sust.tipo === 'movimiento';
         const seSolapan = !(sust.salida <= hOrig[0] || hOrig[1] <= sust.entrada);
-        if (seSolapan) {
+        if (esMovimiento || seSolapan) {
           sacar(sust.sustituto);
         }
       }
@@ -96,13 +97,14 @@ const Cobertura = {
     for (const sust of susts) {
       if (sust.fecha !== fs || sust.tienda !== tienda || sust.turnoFds) continue;
 
-      // Si el sustituto ya tenía un turno base que SOLAPA con la sustitución → se mueve (sustituye su intervalo)
-      // Si no solapa → comodín, suma turno extra
+      // Movimiento (default): reemplaza el intervalo base del sustituto
+      // Extra: solo reemplaza si solapa
       const idxBase = intervalos.findIndex(it => it.alias === sust.sustituto);
       if (idxBase >= 0) {
         const it = intervalos[idxBase];
+        const esMovimiento = !sust.tipo || sust.tipo === 'movimiento';
         const seSolapan = !(sust.salida <= it.e || it.s <= sust.entrada);
-        if (seSolapan) intervalos.splice(idxBase, 1);
+        if (esMovimiento || seSolapan) intervalos.splice(idxBase, 1);
       }
       intervalos.push({ alias: sust.sustituto, e: sust.entrada, s: sust.salida });
     }
@@ -114,24 +116,20 @@ const Cobertura = {
    * Cobertura mínima REAL en una franja (sweep line):
    * recorre todos los puntos de evento (entradas/salidas) dentro de la
    * ventana de la franja y devuelve el menor número de empleados
-   * presentes simultáneamente. Detecta huecos como el de MORILLA solo
-   * 15-16:45 cuando SILVIA falta.
+   * presentes simultáneamente. Conservado para auditoría profunda.
    */
   _minCoberturaEnFranja(intervalos, ventana) {
     const [w0, w1] = ventana;
-    // Eventos dentro de la ventana
     const eventos = [];
     for (const it of intervalos) {
       const e = Math.max(it.e, w0);
       const s = Math.min(it.s, w1);
-      if (s <= e) continue; // no toca la ventana
+      if (s <= e) continue;
       eventos.push({ t: e, d: +1 });
       eventos.push({ t: s, d: -1 });
     }
     if (eventos.length === 0) return 0;
 
-    // Ordenar; en empate, primero las salidas (-1) que las entradas (+1)
-    // para detectar huecos puntuales correctamente
     eventos.sort((a, b) => a.t - b.t || a.d - b.d);
 
     let activos = 0;
@@ -139,26 +137,38 @@ const Cobertura = {
     let cursor = w0;
 
     for (const ev of eventos) {
-      // Si avanzamos en el tiempo, evaluamos el tramo [cursor, ev.t)
       if (ev.t > cursor && cursor < w1) {
-        // Hay un tramo dentro de la ventana donde había `activos` personas
         if (activos < minActivos) minActivos = activos;
       }
       activos += ev.d;
       cursor = ev.t;
     }
-    // Tramo final hasta w1
     if (cursor < w1 && activos < minActivos) minActivos = activos;
 
     return minActivos === Infinity ? 0 : minActivos;
+  },
+
+  /**
+   * Cuenta empleados con overlap significativo (≥1h) con una franja.
+   * Descarta a quien apenas toca la ventana (ej: ALEX 15min en cierre)
+   * pero no penaliza el escalonado natural de llegadas.
+   */
+  _coberturaSignificativa(intervalos, ventana) {
+    const [w0, w1] = ventana;
+    const UMBRAL_HORAS = 1; // mínimo 1 hora de overlap para contar
+    let count = 0;
+    for (const it of intervalos) {
+      const overlap = Math.min(it.s, w1) - Math.max(it.e, w0);
+      if (overlap >= UMBRAL_HORAS) count++;
+    }
+    return count;
   },
 
   // ── Verificar mínimos L-V ──────────────────────────────────
 
   /**
    * Devuelve un array de alertas de franjas bajo mínimos.
-   * Usa sweep-line dentro de la ventana de cada franja, NO solapamiento
-   * simple, para detectar discontinuidades (ej: MORILLA solo 15-16:45).
+   * Cuenta empleados con overlap significativo (≥1h) con cada franja.
    * [{franja, actual, minimo, falta}]
    */
   verificarMinimosLV(fecha, tienda) {
@@ -175,7 +185,7 @@ const Cobertura = {
       const min = CONFIG.getMinimoLV(tienda, fr, dow);
       const ventana = CONFIG.getFranjaVentana(tienda, fr, dow);
       if (!ventana) continue;
-      const actual = Cobertura._minCoberturaEnFranja(intervalos, ventana);
+      const actual = Cobertura._coberturaSignificativa(intervalos, ventana);
       if (actual < min) {
         alertas.push({ franja: fr, actual, minimo: min, falta: min - actual });
       }

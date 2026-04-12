@@ -145,17 +145,21 @@ const CalendarioUI = {
   // ── Helper: ¿este empleado sustituye solapando con su turno base? ──
 
   /**
-   * Devuelve true si el empleado está sustituyendo a otro en esta tienda
-   * y el horario de la sustitución SOLAPA con su turno base [horarioBase].
+   * Devuelve true si el empleado está sustituyendo a otro y debe
+   * desaparecer de su franja base en ESTA tienda.
    *
-   * Si solapan → es un cambio de turno (CAROLINA) → no debe aparecer en franja base
-   * Si NO solapan → es comodín (EDU) → puede aparecer en ambas franjas
+   * tipo='movimiento' (default) → desaparece de su posición en la tienda del sub
+   * tipo='extra' → solo desaparece si los horarios se solapan
    */
   _sustituyeSolapado(empleado, fechaStr, tienda, horarioBase) {
     const susts = Store.getSustituciones();
     for (const s of susts) {
       if (s.sustituto !== empleado || s.fecha !== fechaStr || s.turnoFds) continue;
-      // Verificar solapamiento (cualquier tienda — si solapa con su turno base, no puede estar)
+      // Solo afecta a la tienda donde sustituye (ABDEL sub en GV no desaparece de Isabel)
+      if (s.tienda !== tienda) continue;
+      // Movimiento: se mueve, desaparece de su posición original
+      if (!s.tipo || s.tipo === 'movimiento') return true;
+      // Extra: solo desaparece si los horarios se solapan
       const seSolapan = !(s.salida <= horarioBase[0] || horarioBase[1] <= s.entrada);
       if (seSolapan) return true;
     }
@@ -163,14 +167,54 @@ const CalendarioUI = {
   },
 
   /**
-   * Versión FdS: ¿el empleado sustituye en otro turno FdS distinto al actual?
+   * Versión FdS: ¿el empleado sustituye en otro turno FdS y debe
+   * desaparecer de su turno actual?
+   *
+   * tipo='movimiento' → desaparece del turno base (se mueve a otro turno)
+   * tipo='extra' → se queda en ambos (trabaja doble)
    */
   _sustituyeFdsSolapado(empleado, fechaStr, tienda, turnoActual) {
     const susts = Store.getSustituciones();
+
+    // Calcular el otro día del fin de semana (SAB↔DOM)
+    const fecha = Utils.parseFecha(fechaStr);
+    const dow = fecha.getDay();
+    let otroDiaStr = null;
+    if (dow === 6) { // Sábado → Domingo
+      const dom = new Date(fecha); dom.setDate(dom.getDate() + 1);
+      otroDiaStr = Utils.formatFecha(dom);
+    } else if (dow === 0) { // Domingo → Sábado
+      const sab = new Date(fecha); sab.setDate(sab.getDate() - 1);
+      otroDiaStr = Utils.formatFecha(sab);
+    }
+
     for (const s of susts) {
-      if (s.sustituto !== empleado || s.fecha !== fechaStr || s.tienda !== tienda) continue;
-      if (!s.turnoFds || s.turnoFds === turnoActual) continue;
-      return true;
+      if (s.sustituto !== empleado || s.tienda !== tienda) continue;
+
+      // ── Mismo día: turno diferente → ocultar (movimiento) ──
+      if (s.fecha === fechaStr) {
+        if (s.turnoFds === turnoActual) continue; // mismo turno → se queda
+        if (!s.tipo || s.tipo === 'movimiento') return true;
+        continue;
+      }
+
+      // ── Otro día del FdS: solo ocultar si el empleado NO tiene turno
+      //    base ese día (= es rotación, solo trabaja 1 turno/FdS) ──
+      if (otroDiaStr && s.fecha === otroDiaStr) {
+        if (!s.tipo || s.tipo === 'movimiento') {
+          // ¿Tiene turno base el día de la sustitución?
+          const subFecha = Utils.parseFecha(s.fecha);
+          const subDow = subFecha.getDay();
+          const fdsData = Rotaciones.getFds(subDow === 0 ? new Date(subFecha.getTime() - 86400000) : subFecha, tienda);
+          const turnosMismoDia = subDow === 6 ? ['SAB_M', 'SAB_T'] : ['DOM_M', 'DOM_T'];
+          let tieneBaseMismoDia = false;
+          for (const tk of turnosMismoDia) {
+            if (fdsData[tk] && fdsData[tk][empleado]) { tieneBaseMismoDia = true; break; }
+          }
+          // Sin turno base ese día → la sub reemplaza su turno del FdS → ocultar
+          if (!tieneBaseMismoDia) return true;
+        }
+      }
     }
     return false;
   },

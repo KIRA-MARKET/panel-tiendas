@@ -922,6 +922,112 @@
     });
   });
 
+  suite('Cobertura: overlap significativo (≥1h)', function () {
+    test('Empleado con <1h de overlap NO cuenta (ALEX 15min en cierre IS)', () => {
+      const intervalos = [
+        { alias: 'ALEX', e: 14.75, s: 17.75 }  // solo 0.25h en cierre [17.5, 22]
+      ];
+      const actual = Cobertura._coberturaSignificativa(intervalos, [17.5, 22]);
+      assertEq(actual, 0, 'ALEX no debe contar en cierre');
+    });
+
+    test('Empleado con ≥1h de overlap SÍ cuenta (ALVARO cierre IS)', () => {
+      const intervalos = [
+        { alias: 'ALVARO', e: 17.75, s: 22.25 }  // 4.25h en cierre [17.5, 22]
+      ];
+      const actual = Cobertura._coberturaSignificativa(intervalos, [17.5, 22]);
+      assertEq(actual, 1, 'ALVARO debe contar en cierre');
+    });
+
+    test('Cierre Isabel con 3 empleados escalonados → cuenta 3 (no alerta falsa)', () => {
+      const intervalos = [
+        { alias: 'ALEX',    e: 14.75, s: 17.75 },  // 0.25h → NO cuenta
+        { alias: 'ALVARO',  e: 17.75, s: 22.25 },  // 4.25h → SÍ
+        { alias: 'ANDREA',  e: 18.25, s: 22.25 },  // 3.75h → SÍ
+        { alias: 'MORILLA', e: 18.75, s: 22.25 }   // 3.25h → SÍ
+      ];
+      const actual = Cobertura._coberturaSignificativa(intervalos, [17.5, 22]);
+      assertEq(actual, 3, 'cierre IS debe ser 3');
+    });
+
+    test('Mañanas persona que termina 30min después del inicio de tardes NO cuenta en tardes', () => {
+      const intervalos = [
+        { alias: 'MAÑANAS_PERS', e: 9, s: 15.5 }  // 0.5h en tardes [15, 17.75]
+      ];
+      const actual = Cobertura._coberturaSignificativa(intervalos, [15, 17.75]);
+      assertEq(actual, 0, 'solo 30min → no cuenta');
+    });
+
+    test('MORILLA en tardes GV (1.75h overlap) SÍ cuenta', () => {
+      const intervalos = [
+        { alias: 'MORILLA', e: 15, s: 18.5 }  // 2.75h en tardes [15, 17.75], clipped a 2.75h
+      ];
+      const actual = Cobertura._coberturaSignificativa(intervalos, [15, 17.75]);
+      assertEq(actual, 1, 'MORILLA 1.75h+ → cuenta');
+    });
+
+    test('Sin intervalos → 0', () => {
+      assertEq(Cobertura._coberturaSignificativa([], [15, 17.75]), 0);
+    });
+  });
+
+  suite('FdS: sustituto desaparece de turno original (cross-día)', function () {
+    test('Sustituto con sub en otro día del FdS desaparece de su turno base (SILVIA SAB_M→DOM_M)', () => {
+      // SILVIA base DOM_M (domingo). Sub en SAB_M (sábado) tipo movimiento.
+      // Al renderizar DOM_M, debe desaparecer.
+      const sustsBackup = Store._state.sustituciones.slice();
+      Store._state.sustituciones = [{
+        fecha: '2026-04-11', ausente: 'VANESA', sustituto: 'SILVIA',
+        entrada: 7.25, salida: 14.75, tienda: 'granvia',
+        turnoFds: 'SAB_M', tipo: 'movimiento', franja: ''
+      }];
+      // Domingo 12 abril, DOM_M
+      const ocultar = CalendarioUI._sustituyeFdsSolapado('SILVIA', '2026-04-12', 'granvia', 'DOM_M');
+      assert(ocultar, 'SILVIA debe desaparecer de DOM_M (sustituye SAB_M)');
+      Store._state.sustituciones = sustsBackup;
+    });
+
+    test('Fijo con múltiples turnos NO desaparece del otro día (ALFREDO SAB_T+DOM_T)', () => {
+      // ALFREDO fijo SAB_T y DOM_T. Si sub en SAB_T, no desaparece de DOM_T.
+      const sustsBackup = Store._state.sustituciones.slice();
+      Store._state.sustituciones = [{
+        fecha: '2026-04-11', ausente: 'FRANCIS', sustituto: 'ALFREDO',
+        entrada: 14.75, salida: 22.25, tienda: 'granvia',
+        turnoFds: 'SAB_T', tipo: 'movimiento', franja: ''
+      }];
+      // Domingo 12 abril, DOM_T — ALFREDO debe quedarse
+      const ocultar = CalendarioUI._sustituyeFdsSolapado('ALFREDO', '2026-04-12', 'granvia', 'DOM_T');
+      assert(!ocultar, 'ALFREDO debe quedarse en DOM_T (tiene turno base el sábado)');
+      Store._state.sustituciones = sustsBackup;
+    });
+
+    test('Sub mismo día, turno diferente → ocultar', () => {
+      const sustsBackup = Store._state.sustituciones.slice();
+      Store._state.sustituciones = [{
+        fecha: '2026-04-11', ausente: 'ANTONIO', sustituto: 'FRANCIS',
+        entrada: 7.25, salida: 14.75, tienda: 'granvia',
+        turnoFds: 'SAB_M', tipo: 'movimiento', franja: ''
+      }];
+      // SAB_T mismo día → ocultar FRANCIS
+      const ocultar = CalendarioUI._sustituyeFdsSolapado('FRANCIS', '2026-04-11', 'granvia', 'SAB_T');
+      assert(ocultar, 'FRANCIS debe desaparecer de SAB_T (sustituye SAB_M mismo día)');
+      Store._state.sustituciones = sustsBackup;
+    });
+
+    test('Sub mismo turno → NO ocultar (cubre dentro del mismo turno)', () => {
+      const sustsBackup = Store._state.sustituciones.slice();
+      Store._state.sustituciones = [{
+        fecha: '2026-04-11', ausente: 'VANESA', sustituto: 'ABDEL',
+        entrada: 7.25, salida: 14.75, tienda: 'granvia',
+        turnoFds: 'SAB_M', tipo: 'movimiento', franja: ''
+      }];
+      // SAB_M mismo turno → NO ocultar
+      const ocultar = CalendarioUI._sustituyeFdsSolapado('ABDEL', '2026-04-11', 'granvia', 'SAB_M');
+      assert(!ocultar, 'ABDEL debe quedarse en SAB_M (sustituye dentro del mismo turno)');
+      Store._state.sustituciones = sustsBackup;
+    });
+  });
+
   // ============================================================
   // RESUMEN
   // ============================================================
