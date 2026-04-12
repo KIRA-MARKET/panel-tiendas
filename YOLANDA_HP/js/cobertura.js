@@ -149,13 +149,13 @@ const Cobertura = {
   },
 
   /**
-   * Cuenta empleados con overlap significativo (≥1h) con una franja.
-   * Descarta a quien apenas toca la ventana (ej: ALEX 15min en cierre)
-   * pero no penaliza el escalonado natural de llegadas.
+   * Cuenta empleados con overlap significativo (≥1.5h) con una franja.
+   * Descarta a quien apenas toca la ventana (ej: FRANCIS cierre con 1h
+   * en tardes, ALEX 15min en cierre) sin penalizar llegadas escalonadas.
    */
   _coberturaSignificativa(intervalos, ventana) {
     const [w0, w1] = ventana;
-    const UMBRAL_HORAS = 1; // mínimo 1 hora de overlap para contar
+    const UMBRAL_HORAS = 1.5; // mínimo 1.5h de overlap para contar
     let count = 0;
     for (const it of intervalos) {
       const overlap = Math.min(it.s, w1) - Math.max(it.e, w0);

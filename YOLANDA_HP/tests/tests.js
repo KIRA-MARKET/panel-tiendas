@@ -922,8 +922,8 @@
     });
   });
 
-  suite('Cobertura: overlap significativo (≥1h)', function () {
-    test('Empleado con <1h de overlap NO cuenta (ALEX 15min en cierre IS)', () => {
+  suite('Cobertura: overlap significativo (≥1.5h)', function () {
+    test('Empleado con <1.5h de overlap NO cuenta (ALEX 15min en cierre IS)', () => {
       const intervalos = [
         { alias: 'ALEX', e: 14.75, s: 17.75 }  // solo 0.25h en cierre [17.5, 22]
       ];
@@ -931,7 +931,15 @@
       assertEq(actual, 0, 'ALEX no debe contar en cierre');
     });
 
-    test('Empleado con ≥1h de overlap SÍ cuenta (ALVARO cierre IS)', () => {
+    test('FRANCIS cierre con 1h de overlap en tardes NO cuenta', () => {
+      const intervalos = [
+        { alias: 'FRANCIS', e: 16.75, s: 22.25 }  // 1h en tardes [15, 17.75]
+      ];
+      const actual = Cobertura._coberturaSignificativa(intervalos, [15, 17.75]);
+      assertEq(actual, 0, 'FRANCIS 1h → no cuenta para tardes');
+    });
+
+    test('Empleado con ≥1.5h de overlap SÍ cuenta (ALVARO cierre IS)', () => {
       const intervalos = [
         { alias: 'ALVARO', e: 17.75, s: 22.25 }  // 4.25h en cierre [17.5, 22]
       ];
@@ -958,12 +966,12 @@
       assertEq(actual, 0, 'solo 30min → no cuenta');
     });
 
-    test('MORILLA en tardes GV (1.75h overlap) SÍ cuenta', () => {
+    test('MORILLA en tardes GV (2.75h overlap) SÍ cuenta', () => {
       const intervalos = [
-        { alias: 'MORILLA', e: 15, s: 18.5 }  // 2.75h en tardes [15, 17.75], clipped a 2.75h
+        { alias: 'MORILLA', e: 15, s: 18.5 }  // overlap con tardes [15, 17.75] = 2.75h
       ];
       const actual = Cobertura._coberturaSignificativa(intervalos, [15, 17.75]);
-      assertEq(actual, 1, 'MORILLA 1.75h+ → cuenta');
+      assertEq(actual, 1, 'MORILLA 2.75h → cuenta');
     });
 
     test('Sin intervalos → 0', () => {
