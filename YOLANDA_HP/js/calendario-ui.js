@@ -257,6 +257,15 @@ const CalendarioUI = {
       }
     }
 
+    // Avisos de mínimos FdS
+    const alertasFds = Cobertura.verificarMinimosTurnoFds(dia, turnoKey, tienda);
+    if (alertasFds.length > 0) {
+      const detalles = alertasFds.map(a =>
+        a.franja.toUpperCase() + ': ' + a.actual + '/' + a.minimo
+      ).join(' · ');
+      html += '<div class="aviso-minimos" title="' + Utils.escapeHtml(detalles) + '">\u26a0 ' + Utils.escapeHtml(detalles) + '</div>';
+    }
+
     html += '</div>';
     return html;
   },

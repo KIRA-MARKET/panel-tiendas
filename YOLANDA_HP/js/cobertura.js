@@ -269,6 +269,36 @@ const Cobertura = {
   },
 
   /**
+   * Verifica mínimos de UN turno FdS concreto.
+   * Devuelve array de alertas (vacío = todo OK).
+   */
+  verificarMinimosTurnoFds(fecha, turno, tienda) {
+    tienda = tienda || Store.getTienda();
+    const alertas = [];
+    const subTramos = (CONFIG.SUBTRAMOS_FDS[tienda] || {})[turno];
+
+    if (subTramos && subTramos.length > 0) {
+      for (const tramo of subTramos) {
+        const presentes = Cobertura.calcularFdsEnTramo(fecha, turno, tienda, tramo.desde, tramo.hasta);
+        if (presentes.length < tramo.minimo) {
+          alertas.push({
+            franja: tramo.etiqueta + ' (' + Utils.formatHora(tramo.desde) + '-' + Utils.formatHora(tramo.hasta) + ')',
+            actual: presentes.length, minimo: tramo.minimo, falta: tramo.minimo - presentes.length
+          });
+        }
+      }
+    } else {
+      const cobertura = Cobertura.calcularFds(fecha, turno, tienda);
+      const min = CONFIG.getMinimoFds(tienda, turno);
+      if (cobertura.length < min) {
+        alertas.push({ franja: turno, actual: cobertura.length, minimo: min, falta: min - cobertura.length });
+      }
+    }
+
+    return alertas;
+  },
+
+  /**
    * Empleados presentes en un tramo horario [desde, hasta) de un turno FdS,
    * considerando ausencias y sustituciones. Solapamiento con intervalo abierto por la derecha.
    */
