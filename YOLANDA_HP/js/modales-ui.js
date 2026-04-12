@@ -323,18 +323,29 @@ const Modales = {
                    Hora extra
                  </label>`;
 
+            const nAlts = (p.alternativas || []).length;
+            const btnCambiar = nAlts > 0
+              ? `<button class="btn-cambiar-sust" data-idx="${item.idx}" style="padding:2px 8px;border-radius:3px;border:1px solid #1565c0;background:#fff;color:#1565c0;cursor:pointer;font-size:10px;white-space:nowrap">Cambiar (${nAlts})</button>`
+              : '';
+
             html += `
-              <div class="prop-row" data-tienda="${tiendaId}" style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin-bottom:3px;background:#fff;border-radius:6px;border:1px solid #e0e0e0;font-size:11px">
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                  <input type="checkbox" id="prop-check-${item.idx}" checked>
-                  <span style="background:${tiendaColor};color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">${tiendaLabel}</span>
-                  ${tagAccion}
-                  <span style="color:#c62828;text-decoration:line-through">${Utils.escapeHtml(p.ausente)}</span>
-                  → <strong style="color:#2e7d32">${Utils.escapeHtml(p.sustituto)}</strong>
-                  <span style="color:#888">(${turnoLabel} · ${Utils.formatHora(p.entrada)}-${Utils.formatHora(p.salida)})</span>
-                  ${detalleReorg}
+              <div class="prop-row" data-tienda="${tiendaId}" data-idx="${item.idx}" style="margin-bottom:3px">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#fff;border-radius:6px;border:1px solid #e0e0e0;font-size:11px">
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <input type="checkbox" id="prop-check-${item.idx}" checked>
+                    <span style="background:${tiendaColor};color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">${tiendaLabel}</span>
+                    ${tagAccion}
+                    <span style="color:#c62828;text-decoration:line-through">${Utils.escapeHtml(p.ausente)}</span>
+                    → <strong id="prop-sust-${item.idx}" style="color:#2e7d32">${Utils.escapeHtml(p.sustituto)}</strong>
+                    <span id="prop-hora-${item.idx}" style="color:#888">(${turnoLabel} · ${Utils.formatHora(p.entrada)}-${Utils.formatHora(p.salida)})</span>
+                    ${detalleReorg}
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    ${btnCambiar}
+                    ${labelExtra}
+                  </div>
                 </div>
-                ${labelExtra}
+                <div id="prop-alts-${item.idx}" style="display:none;padding:4px 8px 8px 28px;background:#f8f9fa;border-radius:0 0 6px 6px;border:1px solid #e0e0e0;border-top:0"></div>
               </div>
             `;
           }
@@ -392,6 +403,81 @@ const Modales = {
             } else {
               row.style.display = row.dataset.tienda === filtro ? '' : 'none';
             }
+          });
+        };
+      });
+
+      // Botones "Cambiar" — mostrar alternativas
+      overlay.querySelectorAll('.btn-cambiar-sust').forEach(btn => {
+        btn.onclick = () => {
+          const idx = parseInt(btn.dataset.idx);
+          const p = propuestas[idx];
+          const altsDiv = overlay.querySelector('#prop-alts-' + idx);
+          if (!altsDiv) return;
+
+          // Toggle
+          if (altsDiv.style.display !== 'none') {
+            altsDiv.style.display = 'none';
+            return;
+          }
+
+          // Construir lista de alternativas
+          const alts = p.alternativas || [];
+          let altHtml = '<div style="font-size:10px;color:#666;margin-bottom:4px;font-weight:700">Elige otro candidato:</div>';
+          for (let a = 0; a < alts.length; a++) {
+            const alt = alts[a];
+            const avisosStr = alt.avisos && alt.avisos.length > 0
+              ? ' <span style="color:#e65100" title="' + Utils.escapeHtml(alt.avisos.join(', ')) + '">\u26a0</span>'
+              : '';
+            altHtml += '<div style="display:flex;align-items:center;gap:6px;padding:3px 4px;cursor:pointer;border-radius:4px;font-size:11px" ' +
+              'class="alt-option" data-prop-idx="' + idx + '" data-alt-idx="' + a + '" ' +
+              'onmouseover="this.style.background=\'#e3f2fd\'" onmouseout="this.style.background=\'transparent\'">' +
+              '<strong>' + Utils.escapeHtml(alt.alias) + '</strong>' +
+              ' <span style="color:#888">' + Utils.formatHora(alt.entrada) + '-' + Utils.formatHora(alt.salida) + '</span>' +
+              ' <span style="color:#666;font-size:9px">excedente:' + alt.excedenteOrigen + '</span>' +
+              avisosStr +
+              '</div>';
+          }
+          altsDiv.innerHTML = altHtml;
+          altsDiv.style.display = 'block';
+
+          // Click en alternativa → reemplazar
+          altsDiv.querySelectorAll('.alt-option').forEach(opt => {
+            opt.onclick = () => {
+              const pi = parseInt(opt.dataset.propIdx);
+              const ai = parseInt(opt.dataset.altIdx);
+              const elegido = propuestas[pi].alternativas[ai];
+
+              // Guardar el original como alternativa si no está ya
+              const origAlias = propuestas[pi].sustituto;
+              const origEntrada = propuestas[pi].entrada;
+              const origSalida = propuestas[pi].salida;
+              const yaEnAlts = propuestas[pi].alternativas.some(x => x.alias === origAlias);
+              if (!yaEnAlts) {
+                propuestas[pi].alternativas.push({
+                  alias: origAlias, entrada: origEntrada, salida: origSalida,
+                  excedenteOrigen: 0, avisos: [], esPropio: true
+                });
+              }
+
+              // Reemplazar propuesta
+              propuestas[pi].sustituto = elegido.alias;
+              propuestas[pi].entrada = elegido.entrada;
+              propuestas[pi].salida = elegido.salida;
+              propuestas[pi].alternativas = propuestas[pi].alternativas.filter(x => x.alias !== elegido.alias);
+              propuestas[pi]._elegidoManual = true;
+
+              // Actualizar visual
+              const sustEl = overlay.querySelector('#prop-sust-' + pi);
+              const horaEl = overlay.querySelector('#prop-hora-' + pi);
+              const turnoLabel = propuestas[pi].turnoFds || propuestas[pi].franja;
+              if (sustEl) sustEl.textContent = elegido.alias;
+              if (horaEl) horaEl.textContent = '(' + turnoLabel + ' · ' + Utils.formatHora(elegido.entrada) + '-' + Utils.formatHora(elegido.salida) + ')';
+              altsDiv.style.display = 'none';
+
+              // Marcar visualmente que fue elección manual
+              if (sustEl) sustEl.style.color = '#1565c0';
+            };
           });
         };
       });
@@ -721,11 +807,67 @@ const Modales = {
   _crearOverlay() {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
+    // Activar drag después de que el modal se inserte en el DOM
+    const origAppend = overlay.appendChild.bind(overlay);
+    // Cuando se haga overlay.innerHTML = ... necesitamos un observer
+    const observer = new MutationObserver(() => {
+      if (overlay.querySelector('.modal-header')) {
+        Modales._hacerDraggable(overlay);
+        observer.disconnect();
+      }
+    });
+    observer.observe(overlay, { childList: true, subtree: true });
     return overlay;
   },
 
   _cerrarOverlay(overlay) {
     overlay.classList.remove('active');
     setTimeout(() => overlay.remove(), 200);
+  },
+
+  /** Hace que un modal sea arrastrable por su header */
+  _hacerDraggable(overlay) {
+    const modal = overlay.querySelector('.modal');
+    const header = overlay.querySelector('.modal-header');
+    if (!modal || !header) return;
+
+    header.style.cursor = 'grab';
+    let dragging = false, startX, startY, origX, origY;
+
+    // Posicionar el modal en absolute para poder moverlo
+    const initDrag = () => {
+      if (modal.style.position === 'absolute') return;
+      const rect = modal.getBoundingClientRect();
+      modal.style.position = 'absolute';
+      modal.style.left = rect.left + 'px';
+      modal.style.top = rect.top + 'px';
+      modal.style.margin = '0';
+      modal.style.transform = 'none';
+    };
+
+    header.addEventListener('mousedown', (e) => {
+      if (e.target.tagName === 'BUTTON') return; // no drag desde botón X
+      initDrag();
+      dragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      origX = parseInt(modal.style.left) || 0;
+      origY = parseInt(modal.style.top) || 0;
+      header.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      modal.style.left = (origX + e.clientX - startX) + 'px';
+      modal.style.top = (origY + e.clientY - startY) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (dragging) {
+        dragging = false;
+        header.style.cursor = 'grab';
+      }
+    });
   }
 };

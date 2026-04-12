@@ -246,8 +246,9 @@ body {
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s;
+  pointer-events: none;
 }
-.modal-overlay.active { opacity: 1; visibility: visible; }
+.modal-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
 .modal {
   background: var(--surface);
   border-radius: var(--radius);
@@ -255,6 +256,7 @@ body {
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
+  pointer-events: auto;
   overflow: hidden;
 }
 .modal.modal-lg { max-width: 700px; }

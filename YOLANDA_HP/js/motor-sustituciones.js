@@ -243,11 +243,58 @@ const Motor = {
       // Tiene avisos (no son errores pero hay que tenerlo en cuenta)
       const tieneAvisos = validacion.avisos.length > 0;
 
-      // ── CALCULAR EXCEDENTE DE FRANJA ORIGEN ────────────
-      // Cuanto más excedente tenga su franja origen sobre el mínimo,
+      // ── CALCULAR EXCEDENTE DE FRANJA/TURNO ORIGEN ──────
+      // Cuanto más excedente tenga su origen sobre el mínimo,
       // mejor candidato es (porque al moverse no deja problemas).
       let excedenteOrigen = 0;
-      if (!turno.turnoFds) {
+      if (turno.turnoFds) {
+        // ── FdS: excedente del turno de origen del candidato ──
+        const fdsData = Rotaciones.getFds(turno.fecha, tienda);
+        const dow = turno.fecha.getDay();
+        const turnosFds = dow === 6 ? ['SAB_M', 'SAB_T'] : ['DOM_M', 'DOM_T'];
+        // También buscar en el otro día del FdS
+        const otroDia = new Date(turno.fecha);
+        if (dow === 6) otroDia.setDate(otroDia.getDate() + 1);
+        else otroDia.setDate(otroDia.getDate() - 1);
+        const otroDow = otroDia.getDay();
+        const turnosOtroDia = otroDow === 6 ? ['SAB_M', 'SAB_T'] : ['DOM_M', 'DOM_T'];
+        const fdsDataOtro = Rotaciones.getFds(otroDia, tienda);
+
+        let turnoOrigen = null;
+        let cobOrigen = 0;
+        let minOrigen = 0;
+
+        // Buscar en qué turno FdS está este candidato (mismo día y otro día)
+        for (const tk of turnosFds) {
+          if (tk === turno.turnoFds) continue; // no contar el turno que necesita sub
+          if (fdsData[tk] && fdsData[tk][alias]) {
+            const cob = Cobertura.calcularFds(turno.fecha, tk, tienda);
+            const min = CONFIG.getMinimoFds(tienda, tk);
+            const exc = cob.length - min;
+            if (exc > excedenteOrigen) {
+              excedenteOrigen = exc;
+              turnoOrigen = tk;
+            }
+          }
+        }
+        for (const tk of turnosOtroDia) {
+          if (fdsDataOtro[tk] && fdsDataOtro[tk][alias]) {
+            const cob = Cobertura.calcularFds(otroDia, tk, tienda);
+            const min = CONFIG.getMinimoFds(tienda, tk);
+            const exc = cob.length - min;
+            if (exc > excedenteOrigen) {
+              excedenteOrigen = exc;
+              turnoOrigen = tk;
+            }
+          }
+        }
+
+        // Si no tiene turno base en ningún FdS → no resta de ningún sitio
+        if (!turnoOrigen) excedenteOrigen = 99;
+        // Nunca sacar de un turno en su mínimo exacto (excedente 0)
+        if (turnoOrigen && excedenteOrigen <= 0) continue;
+      } else {
+        // ── L-V: excedente de franja origen ──
         const dowDia = turno.fecha.getDay();
         const horariosDia = Rotaciones.getHorariosLV(turno.fecha, tienda);
         if (horariosDia && horariosDia[alias]) {
@@ -259,11 +306,9 @@ const Motor = {
             const actualOrig = cobOrig ? cobOrig[frOrig].length : 0;
             excedenteOrigen = actualOrig - minOrig;
           } else {
-            // Misma franja: no se mueve, excedente teórico alto
             excedenteOrigen = 99;
           }
         } else {
-          // No tiene turno base ese día → no resta de ningún sitio
           excedenteOrigen = 99;
         }
       }
@@ -344,13 +389,13 @@ const Motor = {
       if (horasOrig <= 0) continue;
 
       const frOrig = Utils.getFranja(hOrig[0], hOrig[1], tienda);
-      if (frOrig === franjaBuscada) continue; // ya está en la franja
+      if (frOrig === franjaBuscada) continue;
 
       // ¿Su franja origen aguanta perderlo?
       const minOrig = CONFIG.getMinimoLV(tienda, frOrig, dow);
       const actualOrig = (cob[frOrig] || []).length;
       const excedente = actualOrig - 1 - minOrig;
-      if (excedente < 0) continue; // se rompería el origen
+      if (excedente < 0) continue;
 
       // Calcular nuevo horario: misma duración, empezando en turno.entrada
       const nuevaEntrada = turno.entrada;
@@ -388,19 +433,29 @@ const Motor = {
     });
 
     const c = candidatos[0];
+    const alternativas = candidatos.slice(1).map(a => ({
+      alias: a.alias,
+      entrada: a.nuevaEntrada,
+      salida: a.nuevaSalida,
+      entradaOriginal: a.hOrig[0],
+      salidaOriginal: a.hOrig[1],
+      excedenteOrigen: a.excedente,
+      avisos: a.avisos > 0 ? ['Tiene avisos'] : []
+    }));
     return {
       accion: 'reorganizar',
       tienda,
       fecha: turno.fecha,
       ausente: turno.emp,
-      sustituto: c.alias, // el "movido" (reusamos campo para el modal)
+      sustituto: c.alias,
       entrada: c.nuevaEntrada,
       salida: c.nuevaSalida,
       entradaOriginal: c.hOrig[0],
       salidaOriginal: c.hOrig[1],
       franja: franjaBuscada,
       turnoFds: '',
-      bajoMinimos: turno.bajoMinimos
+      bajoMinimos: turno.bajoMinimos,
+      alternativas
     };
   },
 

@@ -206,7 +206,7 @@ const Reglas = {
       }
     }
 
-    // ── REGLA 32: Descanso entre jornadas (BLOQUEANTE) ─────
+    // ── REGLA 32: Descanso entre jornadas (AVISO) ──────────
     const descanso = Reglas._verificarDescanso12h(candidato, turno);
     if (descanso) {
       const esExcepcion = CONFIG.DESCANSO_EXCEPCIONES.some(e =>
@@ -215,7 +215,7 @@ const Reglas = {
       if (esExcepcion) {
         avisos.push('\u26a0 Menos de 12h descanso (excepci\u00f3n aceptada)');
       } else {
-        errores.push('Menos de 12h descanso entre jornadas');
+        avisos.push('\u26a0 Menos de 12h descanso entre jornadas');
       }
     }
 
