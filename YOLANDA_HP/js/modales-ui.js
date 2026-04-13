@@ -435,6 +435,7 @@ const Modales = {
               '<strong>' + Utils.escapeHtml(alt.alias) + '</strong>' +
               ' <span style="color:#888">' + Utils.formatHora(alt.entrada) + '-' + Utils.formatHora(alt.salida) + '</span>' +
               ' <span style="color:#666;font-size:9px">' + (alt.excedenteOrigen >= 99 ? 'disponible' : 'excedente:' + alt.excedenteOrigen) + '</span>' +
+              (alt.preferenciaScore ? ' <span style="color:#1565c0;font-size:9px;font-weight:700" title="Preferencia aprendida">\u2605' + alt.preferenciaScore + '</span>' : '') +
               avisosStr +
               '</div>';
           }

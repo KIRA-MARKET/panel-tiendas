@@ -343,14 +343,38 @@ const Motor = {
         esGrupoDescarga,
         tieneAvisos,
         avisos: validacion.avisos,
-        color: empData.color || '#666'
+        color: empData.color || '#666',
+        preferenciaScore: 0
       });
     }
 
+    // ── Capa 2: puntuación de preferencia basada en decisiones anteriores ──
+    const decisiones = Store.getDecisiones();
+    if (decisiones.length > 0) {
+      const franjaOTurno = turno.turnoFds || turno.franja;
+      for (const c of candidatos) {
+        let score = 0;
+        for (const d of decisiones) {
+          const dFranjaOTurno = d.turnoFds || d.franja;
+          // Match: mismo ausente + misma franja/turno + misma tienda
+          if (d.ausente === turno.emp && dFranjaOTurno === franjaOTurno && d.tienda === turno.tienda) {
+            if (d.nachoEligio === c.alias) score++; // Nacho lo eligió
+            if (d.motorSugirio === c.alias && d.nachoEligio !== c.alias) score--; // Nacho lo rechazó
+          }
+        }
+        c.preferenciaScore = score;
+      }
+    } else {
+      for (const c of candidatos) c.preferenciaScore = 0;
+    }
+
     // Ordenar por prioridad:
+    // ── Capa 2 (preferencia Nacho) tiene peso alto ──
     // ── FdS: DOM_M primero, luego turno con más personas ──
     // ── L-V: sin avisos, grupo descarga, propios, excedente, margen ──
     candidatos.sort((a, b) => {
+      // Capa 2: preferencia de Nacho primero (si hay datos)
+      if (a.preferenciaScore !== b.preferenciaScore) return b.preferenciaScore - a.preferenciaScore;
       if (turno.turnoFds) {
         // FdS: 1) DOM_M primero (si tiene excedente)
         const aEsDomM = a.turnoOrigenFds === 'DOM_M';
