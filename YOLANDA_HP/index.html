@@ -43,6 +43,7 @@
     <button class="btn btn-purple" onclick="App.auditar()">Auditar</button>
     <button class="btn btn-secondary" onclick="App.diagnosticar()" style="background:#ffc107">🔧 Diagnóstico</button>
     <button class="btn btn-primary" onclick="App.abrirModalAusencia()">+ Ausencia</button>
+    <button class="btn btn-secondary" onclick="App.abrirModalRefuerzo()" style="background:#2e7d32;color:#fff">+ Refuerzo</button>
   </div>
 </header>
 
@@ -236,6 +237,12 @@ const App = {
 
   abrirModalAusencia() {
     Modales.nuevaAusencia();
+  },
+
+  // ── Refuerzos ─────────────────────────────────────────
+
+  abrirModalRefuerzo() {
+    Modales.nuevoRefuerzo();
   },
 
   // ── Motor de sustituciones ─────────────────────────────

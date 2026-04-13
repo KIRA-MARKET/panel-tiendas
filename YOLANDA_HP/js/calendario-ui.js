@@ -136,6 +136,18 @@ const CalendarioUI = {
           html += '</div>';
         }
       }
+      // Refuerzos (tipo extra, sin ausente) en esta franja
+      const susts = Store.getSustituciones();
+      for (const s of susts) {
+        if (s.fecha !== fs || s.tienda !== tienda || s.turnoFds || !s.tipo || s.tipo !== 'extra' || s.ausente) continue;
+        const sFr = Utils.getFranja(s.entrada, s.salida, tienda);
+        if (sFr !== fr) continue;
+        const refSafe = Utils.escapeHtml(s.sustituto);
+        html += '<div class="turno sustituto" style="border-left:3px solid #2e7d32">';
+        html += '<span class="turno-nombre">+ ' + refSafe + '</span>';
+        html += '<span class="turno-hora">' + Utils.formatHora(s.entrada) + '-' + Utils.formatHora(s.salida) + '</span>';
+        html += '</div>';
+      }
       html += '</div>';
     }
     html += '</div>';
@@ -255,6 +267,17 @@ const CalendarioUI = {
         html += '<span class="turno-hora">' + Utils.formatHora(sust.entrada) + '-' + Utils.formatHora(sust.salida) + '</span>';
         html += '</div>';
       }
+    }
+
+    // Refuerzos FdS (tipo extra, sin ausente)
+    const sustsFds = Store.getSustituciones();
+    for (const s of sustsFds) {
+      if (s.fecha !== fs || s.tienda !== tienda || s.turnoFds !== turnoKey || s.tipo !== 'extra' || s.ausente) continue;
+      const refSafe = Utils.escapeHtml(s.sustituto);
+      html += '<div class="turno sustituto" style="border-left:3px solid #2e7d32">';
+      html += '<span class="turno-nombre">+ ' + refSafe + '</span>';
+      html += '<span class="turno-hora">' + Utils.formatHora(s.entrada) + '-' + Utils.formatHora(s.salida) + '</span>';
+      html += '</div>';
     }
 
     // Avisos de mínimos FdS
