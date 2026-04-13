@@ -62,8 +62,39 @@ const CalendarioUI = {
         html += '<div class="' + clsDia + '" style="' + (esDelMes ? '' : 'opacity:0.4') + '">';
         html += '<div class="dia-num"><span class="dia-nombre">' + Utils.DIAS[dia.getDay()] + '</span>' + dia.getDate() + '</div>';
         if (esFestivo) {
-          html += '<div class="dia-festivo-label">FESTIVO</div>';
-          if (festivoData) html += '<div style="text-align:center;font-size:11px;color:#b71c1c;font-weight:600;margin-top:8px">' + Utils.escapeHtml(festivoData.nombre) + '</div>';
+          const festivoNombre = festivoData ? Utils.escapeHtml(festivoData.nombre) : 'Festivo';
+          html += '<div class="dia-festivo-label">' + festivoNombre + '</div>';
+          if (festivoData) {
+            const asig = festivoData.asignados[tienda] || [];
+            if (asig.length > 0) {
+              const porTurno = { descarga: [], 'mañanas': [], tardes: [] };
+              for (const a of asig) {
+                const t = typeof a === 'string' ? 'mañanas' : (a.turno || 'mañanas');
+                if (porTurno[t]) porTurno[t].push(a);
+              }
+              const esIsabel = tienda === 'isabel';
+              const gridClass = esIsabel ? 'franjas-grid-is' : 'franjas-grid-gv';
+              html += '<div class="' + gridClass + '" style="flex:1;justify-content:space-between">';
+              for (const tk in porTurno) {
+                if (porTurno[tk].length === 0 && !esIsabel) continue;
+                const tf = CONFIG.TURNOS_FESTIVO[tk];
+                html += '<div class="franja"><div class="franja-label ' + tk + '">' + tk + '</div>';
+                for (const a of porTurno[tk]) {
+                  const emp = typeof a === 'string' ? a : a.empleado;
+                  const entrada = typeof a === 'string' ? tf.entrada : a.entrada;
+                  const salida = typeof a === 'string' ? tf.salida : a.salida;
+                  html += '<div class="turno ' + tk + '">';
+                  html += '<span class="turno-nombre">' + Utils.escapeHtml(emp) + '</span>';
+                  html += '<span class="turno-hora">' + Utils.formatHora(entrada) + '-' + Utils.formatHora(salida) + '</span>';
+                  html += '</div>';
+                }
+                html += '</div>';
+              }
+              html += '</div>';
+            } else {
+              html += '<div style="text-align:center;font-size:9px;color:#888;flex:1;display:flex;align-items:center;justify-content:center">Sin asignaciones</div>';
+            }
+          }
         } else {
           const horarios = Rotaciones.getHorariosLV(dia, tienda);
           html += CalendarioUI._renderTurnosLV(dia, horarios, tienda);

@@ -173,6 +173,7 @@ const PDFExport = {
 
     let html = '<div class="turnos-wrap">';
     for (const f in franjas) {
+      html += '<div class="franja-pdf">';
       for (const t of franjas[f]) {
         const etiquetaAus = PDFExport._etiquetaAusencia(t.tipoAus, t.aus);
         html += '<div class="turno ' + f + (t.aus ? ' ausente' : '') + '">';
@@ -186,6 +187,7 @@ const PDFExport = {
           html += '</div>';
         }
       }
+      html += '</div>';
     }
     html += '</div>';
     return html;
@@ -266,8 +268,10 @@ const PDFExport = {
       css += '.col-sem { width: 30px; padding: 3px 2px; background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%); border-right: 1px solid #dee2e6; display: flex; flex-direction: column; align-items: center; justify-content: center; }';
       css += '.col-sem .num { font-size: 12px; font-weight: 700; color: #e53935; }';
       css += '.col-sem .letra { font-size: 9px; color: #6c757d; font-weight: 600; }';
-      css += '.col-dia { flex: 1; border-right: 1px solid #f0f0f0; padding: 2px 3px; }';
+      css += '.col-dia { flex: 1; border-right: 1px solid #f0f0f0; padding: 2px 3px; display: flex; flex-direction: column; }';
       css += '.dia-num { font-size: 9px; font-weight: 800; color: #1a1a2e; margin-bottom: 2px; }';
+      css += '.turnos-wrap { display: flex; flex-direction: column; flex: 1; }';
+      css += '.franja-pdf { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; }';
       css += '.turno { padding: 2px 5px; margin-bottom: 1px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid transparent; }';
       css += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
       css += '.turno-hora { white-space: nowrap; font-size: 7px; font-weight: 600; }';

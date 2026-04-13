@@ -135,6 +135,29 @@ const Sync = {
         Store.set('sustitucionesDescartadas', desc);
       }
 
+      // Festivos (inscritos + asignaciones con turno)
+      if (data.festivos && data.festivos.length > 0) {
+        const año = Store.getAño();
+        if (typeof Festivos !== 'undefined') Festivos.asegurarAño(año);
+        for (const row of data.festivos) {
+          const f = Store.getFestivos().find(x => x.id === row.id && x.fecha === row.fecha);
+          if (!f) continue;
+          const tienda = row.tienda;
+          if (row.inscritos) {
+            f.inscritos[tienda] = row.inscritos.split(',').filter(Boolean);
+          }
+          if (row.asignados) {
+            f.asignados[tienda] = row.asignados.split(',').filter(Boolean).map(s => {
+              const parts = s.split(':');
+              if (parts.length >= 4) {
+                return { empleado: parts[0], turno: parts[1], entrada: parseFloat(parts[2]), salida: parseFloat(parts[3]) };
+              }
+              return parts[0]; // formato antiguo: solo nombre
+            });
+          }
+        }
+      }
+
       Store.setSyncStatus('ok');
       Store._emit('datosCompletos');
       return true;
@@ -227,6 +250,31 @@ const Sync = {
   syncDecisiones() {
     const h = ['timestamp', 'fecha', 'tienda', 'turnoFds', 'franja', 'ausente', 'motorSugirio', 'nachoEligio', 'accion'];
     Sync.guardar('decisiones', h, Store.getDecisiones());
+  },
+
+  syncFestivos() {
+    // Aplanar festivos: una fila por asignación
+    const rows = [];
+    const festivos = Store.getFestivos();
+    for (const f of festivos) {
+      for (const tienda of ['granvia', 'isabel']) {
+        // Inscritos
+        const inscritos = (f.inscritos[tienda] || []).join(',');
+        // Asignados (nuevo formato con turno)
+        const asignados = (f.asignados[tienda] || []).map(a => {
+          if (typeof a === 'string') return a;
+          return a.empleado + ':' + a.turno + ':' + a.entrada + ':' + a.salida;
+        }).join(',');
+        if (inscritos || asignados) {
+          rows.push({
+            id: f.id, fecha: f.fecha, nombre: f.nombre, ambito: f.ambito,
+            tienda, inscritos, asignados
+          });
+        }
+      }
+    }
+    const h = ['id', 'fecha', 'nombre', 'ambito', 'tienda', 'inscritos', 'asignados'];
+    Sync.guardar('festivos', h, rows);
   },
 
   // ── Parsers de datos de Sheets ─────────────────────────────

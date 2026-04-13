@@ -120,7 +120,7 @@ const App = {
 
     // Escuchar eventos del Store
     Store.on('cambioVista', () => CalendarioUI.render());
-    Store.on('festivos', () => CalendarioUI.render());
+    Store.on('festivos', () => { CalendarioUI.render(); Festivos._guardarLocal(); if (Sync && Sync.syncFestivos) Sync.syncFestivos(); });
     Store.on('syncStatus', (status) => App._updateSyncUI(status));
 
     // Renderizar calendario inicial

@@ -218,6 +218,13 @@ const CONFIG = {
   // La ventana se calcula automáticamente (primer empleado → último).
   COBERTURA_GLOBAL_MINIMO: 2,
 
+  // ── Turnos de festivo (horarios fijos) ──────────────────────
+  TURNOS_FESTIVO: {
+    descarga: { nombre: 'Descarga', entrada: 5,    salida: 12.5  },
+    mañanas:  { nombre: 'Mañanas',  entrada: 7.25, salida: 14.75 },
+    tardes:   { nombre: 'Tardes',   entrada: 14.75, salida: 22.25 }
+  },
+
   // ── Salida máxima ──────────────────────────────────────────
   SALIDA_MAXIMA: 22.25, // 22:15
 

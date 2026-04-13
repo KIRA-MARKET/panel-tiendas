@@ -96,12 +96,36 @@ const Festivos = {
 
   /** Asegurar que los festivos del año están en el Store */
   asegurarAño(año) {
+    // Primero intentar cargar desde localStorage
+    Festivos._cargarLocal();
     const todos = Store.getFestivos();
     const tieneAño = todos.some(f => f.fecha.startsWith(año + '-'));
     if (tieneAño) return;
     const nuevos = Festivos.generarDefault(año);
     Store._state.festivos = todos.concat(nuevos);
+    Festivos._guardarLocal();
     Store._emit('festivos', Store._state.festivos);
+  },
+
+  /** Guardar festivos en localStorage */
+  _guardarLocal() {
+    try {
+      localStorage.setItem('yolanda_festivos', JSON.stringify(Store.getFestivos()));
+    } catch (e) { /* silenciar */ }
+  },
+
+  /** Cargar festivos desde localStorage (si no hay datos en Store) */
+  _cargarLocal() {
+    if (Store.getFestivos().length > 0) return; // ya hay datos
+    try {
+      const raw = localStorage.getItem('yolanda_festivos');
+      if (raw) {
+        const datos = JSON.parse(raw);
+        if (Array.isArray(datos) && datos.length > 0) {
+          Store._state.festivos = datos;
+        }
+      }
+    } catch (e) { /* silenciar */ }
   },
 
   /** Obtener festivos de un año */
@@ -161,16 +185,44 @@ const Festivos = {
     Store._emit('festivos', Store._state.festivos);
   },
 
-  /** Toggle asignación (solo si está inscrito) */
-  toggleAsignado(id, tienda, empleado) {
+  /** Asignar empleado a un turno de festivo (o desasignar si ya tiene ese turno) */
+  asignarTurno(id, tienda, empleado, turno) {
     const f = Festivos.getById(id);
     if (!f) return;
     if (!f.asignados[tienda]) f.asignados[tienda] = [];
     if (!(f.inscritos[tienda] || []).includes(empleado)) return;
-    const idx = f.asignados[tienda].indexOf(empleado);
-    if (idx >= 0) f.asignados[tienda].splice(idx, 1);
-    else f.asignados[tienda].push(empleado);
+
+    // Quitar asignación previa si existe
+    f.asignados[tienda] = f.asignados[tienda].filter(a =>
+      typeof a === 'string' ? a !== empleado : a.empleado !== empleado
+    );
+
+    // Si turno es null/vacío → desasignar. Si no, asignar con turno.
+    if (turno) {
+      const tf = CONFIG.TURNOS_FESTIVO[turno];
+      f.asignados[tienda].push({
+        empleado, turno,
+        entrada: tf ? tf.entrada : 7.25,
+        salida: tf ? tf.salida : 14.75
+      });
+    }
     Store._emit('festivos', Store._state.festivos);
+  },
+
+  /** Obtener turno asignado de un empleado en un festivo */
+  getTurnoAsignado(id, tienda, empleado) {
+    const f = Festivos.getById(id);
+    if (!f || !f.asignados[tienda]) return null;
+    const a = f.asignados[tienda].find(x =>
+      typeof x === 'string' ? x === empleado : x.empleado === empleado
+    );
+    if (!a) return null;
+    return typeof a === 'string' ? { empleado: a, turno: '', entrada: 0, salida: 0 } : a;
+  },
+
+  /** ¿Está asignado? */
+  estaAsignado(id, tienda, empleado) {
+    return Festivos.getTurnoAsignado(id, tienda, empleado) !== null;
   },
 
   /** Recuento de festivos trabajados por empleado en un año */
@@ -180,7 +232,8 @@ const Festivos = {
     for (const f of lista) {
       for (const tienda of ['granvia', 'isabel']) {
         const asign = f.asignados[tienda] || [];
-        for (const emp of asign) {
+        for (const a of asign) {
+          const emp = typeof a === 'string' ? a : a.empleado;
           if (!recuento[emp]) recuento[emp] = { total: 0, granvia: 0, isabel: 0, fechas: [] };
           recuento[emp].total++;
           recuento[emp][tienda]++;
@@ -282,6 +335,7 @@ const FestivosUI = {
     const empIS = Object.keys(Store.getEmpleadosTienda('isabel')).sort();
 
     const renderLista = (tienda, empleados) => {
+      const esc = (s) => s.replace(/'/g, "\\'");
       let h = '<div class="festivo-tienda"><h4>' + (tienda === 'granvia' ? 'Gran Vía' : 'Isabel') + '</h4>';
       if (empleados.length === 0) {
         h += '<p class="empty">Sin empleados cargados</p>';
@@ -289,12 +343,28 @@ const FestivosUI = {
         h += '<div class="festivo-emps">';
         for (const emp of empleados) {
           const inscrito = (f.inscritos[tienda] || []).includes(emp);
-          const asignado = (f.asignados[tienda] || []).includes(emp);
-          const cls = 'femp' + (inscrito ? ' inscrito' : '') + (asignado ? ' asignado' : '');
+          const asignacion = Festivos.getTurnoAsignado(f.id, tienda, emp);
+          const turnoActual = asignacion ? asignacion.turno : '';
+          const cls = 'femp' + (inscrito ? ' inscrito' : '') + (turnoActual ? ' asignado' : '');
           h += '<div class="' + cls + '">';
-          h += '  <label><input type="checkbox" ' + (inscrito ? 'checked' : '') + ' onchange="Festivos.toggleInscrito(\'' + f.id + '\',\'' + tienda + '\',\'' + emp.replace(/'/g, "\\'") + '\');FestivosUI.refrescarModal(\'' + f.id + '\')"> ' + Utils.escapeHtml(emp) + '</label>';
+          h += '  <label><input type="checkbox" ' + (inscrito ? 'checked' : '') + ' onchange="Festivos.toggleInscrito(\'' + f.id + '\',\'' + tienda + '\',\'' + esc(emp) + '\');FestivosUI.refrescarModal(\'' + f.id + '\')"> ' + Utils.escapeHtml(emp) + '</label>';
           if (inscrito) {
-            h += '  <button class="btn btn-sm ' + (asignado ? 'btn-success' : 'btn-secondary') + '" onclick="Festivos.toggleAsignado(\'' + f.id + '\',\'' + tienda + '\',\'' + emp.replace(/'/g, "\\'") + '\');FestivosUI.refrescarModal(\'' + f.id + '\')">' + (asignado ? '✓ Asignado' : 'Asignar') + '</button>';
+            const turnos = CONFIG.TURNOS_FESTIVO;
+            h += '<div style="display:flex;gap:3px;margin-left:8px">';
+            for (const tk in turnos) {
+              const activo = turnoActual === tk;
+              const btnCls = activo ? 'btn-success' : 'btn-secondary';
+              const label = turnos[tk].nombre.charAt(0); // D, M, T
+              h += '<button class="btn btn-sm ' + btnCls + '" style="min-width:28px;padding:2px 5px;font-size:10px" ';
+              h += 'onclick="Festivos.asignarTurno(\'' + f.id + '\',\'' + tienda + '\',\'' + esc(emp) + '\',\'' + (activo ? '' : tk) + '\');FestivosUI.refrescarModal(\'' + f.id + '\')" ';
+              h += 'title="' + turnos[tk].nombre + ' (' + Utils.formatHora(turnos[tk].entrada) + '-' + Utils.formatHora(turnos[tk].salida) + ')">';
+              h += label + '</button>';
+            }
+            h += '</div>';
+            if (turnoActual) {
+              const tf = turnos[turnoActual];
+              h += '<span style="font-size:9px;color:#2e7d32;margin-left:4px">' + tf.nombre + ' ' + Utils.formatHora(tf.entrada) + '-' + Utils.formatHora(tf.salida) + '</span>';
+            }
           }
           h += '</div>';
         }

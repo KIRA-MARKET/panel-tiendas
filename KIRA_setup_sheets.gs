@@ -325,7 +325,10 @@ var HOJAS = {
   ausencias:      'Ausencias',
   sustituciones:  'Sustituciones',
   modificaciones: 'Modificaciones',
-  faltas:         'Faltas'
+  faltas:         'Faltas',
+  festivos:       'Festivos',
+  descartadas:    'Descartadas',
+  decisiones:     'Decisiones'
 };
 
 function doGet(e)  { return handleRequest(e); }

@@ -9,6 +9,8 @@
 const HorasUI = {
 
   _tienda: null, // null = usar Store.getTienda()
+  _mes: null,    // null = usar Store.getMes()
+  _año: null,    // null = usar Store.getAño()
 
   /**
    * Calcula totales del mes para una tienda.
@@ -19,7 +21,7 @@ const HorasUI = {
     const totales = {};
 
     const ensure = (alias) => {
-      if (!totales[alias]) totales[alias] = { alias, lv: 0, fds: 0, sustituciones: 0, faltasHoras: 0, total: 0, dias: 0, semanasLV: 0 };
+      if (!totales[alias]) totales[alias] = { alias, lv: 0, fds: 0, sustituciones: 0, festivos: 0, faltasHoras: 0, total: 0, dias: 0, semanasLV: 0 };
       return totales[alias];
     };
 
@@ -111,6 +113,26 @@ const HorasUI = {
       r.sustituciones += horas;
     }
 
+    // ── Horas de festivos trabajados ──
+    if (typeof Festivos !== 'undefined') {
+      Festivos.asegurarAño(año);
+      const festivosMes = Store.getFestivos().filter(f => {
+        const fd = Utils.parseFecha(f.fecha);
+        return fd && fd.getMonth() === mes && fd.getFullYear() === año;
+      });
+      for (const f of festivosMes) {
+        const asig = f.asignados[tienda] || [];
+        for (const a of asig) {
+          const emp = typeof a === 'string' ? a : a.empleado;
+          const horas = typeof a === 'object' && a.entrada != null ? Math.max(0, a.salida - a.entrada) : 0;
+          if (horas > 0) {
+            const r = ensure(emp);
+            r.festivos += horas;
+          }
+        }
+      }
+    }
+
     // ── Faltas del mes (descuentan horas) ──
     const faltas = Store.getFaltas(tienda) || [];
     for (const f of faltas) {
@@ -130,7 +152,7 @@ const HorasUI = {
     for (const alias in totales) {
       const r = totales[alias];
       r.esperado = r.lv + r.fds;
-      r.total = r.esperado + r.sustituciones - r.faltasHoras;
+      r.total = r.esperado + r.sustituciones + r.festivos - r.faltasHoras;
       r.diff = r.total - r.esperado;
       const emp = Store.getEmpleado(alias, tienda);
       r.contrato = emp ? (emp.contrato || 0) : 0;
@@ -148,8 +170,8 @@ const HorasUI = {
     const cont = document.getElementById('tab-horas');
     if (!cont) return;
 
-    const año = Store.getAño();
-    const mes = Store.getMes();
+    const año = HorasUI._año != null ? HorasUI._año : Store.getAño();
+    const mes = HorasUI._mes != null ? HorasUI._mes : Store.getMes();
     const tiendaSel = HorasUI._tienda || Store.getTienda();
 
     const { totales, diasMes } = HorasUI.calcularMes(año, mes, tiendaSel);
@@ -158,7 +180,9 @@ const HorasUI = {
     let html = '';
     html += '<div class="control-header">';
     html += '  <div class="control-nav">';
+    html += '    <button class="btn btn-secondary" onclick="HorasUI.cambiarMes(-1)">\u2039</button>';
     html += '    <h2>Horas — ' + Utils.escapeHtml(Utils.MESES[mes]) + ' ' + año + '</h2>';
+    html += '    <button class="btn btn-secondary" onclick="HorasUI.cambiarMes(1)">\u203a</button>';
     html += '  </div>';
     html += '  <div class="control-filtro">';
     for (const t of [['granvia','Gran Vía'],['isabel','Isabel']]) {
@@ -172,11 +196,11 @@ const HorasUI = {
     html += '<table class="control-tabla">';
     html += '<thead><tr>';
     html += '<th>Empleado</th><th>L-V</th><th>FdS</th><th>Esperado</th>';
-    html += '<th>Extra</th><th>Faltas</th><th>Total real</th><th>Diff</th><th>Cobra mes</th>';
+    html += '<th>Extra</th><th>Festivos</th><th>Faltas</th><th>Total real</th><th>Diff</th><th>Cobra mes</th>';
     html += '</tr></thead><tbody>';
 
     if (filas.length === 0) {
-      html += '<tr><td colspan="9" class="empty" style="text-align:center;padding:24px">Sin datos</td></tr>';
+      html += '<tr><td colspan="10" class="empty" style="text-align:center;padding:24px">Sin datos</td></tr>';
     } else {
       for (const r of filas) {
         const diffCls = r.diff > 0.01 ? 'val-warn' : (r.diff < -0.01 ? 'val-err' : '');
@@ -187,6 +211,7 @@ const HorasUI = {
         html += '<td>' + r.fds.toFixed(1) + ' h</td>';
         html += '<td>' + r.esperado.toFixed(1) + ' h</td>';
         html += '<td>' + (r.sustituciones > 0 ? '+' + r.sustituciones.toFixed(1) + ' h' : '—') + '</td>';
+        html += '<td style="color:#b71c1c">' + (r.festivos > 0 ? '+' + r.festivos.toFixed(1) + ' h' : '—') + '</td>';
         html += '<td class="' + (r.faltasHoras > 0 ? 'val-err' : '') + '">' + (r.faltasHoras > 0 ? '−' + r.faltasHoras.toFixed(1) + ' h' : '—') + '</td>';
         html += '<td><strong>' + r.total.toFixed(1) + ' h</strong></td>';
         html += '<td class="' + diffCls + '">' + diffTxt + '</td>';
@@ -197,13 +222,24 @@ const HorasUI = {
     html += '</tbody></table>';
     html += '</div>';
 
-    html += '<p class="control-nota"><b>Esperado</b> = horas que la rotación da en el mes (suma de L-V + FdS). <b>Extra</b> = solo sustituciones marcadas como tipo extra. <b>Faltas</b> = horas perdidas por faltas registradas (descuentan del total). <b>Diff = Total − Esperado</b>: vale 0,00 cuando no hay extras ni faltas. <b>Cobra mes</b> es informativo: contrato × ' + diasMes + ' días / 7 (mensualidad fija). Vacaciones, permisos y bajas cuentan como tiempo trabajado.</p>';
+    html += '<p class="control-nota"><b>Esperado</b> = horas rotación (L-V + FdS). <b>Extra</b> = sustituciones tipo extra. <b>Festivos</b> = horas trabajadas en festivos (se pagan aparte). <b>Faltas</b> = horas perdidas. <b>Total = Esperado + Extra + Festivos − Faltas</b>. <b>Cobra mes</b> = contrato × ' + diasMes + ' días / 7.</p>';
 
     cont.innerHTML = html;
   },
 
   setTienda(t) {
     HorasUI._tienda = t;
+    HorasUI.render();
+  },
+
+  cambiarMes(delta) {
+    let año = HorasUI._año != null ? HorasUI._año : Store.getAño();
+    let mes = HorasUI._mes != null ? HorasUI._mes : Store.getMes();
+    mes += delta;
+    if (mes < 0) { mes = 11; año--; }
+    if (mes > 11) { mes = 0; año++; }
+    HorasUI._mes = mes;
+    HorasUI._año = año;
     HorasUI.render();
   }
 };

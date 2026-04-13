@@ -170,10 +170,12 @@
 .franja-label.cierre { background: var(--cierre-light); color: var(--cierre); }
 
 /* Grid de franjas */
-.franjas-grid-gv { display: flex; flex-direction: column; }
+/* GV: compacto, cada franja toma su espacio natural */
+.franjas-grid-gv { display: flex; flex-direction: column; flex: 1; }
 .franjas-grid-gv .franja { margin-bottom: 2px; }
-.franjas-grid-is { display: grid; grid-template-rows: 1fr 1fr 1fr 1fr; height: 100%; gap: 2px; }
-.franjas-grid-is .franja { margin-bottom: 0; }
+/* IS: franjas iguales para alineación vertical entre días */
+.franjas-grid-is { display: flex; flex-direction: column; flex: 1; }
+.franjas-grid-is .franja { margin-bottom: 2px; flex: 1; }
 
 /* ── Turnos ──────────────────────────────────────────────── */
 .turno {
