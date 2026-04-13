@@ -158,6 +158,21 @@ const Sync = {
         }
       }
 
+      // Decisiones (Capa 2: historial de decisiones de Nacho)
+      if (data.decisiones && data.decisiones.length > 0) {
+        Store._state.decisiones = data.decisiones.map(d => ({
+          timestamp: d.timestamp || '',
+          fecha: d.fecha || '',
+          tienda: d.tienda || '',
+          turnoFds: d.turnoFds || '',
+          franja: d.franja || '',
+          ausente: d.ausente || '',
+          motorSugirio: d.motorSugirio || '',
+          nachoEligio: d.nachoEligio || '',
+          accion: d.accion || 'sustituir'
+        }));
+      }
+
       Store.setSyncStatus('ok');
       Store._emit('datosCompletos');
       return true;
