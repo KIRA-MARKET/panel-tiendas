@@ -29,7 +29,8 @@ const PDFExport = {
 
     const ventana = window.open('', '_blank');
     if (!ventana) {
-      alert('Bloqueado por el navegador. Permite ventanas emergentes.');
+      if (typeof Modales !== 'undefined') Modales.aviso('Bloqueado por el navegador. Permite ventanas emergentes.', 'Error');
+      else console.error('Bloqueado por el navegador. Permite ventanas emergentes.');
       return;
     }
     ventana.document.write(html);

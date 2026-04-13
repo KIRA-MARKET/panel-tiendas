@@ -394,7 +394,7 @@ const FestivosUI = {
       '<button class="modal-close" onclick="document.getElementById(\'modal-festivo\').remove();FestivosUI.render()">×</button></div>' +
       body +
       '<div class="modal-footer">' +
-      (f.id.startsWith('man-') ? '<button class="btn btn-danger" onclick="if(confirm(\'¿Eliminar festivo?\')){Festivos.remove(\'' + f.id + '\');document.getElementById(\'modal-festivo\').remove();FestivosUI.render()}">Eliminar</button>' : '') +
+      (f.id.startsWith('man-') ? '<button class="btn btn-danger" onclick="Modales.confirmar(\'¿Eliminar este festivo?\',\'Eliminar festivo\').then(function(ok){if(ok){Festivos.remove(\'' + f.id + '\');document.getElementById(\'modal-festivo\').remove();FestivosUI.render()}})">Eliminar</button>' : '') +
       '<button class="btn btn-secondary" onclick="document.getElementById(\'modal-festivo\').remove();FestivosUI.render()">Cerrar</button>' +
       '</div></div>';
     document.body.appendChild(overlay);
