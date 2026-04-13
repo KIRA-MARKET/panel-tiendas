@@ -21,8 +21,8 @@ const CONFIG = {
   FRANJAS_GV: {
     // Descarga: min=3 se cumple desde las 7 (cuando EVA llega). Antes hay 2 personas en ramp-up.
     descarga: [7, 9],
-    mañanas:  [9,    15],
-    tardes:   [15,   17.75],
+    mañanas:  [9,    14],
+    tardes:   [14,   17.75],
     cierre:   [17.75, 22]
   },
   FRANJAS_IS: {

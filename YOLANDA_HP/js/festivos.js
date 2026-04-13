@@ -407,11 +407,47 @@ const FestivosUI = {
   },
 
   nuevoFestivo() {
-    const fecha = prompt('Fecha del festivo (YYYY-MM-DD):', (FestivosUI._añoActual || Store.getAño()) + '-');
-    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return;
-    const nombre = prompt('Nombre del festivo:');
-    if (!nombre) return;
-    Festivos.add(fecha, nombre, 'local');
-    FestivosUI.render();
+    const año = FestivosUI._añoActual || Store.getAño();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active';
+    overlay.id = 'modal-nuevo-festivo';
+    overlay.innerHTML =
+      '<div class="modal" style="max-width:380px">' +
+      '<div class="modal-header"><h3>Nuevo festivo</h3>' +
+      '<button class="modal-close" onclick="document.getElementById(\'modal-nuevo-festivo\').remove()">\u00d7</button></div>' +
+      '<div class="modal-body">' +
+      '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700">Fecha</label>' +
+      '<input type="date" id="nf-fecha" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px" value="' + año + '-01-01"></div>' +
+      '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700">Nombre</label>' +
+      '<input type="text" id="nf-nombre" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px" placeholder="Ej: San Juan"></div>' +
+      '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700">\u00c1mbito</label>' +
+      '<select id="nf-ambito" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px">' +
+      '<option value="local">Local</option><option value="autonomico">Auton\u00f3mico</option><option value="nacional">Nacional</option></select></div>' +
+      '<div id="nf-error" style="color:#c62828;font-size:11px;display:none"></div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+      '<button class="btn btn-secondary" onclick="document.getElementById(\'modal-nuevo-festivo\').remove()">Cancelar</button>' +
+      '<button class="btn btn-success" id="nf-ok">A\u00f1adir</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#nf-ok').onclick = () => {
+      const fecha = overlay.querySelector('#nf-fecha').value;
+      const nombre = overlay.querySelector('#nf-nombre').value.trim();
+      const ambito = overlay.querySelector('#nf-ambito').value;
+      if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+        overlay.querySelector('#nf-error').textContent = 'Fecha no v\u00e1lida';
+        overlay.querySelector('#nf-error').style.display = 'block';
+        return;
+      }
+      if (!nombre) {
+        overlay.querySelector('#nf-error').textContent = 'Nombre obligatorio';
+        overlay.querySelector('#nf-error').style.display = 'block';
+        return;
+      }
+      Festivos.add(fecha, nombre, ambito);
+      overlay.remove();
+      FestivosUI.render();
+    };
   }
 };
