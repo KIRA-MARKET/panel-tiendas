@@ -149,6 +149,46 @@ const Cobertura = {
   },
 
   /**
+   * Encuentra todos los tramos donde la cobertura cae por debajo de un mínimo.
+   * Devuelve [{desde, hasta, activos}] — útil para mostrar DÓNDE está el hueco.
+   */
+  _encontrarHuecos(intervalos, ventana, minimo) {
+    const [w0, w1] = ventana;
+    const eventos = [];
+    for (const it of intervalos) {
+      const e = Math.max(it.e, w0);
+      const s = Math.min(it.s, w1);
+      if (s <= e) continue;
+      eventos.push({ t: e, d: +1 });
+      eventos.push({ t: s, d: -1 });
+    }
+
+    const huecos = [];
+    if (eventos.length === 0) {
+      huecos.push({ desde: w0, hasta: w1, activos: 0 });
+      return huecos;
+    }
+
+    eventos.sort((a, b) => a.t - b.t || a.d - b.d);
+
+    let activos = 0;
+    let cursor = w0;
+
+    for (const ev of eventos) {
+      if (ev.t > cursor && cursor < w1 && activos < minimo) {
+        huecos.push({ desde: cursor, hasta: ev.t, activos });
+      }
+      activos += ev.d;
+      cursor = ev.t;
+    }
+    if (cursor < w1 && activos < minimo) {
+      huecos.push({ desde: cursor, hasta: w1, activos });
+    }
+
+    return huecos;
+  },
+
+  /**
    * Cuenta empleados con overlap significativo (≥1.5h) con una franja.
    * Descarta a quien apenas toca la ventana (ej: FRANCIS cierre con 1h
    * en tardes, ALEX 15min en cierre) sin penalizar llegadas escalonadas.
@@ -248,13 +288,17 @@ const Cobertura = {
     if (intervalos.length > 0 && CONFIG.COBERTURA_GLOBAL_MINIMO) {
       const inicio = Math.min(...intervalos.map(it => it.e));
       const fin = Math.max(...intervalos.map(it => it.s));
-      const minGlobal = Cobertura._minCoberturaEnFranja(intervalos, [inicio, fin]);
-      if (minGlobal < CONFIG.COBERTURA_GLOBAL_MINIMO) {
+      const huecos = Cobertura._encontrarHuecos(intervalos, [inicio, fin], CONFIG.COBERTURA_GLOBAL_MINIMO);
+      if (huecos.length > 0) {
+        const detalle = huecos.map(h =>
+          Utils.formatHora(h.desde) + '-' + Utils.formatHora(h.hasta) + ' (' + h.activos + ' pers.)'
+        ).join(', ');
         alertas.push({
           franja: 'persona sola',
-          actual: minGlobal,
+          actual: Math.min(...huecos.map(h => h.activos)),
           minimo: CONFIG.COBERTURA_GLOBAL_MINIMO,
-          falta: CONFIG.COBERTURA_GLOBAL_MINIMO - minGlobal
+          falta: CONFIG.COBERTURA_GLOBAL_MINIMO - Math.min(...huecos.map(h => h.activos)),
+          detalle
         });
       }
     }

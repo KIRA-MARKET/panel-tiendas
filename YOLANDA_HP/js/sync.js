@@ -224,6 +224,11 @@ const Sync = {
     Sync.guardar('descartadas', h, Store.get('sustitucionesDescartadas'));
   },
 
+  syncDecisiones() {
+    const h = ['timestamp', 'fecha', 'tienda', 'turnoFds', 'franja', 'ausente', 'motorSugirio', 'nachoEligio', 'accion'];
+    Sync.guardar('decisiones', h, Store.getDecisiones());
+  },
+
   // ── Parsers de datos de Sheets ─────────────────────────────
 
   _parseHorariosIS(rows) {

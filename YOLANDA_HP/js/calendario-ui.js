@@ -278,9 +278,11 @@ const CalendarioUI = {
     // Alertas de mínimos
     const alertasMin = Cobertura.verificarMinimosLV(dia, tienda);
     if (alertasMin.length > 0) {
-      const detalles = alertasMin.map(a =>
-        a.franja.toUpperCase() + ': ' + a.actual + '/' + a.minimo
-      ).join(' · ');
+      const detalles = alertasMin.map(a => {
+        let txt = a.franja.toUpperCase() + ': ' + a.actual + '/' + a.minimo;
+        if (a.detalle) txt += ' [' + a.detalle + ']';
+        return txt;
+      }).join(' · ');
       html += '<div class="aviso-minimos" title="' + Utils.escapeHtml(detalles) + '">\u26a0 Bajo m\u00edn: ' + Utils.escapeHtml(detalles) + '</div>';
     }
 

@@ -460,6 +460,21 @@ const Modales = {
                 });
               }
 
+              // Capa 2: registrar decisión (motor sugirió X, Nacho eligió Y)
+              const fechaProp = typeof propuestas[pi].fecha === 'string'
+                ? propuestas[pi].fecha : Utils.formatFecha(propuestas[pi].fecha);
+              Store.addDecision({
+                timestamp: new Date().toISOString(),
+                fecha: fechaProp,
+                tienda: propuestas[pi].tienda,
+                turnoFds: propuestas[pi].turnoFds || '',
+                franja: propuestas[pi].franja || '',
+                ausente: propuestas[pi].ausente,
+                motorSugirio: origAlias,
+                nachoEligio: elegido.alias,
+                accion: propuestas[pi].accion || 'sustituir'
+              });
+
               // Reemplazar propuesta
               propuestas[pi].sustituto = elegido.alias;
               propuestas[pi].entrada = elegido.entrada;
@@ -507,7 +522,26 @@ const Modales = {
               seleccionadas.push(Object.assign({}, propuestas[i], { tipo }));
             }
           }
+          // Capa 2: registrar aceptaciones del motor (propuestas no cambiadas)
+          for (const s of seleccionadas) {
+            if (!s._elegidoManual) {
+              const fechaS = typeof s.fecha === 'string' ? s.fecha : Utils.formatFecha(s.fecha);
+              Store.addDecision({
+                timestamp: new Date().toISOString(),
+                fecha: fechaS,
+                tienda: s.tienda,
+                turnoFds: s.turnoFds || '',
+                franja: s.franja || '',
+                ausente: s.ausente,
+                motorSugirio: s.sustituto,
+                nachoEligio: s.sustituto, // mismo = aceptó la sugerencia
+                accion: s.accion || 'sustituir'
+              });
+            }
+          }
+
           const count = Motor.aplicarPropuestas(seleccionadas);
+          if (Sync && Sync.syncDecisiones) Sync.syncDecisiones();
           Modales._cerrarOverlay(overlay);
           CalendarioUI.toast(count + ' sustituciones aplicadas', 'success');
           resolve({ aplicadas: count });

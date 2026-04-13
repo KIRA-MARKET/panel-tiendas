@@ -36,6 +36,7 @@ const Store = {
     faltasIS: [],
     sustitucionesDescartadas: [],
     festivos: [],
+    decisiones: [], // Capa 2: historial de decisiones de Nacho
 
     // Estado de sync
     syncStatus: 'loading' // 'loading' | 'ok' | 'error'
@@ -170,6 +171,16 @@ const Store = {
     Store._emit('ausencias', { tienda, ausencias: aus });
     Store._emit('sustituciones', Store._state.sustituciones);
     Store._emit('cambioVista');
+  },
+
+  /** Capa 2: registrar decisión de Nacho (motor sugirió X, Nacho eligió Y) */
+  addDecision(decision) {
+    Store._state.decisiones.push(decision);
+    Store._emit('decisiones', Store._state.decisiones);
+  },
+
+  getDecisiones() {
+    return Store._state.decisiones;
   },
 
   addSustitucion(sust) {
