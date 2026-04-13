@@ -18,13 +18,14 @@ const PDFExport = {
     const nombreEmpresa = tienda === 'granvia' ? 'KIRA MARKET S.L.' : 'REYPIK MARKET S.L.';
     const nombreTienda  = tienda === 'granvia' ? 'GRAN VÍA' : 'ISABEL LA CATÓLICA';
     const mesNombre = Utils.MESES[mes] + ' ' + año;
-    const modoTxt = modo === 'lv' ? 'Lunes a Viernes' : 'Fines de Semana';
+    const modoTxt = modo === 'lv' ? 'Lunes a Viernes' : (modo === 'festivos' ? 'Festivos' : 'Fines de Semana');
 
-    const calendario = modo === 'lv'
-      ? PDFExport._generarLV(año, mes, tienda)
-      : PDFExport._generarFds(año, mes, tienda);
+    let calendario;
+    if (modo === 'lv') calendario = PDFExport._generarLV(año, mes, tienda);
+    else if (modo === 'festivos') calendario = PDFExport._generarFestivos(año, tienda);
+    else calendario = PDFExport._generarFds(año, mes, tienda);
 
-    const html = PDFExport._wrap(modo, nombreEmpresa, nombreTienda, mesNombre, modoTxt, calendario);
+    const html = PDFExport._wrap(modo === 'festivos' ? 'lv' : modo, nombreEmpresa, nombreTienda, modo === 'festivos' ? año.toString() : mesNombre, modoTxt, calendario);
 
     const ventana = window.open('', '_blank');
     if (!ventana) {
@@ -227,6 +228,65 @@ const PDFExport = {
         html += '</div>';
       }
     }
+    return html;
+  },
+
+  // ── Generar PDF Festivos ──────────────────────────────────
+
+  _generarFestivos(año, tienda) {
+    if (typeof Festivos !== 'undefined') Festivos.asegurarAño(año);
+    const lista = Store.getFestivos().filter(f => f.fecha.startsWith(año + '-'));
+    const festivosConAsig = lista.filter(f => {
+      const asig = f.asignados[tienda] || [];
+      return asig.length > 0;
+    });
+
+    if (festivosConAsig.length === 0) {
+      return '<div style="text-align:center;padding:40px;color:#888;font-size:14px">No hay festivos con asignaciones para ' + (tienda === 'granvia' ? 'Gran Vía' : 'Isabel') + ' en ' + año + '</div>';
+    }
+
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(350px, 1fr));gap:16px;padding:16px">';
+
+    for (const f of festivosConAsig) {
+      const fecha = Utils.parseFecha(f.fecha);
+      const dow = Utils.DIAS_LARGO[fecha.getDay()];
+      const fechaStr = dow + ' ' + fecha.getDate() + ' ' + Utils.MESES[fecha.getMonth()];
+      const asig = f.asignados[tienda] || [];
+
+      const porTurno = { descarga: [], 'mañanas': [], tardes: [] };
+      for (const a of asig) {
+        const t = typeof a === 'string' ? 'mañanas' : (a.turno || 'mañanas');
+        if (porTurno[t]) porTurno[t].push(a);
+      }
+
+      html += '<div style="background:#fff;border-radius:10px;border:3px solid #c62828;overflow:hidden">';
+      html += '<div style="background:#c62828;color:#fff;padding:12px 16px;text-align:center">';
+      html += '<div style="font-size:18px;font-weight:800">' + Utils.escapeHtml(f.nombre) + '</div>';
+      html += '<div style="font-size:14px;opacity:0.9;margin-top:2px">' + fechaStr + '</div>';
+      html += '</div>';
+      html += '<div style="padding:8px">';
+
+      for (const tk in porTurno) {
+        if (porTurno[tk].length === 0) continue;
+        const tf = CONFIG.TURNOS_FESTIVO[tk];
+        html += '<div style="margin-bottom:6px">';
+        html += '<div class="turno ' + tk + '" style="font-size:12px;font-weight:700;text-transform:uppercase;padding:3px 8px;margin-bottom:2px">' + tf.nombre + ' ' + Utils.formatHora(tf.entrada) + '-' + Utils.formatHora(tf.salida) + '</div>';
+        for (const a of porTurno[tk]) {
+          const emp = typeof a === 'string' ? a : a.empleado;
+          const entrada = typeof a === 'object' ? a.entrada : tf.entrada;
+          const salida = typeof a === 'object' ? a.salida : tf.salida;
+          html += '<div class="turno ' + tk + '" style="font-size:14px;padding:4px 8px">';
+          html += '<span class="turno-nombre">' + Utils.escapeHtml(emp) + '</span>';
+          html += '<span class="turno-hora">' + Utils.formatHora(entrada) + '-' + Utils.formatHora(salida) + '</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      html += '</div></div>';
+    }
+
+    html += '</div>';
     return html;
   },
 
