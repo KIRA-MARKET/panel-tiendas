@@ -47,14 +47,23 @@ const CalendarioUI = {
         dia.setDate(dia.getDate() + d);
         const esDelMes = dia.getMonth() === mes;
 
-        const esFestivo = typeof Festivos !== 'undefined' && Festivos.esFestivo(dia);
+        // Festivo: propio del día O trasladado del domingo anterior (si es lunes)
+        let esFestivo = typeof Festivos !== 'undefined' && Festivos.esFestivo(dia);
+        let festivoData = esFestivo ? Store.getFestivos().find(f => f.fecha === Utils.formatFecha(dia)) : null;
+        if (!esFestivo && dia.getDay() === 1 && typeof Festivos !== 'undefined') {
+          // Lunes: comprobar si el domingo anterior era festivo (se traslada)
+          const domAnterior = new Date(dia); domAnterior.setDate(domAnterior.getDate() - 1);
+          if (Festivos.esFestivo(domAnterior)) {
+            esFestivo = true;
+            festivoData = Store.getFestivos().find(f => f.fecha === Utils.formatFecha(domAnterior));
+          }
+        }
         const clsDia = 'col-dia' + (esFestivo ? ' festivo' : '');
         html += '<div class="' + clsDia + '" style="' + (esDelMes ? '' : 'opacity:0.4') + '">';
         html += '<div class="dia-num"><span class="dia-nombre">' + Utils.DIAS[dia.getDay()] + '</span>' + dia.getDate() + '</div>';
         if (esFestivo) {
-          const festivo = Store.getFestivos().find(f => f.fecha === Utils.formatFecha(dia));
           html += '<div class="dia-festivo-label">FESTIVO</div>';
-          if (festivo) html += '<div style="text-align:center;font-size:11px;color:#b71c1c;font-weight:600;margin-top:8px">' + Utils.escapeHtml(festivo.nombre) + '</div>';
+          if (festivoData) html += '<div style="text-align:center;font-size:11px;color:#b71c1c;font-weight:600;margin-top:8px">' + Utils.escapeHtml(festivoData.nombre) + '</div>';
         } else {
           const horarios = Rotaciones.getHorariosLV(dia, tienda);
           html += CalendarioUI._renderTurnosLV(dia, horarios, tienda);
@@ -245,6 +254,20 @@ const CalendarioUI = {
   // ── FdS box ────────────────────────────────────────────────
 
   _renderFdsBox(dia, horarios, turnoKey, cssClass, titulo, tienda) {
+    // Festivo en sábado: marcar en rojo sin empleados (domingo se traslada a lunes)
+    const esSab = dia.getDay() === 6;
+    const esFestivoFds = esSab && typeof Festivos !== 'undefined' && Festivos.esFestivo(dia);
+
+    if (esFestivoFds) {
+      const festivoData = Store.getFestivos().find(f => f.fecha === Utils.formatFecha(dia));
+      let html = '<div class="fds-box ' + cssClass + '" style="background:#ffebee">';
+      html += '<div class="fds-header" style="background:#c62828">' + titulo + '</div>';
+      html += '<div class="dia-festivo-label" style="margin:12px 4px">FESTIVO</div>';
+      if (festivoData) html += '<div style="text-align:center;font-size:11px;color:#b71c1c;font-weight:600">' + Utils.escapeHtml(festivoData.nombre) + '</div>';
+      html += '</div>';
+      return html;
+    }
+
     let html = '<div class="fds-box ' + cssClass + '">';
     html += '<div class="fds-header">' + titulo + '</div>';
 
