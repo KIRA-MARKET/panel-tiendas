@@ -19,6 +19,9 @@ const CalendarioUI = {
 
     document.getElementById('mes-actual').textContent = Utils.MESES[mes] + ' ' + año;
 
+    // Asegurar que los festivos del año están cargados
+    if (typeof Festivos !== 'undefined') Festivos.asegurarAño(año);
+
     const ultimoDia = Utils.ultimoDiaMes(año, mes);
     const inicio = new Date(año, mes, 1);
     while (inicio.getDay() !== 1) inicio.setDate(inicio.getDate() - 1);
@@ -44,11 +47,19 @@ const CalendarioUI = {
         dia.setDate(dia.getDate() + d);
         const esDelMes = dia.getMonth() === mes;
 
-        const horarios = Rotaciones.getHorariosLV(dia, tienda);
-        html += '<div class="col-dia" style="' + (esDelMes ? '' : 'opacity:0.4') + '">';
-        html += '<div class="dia-num">' + dia.getDate() + '</div>';
-        html += CalendarioUI._renderTurnosLV(dia, horarios, tienda);
-        html += CalendarioUI._renderAvisosLV(dia, tienda);
+        const esFestivo = typeof Festivos !== 'undefined' && Festivos.esFestivo(dia);
+        const clsDia = 'col-dia' + (esFestivo ? ' festivo' : '');
+        html += '<div class="' + clsDia + '" style="' + (esDelMes ? '' : 'opacity:0.4') + '">';
+        html += '<div class="dia-num"><span class="dia-nombre">' + Utils.DIAS[dia.getDay()] + '</span>' + dia.getDate() + '</div>';
+        if (esFestivo) {
+          const festivo = Store.getFestivos().find(f => f.fecha === Utils.formatFecha(dia));
+          html += '<div class="dia-festivo-label">FESTIVO</div>';
+          if (festivo) html += '<div style="text-align:center;font-size:11px;color:#b71c1c;font-weight:600;margin-top:8px">' + Utils.escapeHtml(festivo.nombre) + '</div>';
+        } else {
+          const horarios = Rotaciones.getHorariosLV(dia, tienda);
+          html += CalendarioUI._renderTurnosLV(dia, horarios, tienda);
+          html += CalendarioUI._renderAvisosLV(dia, tienda);
+        }
         html += '</div>';
       }
 

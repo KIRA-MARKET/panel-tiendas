@@ -88,7 +88,39 @@
   display: flex;
   flex-direction: column;
 }
-.dia-num { font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.dia-num {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 2px;
+  text-align: center;
+  line-height: 1.1;
+}
+.dia-num .dia-nombre {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Festivo ────────────────────────────────────────────── */
+.col-dia.festivo {
+  background: #ffebee;
+  border-right-color: #ef9a9a;
+}
+.dia-festivo-label {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 900;
+  color: #b71c1c;
+  background: #ffcdd2;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
 
 /* ── Columna FdS ─────────────────────────────────────────── */
 .col-fds {
@@ -335,7 +367,7 @@
     padding: 6px 4px;
   }
   .col-dia:last-child { border-bottom: none; }
-  .dia-num { font-size: 12px; font-weight: 700; color: var(--text); }
+  .dia-num { font-size: 16px; font-weight: 800; }
 
   .col-fds {
     width: 100%;
