@@ -291,10 +291,10 @@ const CalendarioUI = {
 
     if (esFestivoFds) {
       const festivoData = Store.getFestivos().find(f => f.fecha === Utils.formatFecha(dia));
-      let html = '<div class="fds-box ' + cssClass + '" style="background:#ffebee">';
-      html += '<div class="fds-header" style="background:#c62828">' + titulo + '</div>';
+      let html = '<div class="fds-box ' + cssClass + ' festivo-fds">';
+      html += '<div class="fds-header festivo-fds-header">' + titulo + '</div>';
       html += '<div class="dia-festivo-label" style="margin:12px 4px">FESTIVO</div>';
-      if (festivoData) html += '<div style="text-align:center;font-size:11px;color:#b71c1c;font-weight:600">' + Utils.escapeHtml(festivoData.nombre) + '</div>';
+      if (festivoData) html += '<div style="text-align:center;font-size:11px;font-weight:600" class="festivo-nombre-fds">' + Utils.escapeHtml(festivoData.nombre) + '</div>';
       html += '</div>';
       return html;
     }

@@ -20,12 +20,14 @@ const PDFExport = {
     const mesNombre = Utils.MESES[mes] + ' ' + año;
     const modoTxt = modo === 'lv' ? 'Lunes a Viernes' : (modo === 'festivos' ? 'Festivos' : 'Fines de Semana');
 
-    let calendario;
-    if (modo === 'lv') calendario = PDFExport._generarLV(año, mes, tienda);
-    else if (modo === 'festivos') calendario = PDFExport._generarFestivos(año, tienda);
-    else calendario = PDFExport._generarFds(año, mes, tienda);
+    let calendario, wrapModo;
+    if (modo === 'lv') { calendario = PDFExport._generarLV(año, mes, tienda); wrapModo = 'lv'; }
+    else if (modo === 'festivos') { calendario = PDFExport._generarFestivos(año, tienda); wrapModo = 'lv'; }
+    else if (modo === 'whatsapp') { calendario = PDFExport._generarWhatsApp(año, mes, tienda); wrapModo = 'whatsapp'; }
+    else { calendario = PDFExport._generarFds(año, mes, tienda); wrapModo = 'fds'; }
 
-    const html = PDFExport._wrap(modo === 'festivos' ? 'lv' : modo, nombreEmpresa, nombreTienda, modo === 'festivos' ? año.toString() : mesNombre, modoTxt, calendario);
+    const tituloMes = modo === 'festivos' ? año.toString() : mesNombre;
+    const html = PDFExport._wrap(wrapModo, nombreEmpresa, nombreTienda, tituloMes, modoTxt, calendario);
 
     const ventana = window.open('', '_blank');
     if (!ventana) {
@@ -291,6 +293,108 @@ const PDFExport = {
     return html;
   },
 
+  // ── Generar formato WhatsApp (semana actual, vertical, compacto) ──
+
+  _generarWhatsApp(año, mes, tienda) {
+    const hoy = new Date();
+    const lunes = Utils.getLunesDeSemana(hoy);
+    const numSem = Utils.getNumSemana(lunes);
+    const semAB = Utils.getSemanaAB(lunes);
+
+    let html = '<div style="max-width:400px;margin:0 auto;font-size:13px">';
+    html += '<div style="text-align:center;margin-bottom:12px;font-size:11px;color:#666">Semana ' + numSem + ' (' + semAB + ') — ' + Utils.formatFechaES(Utils.formatFecha(lunes)) + '</div>';
+
+    // L-V
+    for (let d = 0; d < 5; d++) {
+      const dia = new Date(lunes);
+      dia.setDate(dia.getDate() + d);
+      const fs = Utils.formatFecha(dia);
+
+      const esFestivo = typeof Festivos !== 'undefined' && Festivos.esFestivo(dia);
+      const horarios = Rotaciones.getHorariosLV(dia, tienda);
+      const horariosAj = Rotaciones.aplicarModificaciones(horarios || {}, dia, tienda);
+
+      html += '<div style="background:#fff;border-radius:8px;margin-bottom:8px;border:1px solid #ddd;overflow:hidden">';
+      html += '<div style="background:#1a1a2e;color:#fff;padding:6px 10px;font-weight:700;font-size:12px">' + Utils.DIAS_LARGO[dia.getDay()] + ' ' + dia.getDate() + '/' + (dia.getMonth()+1) + '</div>';
+
+      if (esFestivo) {
+        const festivoData = Store.getFestivos().find(f => f.fecha === fs);
+        html += '<div style="padding:10px;text-align:center;background:#ffebee;color:#c62828;font-weight:700">FESTIVO' + (festivoData ? ' — ' + Utils.escapeHtml(festivoData.nombre) : '') + '</div>';
+      } else {
+        const franjas = { descarga: [], mañanas: [], tardes: [], cierre: [] };
+        for (const n in horariosAj) {
+          const h = horariosAj[n];
+          if (Store.estaAusente(n, fs, tienda)) continue;
+          const fr = Utils.getFranja(h[0], h[1], tienda);
+          if (franjas[fr]) franjas[fr].push({ n, h });
+        }
+        // Sustituciones
+        const susts = Store.getSustituciones();
+        for (const s of susts) {
+          if (s.fecha !== fs || s.tienda !== tienda || s.turnoFds) continue;
+          const fr = Utils.getFranja(s.entrada, s.salida, tienda);
+          if (franjas[fr]) franjas[fr].push({ n: '→ ' + s.sustituto, h: [s.entrada, s.salida] });
+        }
+
+        html += '<div style="padding:6px">';
+        const colores = { descarga: '#2c5aa0', mañanas: '#2e7d32', tardes: '#e65100', cierre: '#6a1b9a' };
+        for (const fr in franjas) {
+          if (franjas[fr].length === 0) continue;
+          html += '<div style="margin-bottom:4px">';
+          html += '<div style="font-size:9px;font-weight:700;color:' + colores[fr] + ';text-transform:uppercase;margin-bottom:1px">' + fr + '</div>';
+          for (const t of franjas[fr]) {
+            html += '<div style="display:flex;justify-content:space-between;padding:2px 6px;background:' + colores[fr] + '15;border-left:3px solid ' + colores[fr] + ';margin-bottom:1px;border-radius:2px;font-size:12px">';
+            html += '<span style="font-weight:600">' + Utils.escapeHtml(t.n) + '</span>';
+            html += '<span style="color:#666;font-size:11px">' + Utils.formatHora(t.h[0]) + '-' + Utils.formatHora(t.h[1]) + '</span>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // FdS
+    const sab = new Date(lunes); sab.setDate(sab.getDate() + 5);
+    const dom = new Date(lunes); dom.setDate(dom.getDate() + 6);
+    const fdsData = Rotaciones.getFds(sab, tienda);
+
+    for (const [dia, turnos, label] of [[sab, ['SAB_M','SAB_T'], 'Sábado'], [dom, ['DOM_M','DOM_T'], 'Domingo']]) {
+      html += '<div style="background:#fff;border-radius:8px;margin-bottom:8px;border:1px solid #ddd;overflow:hidden">';
+      html += '<div style="background:#1a1a2e;color:#fff;padding:6px 10px;font-weight:700;font-size:12px">' + label + ' ' + dia.getDate() + '/' + (dia.getMonth()+1) + '</div>';
+
+      const esFestivo = dia.getDay() === 6 && typeof Festivos !== 'undefined' && Festivos.esFestivo(dia);
+      if (esFestivo) {
+        const festivoData = Store.getFestivos().find(f => f.fecha === Utils.formatFecha(dia));
+        html += '<div style="padding:10px;text-align:center;background:#ffebee;color:#c62828;font-weight:700">FESTIVO' + (festivoData ? ' — ' + Utils.escapeHtml(festivoData.nombre) : '') + '</div>';
+      } else {
+        html += '<div style="padding:6px">';
+        const turnoLabels = { SAB_M: 'Mañana', SAB_T: 'Tarde', DOM_M: 'Mañana', DOM_T: 'Tarde' };
+        const turnoColors = { SAB_M: '#0277bd', SAB_T: '#00695c', DOM_M: '#558b2f', DOM_T: '#d84315' };
+        for (const tk of turnos) {
+          const emps = fdsData[tk] || {};
+          if (Object.keys(emps).length === 0) continue;
+          html += '<div style="margin-bottom:4px">';
+          html += '<div style="font-size:9px;font-weight:700;color:' + turnoColors[tk] + ';text-transform:uppercase;margin-bottom:1px">' + turnoLabels[tk] + '</div>';
+          for (const emp in emps) {
+            const h = emps[emp];
+            html += '<div style="display:flex;justify-content:space-between;padding:2px 6px;background:' + turnoColors[tk] + '15;border-left:3px solid ' + turnoColors[tk] + ';margin-bottom:1px;border-radius:2px;font-size:12px">';
+            html += '<span style="font-weight:600">' + Utils.escapeHtml(emp) + '</span>';
+            html += '<span style="color:#666;font-size:11px">' + Utils.formatHora(h[0]) + '-' + Utils.formatHora(h[1]) + '</span>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  },
+
   _etiquetaAusencia(tipo, aus) {
     if (!aus) return '';
     if (tipo === 'baja') return ' (BAJA)';
@@ -361,7 +465,9 @@ const PDFExport = {
     css += '.turno.sustituto { background: #ffe066; border-left-color: #e65100; color: #212121; font-weight: 700; }';
     css += '.turno.sustituto .turno-nombre { color: #bf360c; font-weight: 800; } .turno.sustituto .turno-hora { color: #333; font-weight: 700; }';
 
-    if (modo === 'lv') {
+    if (modo === 'whatsapp') {
+      css += '@media print { @page { size: A4 portrait; margin: 5mm; } body { width: 200mm; padding: 0 !important; } .btn-print-bar { display: none !important; } }';
+    } else if (modo === 'lv') {
       css += '@media print { @page { size: A3 portrait; margin: 3mm; } body { width: 291mm; max-height: 414mm; overflow: hidden; padding: 0 !important; } .btn-print-bar { display: none !important; } }';
     } else {
       css += '@media print { @page { size: A3 landscape; margin: 3mm; } body { width: 414mm; max-height: 291mm; overflow: hidden; padding: 0 !important; } .btn-print-bar { display: none !important; } }';

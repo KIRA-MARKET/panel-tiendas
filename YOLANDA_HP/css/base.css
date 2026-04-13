@@ -384,9 +384,30 @@ body {
 }
 
 @media (max-width: 768px) {
-  .nav-tabs { overflow-x: auto; }
+  .nav-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .nav-tab { white-space: nowrap; padding: 6px 10px; font-size: 11px; }
   .btn { padding: 6px 10px; font-size: 11px; }
+  .header-right { width: 100%; justify-content: center; gap: 4px; }
+  .header-right .btn { font-size: 10px; padding: 5px 8px; }
+  .store-btn { padding: 5px 10px; font-size: 11px; }
+  .logo { font-size: 14px; }
+  .modal { max-width: 95vw !important; max-height: 85vh !important; }
+  .modal-body { max-height: 60vh !important; }
+}
+
+@media (max-width: 480px) {
+  .header { padding: 6px 8px; }
+  .header-left { width: 100%; justify-content: space-between; }
+  .header-right { gap: 3px; }
+  .header-right .btn { font-size: 9px; padding: 4px 6px; }
+  .header-right .dropdown { order: -1; }
+  .nav-tabs { gap: 2px; }
+  .nav-tab { padding: 5px 8px; font-size: 10px; }
+  .main { padding: 8px; }
+  .control-tabla { font-size: 10px; }
+  .control-tabla th, .control-tabla td { padding: 4px 6px; }
+  .festivos-grid { grid-template-columns: 1fr; }
+  .festivo-card { padding: 8px; gap: 8px; }
 }
 
 /* ── Festivos ────────────────────────────────────────────── */

@@ -107,20 +107,24 @@
 
 /* ── Festivo ────────────────────────────────────────────── */
 .col-dia.festivo {
-  background: #ffebee;
-  border-right-color: #ef9a9a;
+  background: var(--err-light);
+  border-right-color: var(--accent-red);
 }
 .dia-festivo-label {
   text-align: center;
   font-size: 13px;
   font-weight: 900;
-  color: #b71c1c;
-  background: #ffcdd2;
+  color: var(--accent-red);
+  background: var(--err-light);
+  border: 1px solid var(--accent-red);
   border-radius: 4px;
   padding: 2px 6px;
   margin-bottom: 4px;
   letter-spacing: 1px;
 }
+.festivo-fds { background: var(--err-light); }
+.festivo-fds-header { background: var(--accent-red) !important; }
+.festivo-nombre-fds { color: var(--accent-red); }
 
 /* ── Columna FdS ─────────────────────────────────────────── */
 .col-fds {
@@ -382,6 +386,20 @@
 
   .turno { font-size: 11px; padding: 4px 6px; }
   .turno-hora { font-size: 10px; }
+  .franja-label { font-size: 8px; padding: 1px 6px; }
+  .aviso-minimos { font-size: 9px; padding: 3px 6px; }
+  .dia-festivo-label { font-size: 11px; padding: 2px 4px; }
+}
+
+@media (max-width: 480px) {
+  .week-row .col-dia { padding: 4px; }
+  .dia-num { font-size: 14px; }
+  .dia-num .dia-nombre { font-size: 9px; }
+  .turno { font-size: 10px; padding: 3px 5px; }
+  .turno-nombre { font-size: 10px; }
+  .turno-hora { font-size: 9px; }
+  .fds-box { padding: 4px; }
+  .fds-header { font-size: 9px; padding: 4px; }
 }
 
 @media print {
