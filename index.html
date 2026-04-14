@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIRA &amp; REYPIK — Panel</title>
+<style>
+:root {
+  --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --text: #222;
+  --text-secondary: #555;
+  --text-muted: #999;
+  --border: #e0e0e0;
+  --primary: #1a3c8f;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-hover: 0 8px 30px rgba(0,0,0,0.12);
+  --radius: 16px;
+}
+
+[data-theme="dark"] {
+  --bg: #181a20;
+  --surface: #23262f;
+  --text: #f0f0f0;
+  --text-secondary: #aaa;
+  --text-muted: #666;
+  --border: #333;
+  --primary: #64b5f6;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+  --shadow-hover: 0 8px 30px rgba(0,0,0,0.4);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-main);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Theme toggle */
+.theme-toggle {
+  position: fixed;
+  top: 1.2rem;
+  right: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  transition: all 0.3s;
+  z-index: 10;
+}
+.theme-toggle:hover { transform: scale(1.1); }
+
+/* Header */
+.panel-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.panel-logo-img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+}
+
+.panel-logo {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 0.4rem;
+}
+.panel-logo .kira { color: var(--primary); }
+.panel-logo .sep { color: var(--text-muted); font-weight: 300; margin: 0 0.3rem; }
+.panel-logo .reypik { color: var(--primary); }
+
+.panel-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Grid de apps */
+.apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  max-width: 700px;
+  width: 100%;
+}
+
+/* Card */
+.app-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1.8rem;
+  text-decoration: none;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.app-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary);
+}
+
+.app-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.app-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.app-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.app-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  align-self: flex-start;
+}
+.status-activo {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.status-desarrollo {
+  background: #fff3e0;
+  color: #e65100;
+}
+[data-theme="dark"] .status-activo {
+  background: rgba(46,125,50,0.2);
+  color: #81c784;
+}
+[data-theme="dark"] .status-desarrollo {
+  background: rgba(230,81,0,0.2);
+  color: #ffb74d;
+}
+
+/* Footer */
+.panel-footer {
+  margin-top: 3rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  body { padding: 1.5rem 1rem; }
+  .panel-logo { font-size: 1.6rem; }
+  .apps-grid { grid-template-columns: 1fr; gap: 1rem; }
+  .app-card { padding: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">
+  <span id="theme-icon">🌙</span>
+</button>
+
+<div class="panel-header">
+  <img src="logo-panel.png" alt="KIRA & REYPIK" class="panel-logo-img">
+  <div class="panel-logo">
+    <span class="kira">KIRA</span><span class="sep">&</span><span class="reypik">REYPIK</span>
+  </div>
+  <div class="panel-subtitle">Panel de aplicaciones</div>
+</div>
+
+<div class="apps-grid">
+
+  <a href="horarios-tiendas/" class="app-card">
+    <div class="app-icon" style="background: linear-gradient(135deg, #667eea, #1a3c8f);">📅</div>
+    <div class="app-name">Horarios Tiendas</div>
+    <div class="app-desc">Gestión de horarios, rotaciones, sustituciones y control de vacaciones.</div>
+    <span class="app-status status-activo">Activo</span>
+  </a>
+
+  <a href="dashboard-supermercado/" class="app-card">
+    <div class="app-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">📊</div>
+    <div class="app-name">Dashboard</div>
+    <div class="app-desc">Control de trabajo y procesos en la tienda.</div>
+    <span class="app-status status-desarrollo">En desarrollo</span>
+  </a>
+
+</div>
+
+<div class="panel-footer">
+  KIRA MARKET &amp; REYPIK MARKET
+</div>
+
+<script>
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-icon').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('panel-theme', isDark ? 'light' : 'dark');
+}
+
+// Restaurar tema guardado
+const saved = localStorage.getItem('panel-theme');
+if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  document.getElementById('theme-icon').textContent = '☀️';
+}
+</script>
+
+</body>
+</html>
