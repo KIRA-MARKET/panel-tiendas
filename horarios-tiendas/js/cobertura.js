@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — cobertura.js
+// HORARIOS KIRA & REYPIK — cobertura.js
 // Cálculo de cobertura real por franja y detección de mínimos
 // ============================================================
 

@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — horas.js
+// HORARIOS KIRA & REYPIK — horas.js
 // Tab Horas: resumen mensual de horas trabajadas por empleado
 // (rotación habitual + modificaciones + sustituciones - ausencias)
 // ============================================================

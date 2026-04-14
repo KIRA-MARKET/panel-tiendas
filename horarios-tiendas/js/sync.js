@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — sync.js
+// HORARIOS KIRA & REYPIK — sync.js
 // Sincronización con Google Sheets (cola de escrituras)
 // ============================================================
 

@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — control.js
+// HORARIOS KIRA & REYPIK — control.js
 // Tab Control: vacaciones consumidas, permisos, asuntos, bajas,
 // faltas y festivos trabajados por empleado/año
 // ============================================================

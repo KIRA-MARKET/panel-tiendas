@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — ausencias-ui.js
+// HORARIOS KIRA & REYPIK — ausencias-ui.js
 // Tab Ausencias: lista cronológica con alta y cancelación
 // ============================================================
 

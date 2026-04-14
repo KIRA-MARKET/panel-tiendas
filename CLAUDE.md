@@ -1,4 +1,4 @@
-# CLAUDE.md — KIRA · REYPIK · YOLANDA HP
+# CLAUDE.md — HORARIOS KIRA & REYPIK
 
 Instrucciones de proyecto para Claude Code. Léelas siempre antes de tocar nada.
 
@@ -11,14 +11,14 @@ Nacho es dueño de **dos tiendas** (KIRA MARKET y REYPIK MARKET, dos CIF, dos co
 Hay dos sistemas en este directorio:
 
 1. **`app_horarios_v8.html`** — App actual en producción. Monolítica (~4260 líneas). **NO TOCAR** salvo bug crítico explícitamente pedido. Sirve como referencia.
-2. **`YOLANDA_HP/`** — Rediseño premium modular. Es donde se trabaja activamente.
+2. **`horarios-tiendas/`** — Rediseño premium modular. Es donde se trabaja activamente.
 
 ---
 
-## YOLANDA HP — Estructura
+## HORARIOS KIRA & REYPIK — Estructura
 
 ```
-YOLANDA_HP/
+horarios-tiendas/
 ├── index.html                  Entrada + controlador App
 ├── css/
 │   ├── base.css                Variables, layout, componentes, festivos, control, auditor
@@ -48,10 +48,10 @@ YOLANDA_HP/
 
 ---
 
-## Reglas de oro al editar YOLANDA HP
+## Reglas de oro al editar HORARIOS KIRA & REYPIK
 
 1. **NO romper lo que ya funciona.** Antes de cambiar lógica existente, leerla entera.
-2. **Tras cualquier función nueva o cambio importante → escribir un test** en `YOLANDA_HP/tests/tests.js`. Casos: normal, límite, vacío. (Memory: feedback_tests.md)
+2. **Tras cualquier función nueva o cambio importante → escribir un test** en `horarios-tiendas/tests/tests.js`. Casos: normal, límite, vacío. (Memory: feedback_tests.md)
 3. **Respuestas concisas.** Nada de explicar lo obvio. (Memory: feedback_tokens.md)
 4. **Nunca usar `prompt()`/`alert()`** para flujos críticos. Usar `Modales` propios.
 5. **Nunca concatenar HTML con datos sin escapar.** Usar `Utils.escapeHtml()`.
@@ -73,9 +73,9 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 
 1. **Spec canónica** (memoria): `memory/project_reglas_sustitucion_v2.md`
    Vaciado completo del 6-7 abril 2026: restricciones por empleado GV/Isabel, mínimos por franja/día, rotaciones, préstamos, solapes, cadena, descanso, prioridad DOM_T, etc.
-2. **Datos**: `YOLANDA_HP/js/config.js`
+2. **Datos**: `horarios-tiendas/js/config.js`
    `RESTRICCIONES`, `MINIMOS_LV_*`, `MINIMOS_FDS_*`, `ROTACIONES`, `PRESTAMO_ENTRE_TIENDAS`, `GRUPO_DESCARGA_GV`, `DESCANSO_EXCEPCIONES`, `OVERRIDES_DIAS_LV`.
-3. **Lógica**: `YOLANDA_HP/js/reglas.js`
+3. **Lógica**: `horarios-tiendas/js/reglas.js`
    `Reglas.validarCandidato(candidato, turno)` → `{valido, errores, avisos}`. Es el guardián que aplica las 33 reglas.
 
 **Principios fundamentales:**
@@ -107,11 +107,11 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 
 ## Auditoría técnica de `app_horarios_v8.html` (6 abril 2026)
 
-Esta auditoría dio origen a YOLANDA HP. Es la lista canónica de razones para el rediseño y la check-list de qué problemas NO debe arrastrar la nueva app.
+Esta auditoría dio origen a HORARIOS KIRA & REYPIK. Es la lista canónica de razones para el rediseño y la check-list de qué problemas NO debe arrastrar la nueva app.
 
 ### Top 10 prioridades (resumen ejecutivo)
 
-| # | Prio | Hallazgo | Impacto | Estado YOLANDA HP |
+| # | Prio | Hallazgo | Impacto | Estado HORARIOS KIRA & REYPIK |
 |---|------|----------|---------|---|
 | 1 | CRÍTICO | Conteo de vacaciones incluye fines de semana | Errores legales | Días naturales correctos por diseño |
 | 2 | CRÍTICO | Cancelar ausencia borra sustituciones de otros | Pérdida de datos | ✓ Arreglado en `Store.removeAusencia` |
@@ -127,7 +127,7 @@ Esta auditoría dio origen a YOLANDA HP. Es la lista canónica de razones para e
 ### 1 · Arquitecto de software
 
 **Errores y bugs**
-- 🔴 Archivo monolítico sin separación de responsabilidades (4260 líneas) → ✓ YOLANDA HP modular.
+- 🔴 Archivo monolítico sin separación de responsabilidades (4260 líneas) → ✓ HORARIOS KIRA & REYPIK modular.
 - 🔴 Estado global compartido sin protección → ✓ Store con eventos.
 - 🔴 Sin capa de persistencia local → ⏳ pendiente.
 - 🟡 Race conditions en sincronización → ✓ cola en `sync.js`.
@@ -244,7 +244,7 @@ Esta auditoría dio origen a YOLANDA HP. Es la lista canónica de razones para e
 
 ## Cómo ejecutar tests
 
-Abrir `YOLANDA_HP/tests/tests.html` en el navegador. Verde = todo pasó. Rojo = falló y muestra cuál.
+Abrir `horarios-tiendas/tests/tests.html` en el navegador. Verde = todo pasó. Rojo = falló y muestra cuál.
 
 ---
 

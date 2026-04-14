@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — festivos.js
+// HORARIOS KIRA & REYPIK — festivos.js
 // Módulo de festivos: calendario anual, inscripción voluntaria,
 // asignación de turnos y recuento de festivos trabajados
 // ============================================================

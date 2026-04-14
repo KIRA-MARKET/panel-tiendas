@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — empleados-ui.js
+// HORARIOS KIRA & REYPIK — empleados-ui.js
 // Tab Empleados: listado por tienda con datos de cada empleado
 // ============================================================
 

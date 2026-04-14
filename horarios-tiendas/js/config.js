@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — config.js
+// HORARIOS KIRA & REYPIK — config.js
 // Configuración centralizada: mínimos, restricciones, API
 // ============================================================
 

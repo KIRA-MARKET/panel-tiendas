@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — ausencias.js
+// HORARIOS KIRA & REYPIK — ausencias.js
 // Gestión de ausencias con validación de solapamientos
 // ============================================================
 

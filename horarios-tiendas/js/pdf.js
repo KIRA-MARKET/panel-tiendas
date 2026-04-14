@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — pdf.js
+// HORARIOS KIRA & REYPIK — pdf.js
 // Exportación PDF (L-V y FdS) — formato A3, una página
 // Portado desde app_horarios_v8.html (v3.28)
 // ============================================================

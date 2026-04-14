@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — motor-sustituciones.js
+// HORARIOS KIRA & REYPIK — motor-sustituciones.js
 // EL CORAZÓN — motor inteligente de sustituciones
 //
 // Principio fundamental:

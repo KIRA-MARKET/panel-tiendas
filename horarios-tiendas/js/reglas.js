@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — reglas.js
+// HORARIOS KIRA & REYPIK — reglas.js
 // Codificación de las 33 reglas de sustitución validadas
 // ============================================================
 

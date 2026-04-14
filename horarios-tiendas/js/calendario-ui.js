@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — calendario-ui.js
+// HORARIOS KIRA & REYPIK — calendario-ui.js
 // Renderizado del calendario (HTML seguro, sin innerHTML crudo)
 // ============================================================
 

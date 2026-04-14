@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — empleados.js
+// HORARIOS KIRA & REYPIK — empleados.js
 // Datos de plantilla por defecto (se sobreescriben desde Sheets)
 // ============================================================
 

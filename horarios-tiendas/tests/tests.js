@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — tests.js
+// HORARIOS KIRA & REYPIK — tests.js
 // Mini-runner de tests sin dependencias
 // ============================================================
 

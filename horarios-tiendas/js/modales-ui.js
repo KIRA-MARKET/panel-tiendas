@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — modales-ui.js
+// HORARIOS KIRA & REYPIK — modales-ui.js
 // Modales propios (sin prompt/alert nativos)
 // ============================================================
 

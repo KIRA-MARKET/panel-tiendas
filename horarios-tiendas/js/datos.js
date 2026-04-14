@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — datos.js
+// HORARIOS KIRA & REYPIK — datos.js
 // Store centralizado: estado de la app con eventos de cambio
 // ============================================================
 

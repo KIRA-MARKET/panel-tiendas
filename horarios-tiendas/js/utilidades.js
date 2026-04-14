@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — utilidades.js
+// HORARIOS KIRA & REYPIK — utilidades.js
 // Funciones helper puras (sin side effects, sin estado)
 // ============================================================
 

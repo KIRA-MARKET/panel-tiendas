@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — rotaciones.js
+// HORARIOS KIRA & REYPIK — rotaciones.js
 // Motor de rotaciones inmutables con fecha de referencia configurable
 // ============================================================
 

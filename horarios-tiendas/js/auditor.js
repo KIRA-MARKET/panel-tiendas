@@ -1,5 +1,5 @@
 // ============================================================
-// YOLANDA HP — auditor.js
+// HORARIOS KIRA & REYPIK — auditor.js
 // Escaneo del mes con problemas detectados y sugerencias
 // ============================================================
 
