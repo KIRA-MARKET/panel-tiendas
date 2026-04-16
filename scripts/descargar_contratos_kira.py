@@ -22,8 +22,8 @@ except ImportError:
 #  CONFIGURACIÓN
 # ══════════════════════════════════════════════════════════════
 
-CREDENTIALS_JSON = "/Users/nacho/Desktop/COSAS PARA COWORK/credentials.json"
-TOKEN_JSON       = "/Users/nacho/Desktop/COSAS PARA COWORK/token_gmail.json"
+CREDENTIALS_JSON = "/Users/nacho/Desktop/COSAS PARA COWORK/credenciales/credentials.json"
+TOKEN_JSON       = "/Users/nacho/Desktop/COSAS PARA COWORK/credenciales/token_gmail.json"
 ICLOUD_BASE      = "/Users/nacho/Library/Mobile Documents/com~apple~CloudDocs"
 SCOPES           = ['https://www.googleapis.com/auth/gmail.readonly']
 

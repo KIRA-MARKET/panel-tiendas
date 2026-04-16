@@ -8,10 +8,27 @@ Instrucciones de proyecto para Claude Code. Léelas siempre antes de tocar nada.
 
 Nacho es dueño de **dos tiendas** (KIRA MARKET y REYPIK MARKET, dos CIF, dos contratos, dos nóminas). Solo Nacho usa la app (Eva como extensión). **No hay sistema de roles.**
 
-Hay dos sistemas en este directorio:
+### Estructura del directorio raíz
 
-1. **`app_horarios_v8.html`** — App actual en producción. Monolítica (~4260 líneas). **NO TOCAR** salvo bug crítico explícitamente pedido. Sirve como referencia.
-2. **`horarios-tiendas/`** — Rediseño premium modular. Es donde se trabaja activamente.
+```
+COSAS PARA COWORK/
+├── horarios-tiendas/        App de horarios (producción) — proyecto principal
+├── dashboard-supermercado/  Dashboard de tareas (en desarrollo) — repo git propio
+├── scripts/                 Scripts Python (nóminas, facturas, contratos)
+├── apps-script/             Google Apps Script (sync con Sheets)
+├── documentos/              PDFs, plantillas, datos xlsx
+├── credenciales/            Tokens y credentials de Google (en .gitignore)
+├── assets/                  Imágenes, iconos, logos, sellos, .app
+├── legacy/                  App antigua (app_horarios_v8.html) — solo referencia
+├── index.html               Panel PWA (GitHub Pages)
+└── manifest.json            PWA manifest
+```
+
+Proyectos activos:
+
+1. **`horarios-tiendas/`** — Rediseño premium modular. Es donde se trabaja activamente.
+2. **`dashboard-supermercado/`** — Dashboard de tareas para las tiendas. Repo git independiente.
+3. **`legacy/app_horarios_v8.html`** — App antigua monolítica (~4260 líneas). **NO TOCAR.** Solo referencia.
 
 ---
 

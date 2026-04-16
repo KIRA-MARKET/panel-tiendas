@@ -1,23 +1,23 @@
 .DS_Store
-credentials*.json
-token*.json
-*.pdf
+
+# Credenciales y tokens (en credenciales/)
+credenciales/
+
+# Apps Script local config
 .clasp.json
 .claspignore
+apps-script/.clasp.json
+apps-script/.claspignore
 
 # Aplicaciones / ejecutables
 *.app/
 
-# Datos sensibles (LOPD): plantillas de trabajadores, horarios reales
+# Datos sensibles (LOPD): plantillas, nóminas, dosieres
 *.xlsx
+*.pdf
 
-# Firmas y sellos digitales (datos personales)
-SELLO*.png
-SELLO*.PNG
-
-# Iconos sueltos de otras apps (no forman parte de YOLANDA HP)
-icono_*.png
-Icono*.png
-
-# Imágenes generadas sueltas
-Gemini_Generated_*.png
+# Assets no trackeados (sellos, iconos de apps, imágenes generadas)
+assets/SELLO*
+assets/Icono*
+assets/icono_*
+assets/Gemini_*

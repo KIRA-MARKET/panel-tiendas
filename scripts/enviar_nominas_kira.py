@@ -36,8 +36,8 @@ CONTRASENA_APP  = "tvncvyzdfgnzorbo"   # ← EDITA ESTO
 EMAIL_PRUEBAS   = "nachorumartin@gmail.com"
 MODO_PRUEBA     = False   # True = prueba a tu email. False = envío real
 
-EXCEL_EMPLEADOS = "/Users/nacho/Desktop/COSAS PARA COWORK/DATOS PLANTILLA KIRA MARKET.xlsx"
-SELLO_PNG       = "/Users/nacho/Desktop/COSAS PARA COWORK/SELLO Y FIRMA KIRA MARKET PNG.png"
+EXCEL_EMPLEADOS = "/Users/nacho/Desktop/COSAS PARA COWORK/documentos/DATOS PLANTILLA KIRA MARKET.xlsx"
+SELLO_PNG       = "/Users/nacho/Desktop/COSAS PARA COWORK/assets/SELLO Y FIRMA KIRA MARKET PNG.png"
 EXCLUIR_NOMBRE  = "RUIZ MARTIN, IGNACIO"   # Tu nómina — nunca se envía
 
 # Ruta base en iCloud Drive

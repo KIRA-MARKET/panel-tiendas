@@ -35,8 +35,8 @@ CONTRASENA_APP  = "iaeehmegbfpdqslp"   # ← EDITA ESTO
 EMAIL_PRUEBAS   = "nachorumartin@gmail.com"
 MODO_PRUEBA     = False   # True = prueba. False = envío real
 
-EXCEL_EMPLEADOS = "/Users/nacho/Desktop/COSAS PARA COWORK/DATOS PLANTILLA REYPIK MARKET.xlsx"
-SELLO_PNG       = "/Users/nacho/Desktop/COSAS PARA COWORK/SELLO Y FIRMA REYPIK MARKET PNG.png"
+EXCEL_EMPLEADOS = "/Users/nacho/Desktop/COSAS PARA COWORK/documentos/DATOS PLANTILLA REYPIK MARKET.xlsx"
+SELLO_PNG       = "/Users/nacho/Desktop/COSAS PARA COWORK/assets/SELLO Y FIRMA REYPIK MARKET PNG.png"
 
 # iCloud Drive
 ICLOUD_BASE     = "/Users/nacho/Library/Mobile Documents/com~apple~CloudDocs"

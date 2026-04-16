@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # =============================================================
-#  KIRA MARKET S.L. — Gestión automática de facturas
-#  Uso: python3 gestionar_facturas_kira.py
+#  REYPIK MARKET S.L. — Gestión automática de facturas
+#  Uso: python3 gestionar_facturas_reypik.py
 # =============================================================
 
 import os, sys, base64, re
@@ -23,14 +23,11 @@ except ImportError:
 #  CONFIGURACIÓN
 # ══════════════════════════════════════════════════════════════
 
-CREDENTIALS_JSON = "/Users/nacho/Desktop/COSAS PARA COWORK/credentials.json"
-TOKEN_JSON       = "/Users/nacho/Desktop/COSAS PARA COWORK/token_gmail.json"
+CREDENTIALS_JSON = "/Users/nacho/Desktop/COSAS PARA COWORK/credenciales/credentials_reypik.json"
+TOKEN_JSON       = "/Users/nacho/Desktop/COSAS PARA COWORK/credenciales/token_reypik_gmail.json"
 ICLOUD_BASE      = "/Users/nacho/Library/Mobile Documents/com~apple~CloudDocs"
-EMPRESA_CARPETA  = "KIRA MARKET S.L."
+EMPRESA_CARPETA  = "REYPIK MARKET S.L."
 SCOPES           = ['https://www.googleapis.com/auth/gmail.readonly']
-
-# Carrefour Central → carpeta propia anual
-CARREFOUR_CENTRAL = "central_pagos@carrefour.com"
 
 # Alberto Serrano → solo SS y listado costes
 ALBERTO_SERRANO = "alsemar@crgconsultores.es"
@@ -40,47 +37,51 @@ ALBERTO_DOCS_NO = [
     "alta", "contrato", "baja", "finiquito", "regularizacion",
     "documento", "inaplicacion", "transformacion", "modificacion",
     "prorroga", "horas complementarias", "incentivos",
-    "nominas-listado", "nóminas-listado"
+]
+ALBERTO_NOMINAS = [
+    "nominas", "nóminas", "nomina febrero", "nomina enero",
+    "nomina marzo", "nomina abril", "nomina mayo", "nomina junio",
+    "nomina julio", "nomina agosto", "nomina septiembre",
+    "nomina octubre", "nomina noviembre", "nomina diciembre"
 ]
 
-# Palabras que identifican nóminas en el asunto de Alberto (a excluir)
-ALBERTO_NOMINAS = ["nominas", "nóminas", "nomina febrero", "nomina enero",
-                   "nomina marzo", "nomina abril", "nomina mayo", "nomina junio",
-                   "nomina julio", "nomina agosto", "nomina septiembre",
-                   "nomina octubre", "nomina noviembre", "nomina diciembre"]
-
-# Palabras clave en ASUNTO para detectar facturas
+# Palabras clave para detectar facturas
 PALABRAS_ASUNTO = [
     "factura", "invoice", "fra.", "fra ", "facture",
     "receipt", "recibo", "extracto", "liquidacion",
     "tu factura", "su factura", "facturación", "facturacion",
     "billing", "your receipt", "nueva factura", "factura disponible",
-    "disponible tu factura", "ya tienes disponible"
+    "disponible tu factura", "ya tienes disponible",
+    "atm report"
 ]
 
-# Proveedores que avisan SIN adjunto → van al informe manual
+# Proveedores SIN adjunto → van al informe manual
 PROVEEDORES_SIN_ADJUNTO = {
     "info.empresas@email.telefonica.es": "Telefónica",
     "vodafone@corp.vodafone.es": "Vodafone",
     "news@micuenta.makro.es": "Makro",
     "noreply@emasagra.es": "EMASAGRA (Agua)",
     "no-reply@mercedes-benz.com": "Mercedes Finance (factura disponible en app)",
+    "comunicaciones@energyavm.es": "VM Energía (factura disponible en web)",
 }
 
 # Remitentes a IGNORAR completamente
 IGNORAR_REMITENTES = [
-    "expressgranvia@gmail.com",
+    "expresscatolica@gmail.com",             # emails enviados por nosotros
+    "expressgranvia@gmail.com",              # emails de KIRA
     "no-reply@app.meters.es",
     "estherchamosa@60dias.es",
     "cloudplatform-noreply@google.com",
-    "noreply@email.mercedes-benz.com",   # suscripción personal Mercedes — EXCLUIDO
-    "cristian@moranteasesores.es",       # emails del gestor fiscal (no facturas)
+    "noreply@email.mercedes-benz.com",       # suscripción personal Mercedes
+    "cristian@moranteasesores.es",
     "franquicias@moranteasesores.es",
+    "getpaid.europe@ecolab.com",             # aviso de pago vencido, no factura
 ]
 
 # ══════════════════════════════════════════════════════════════
 
 def autenticar_gmail():
+    """Autenticación OAuth2 con el Gmail de REYPIK."""
     creds = None
     if os.path.exists(TOKEN_JSON):
         creds = Credentials.from_authorized_user_file(TOKEN_JSON, SCOPES)
@@ -127,36 +128,31 @@ def carpeta_facturas(nombre_carpeta):
     os.makedirs(ruta, exist_ok=True)
     return ruta
 
-def carpeta_carrefour(año):
-    ruta = os.path.join(ICLOUD_BASE, EMPRESA_CARPETA, "Carrefour Central", str(año))
-    os.makedirs(ruta, exist_ok=True)
-    return ruta
-
 def nombre_unico(carpeta, filename, fecha_email):
-    """Genera nombre único añadiendo fecha al inicio para evitar sobreescrituras."""
     fecha_prefix = fecha_email.strftime("%Y%m%d")
     filename_limpio = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', filename).strip()
     nombre_final = f"{fecha_prefix}_{filename_limpio}"
-    # Si aun así existe, añadir hora
     if os.path.exists(os.path.join(carpeta, nombre_final)):
         hora_prefix = fecha_email.strftime("%Y%m%d_%H%M")
         nombre_final = f"{hora_prefix}_{filename_limpio}"
     return nombre_final
 
 def contiene_palabra_factura(texto):
-    texto_lower = texto.lower()
-    return any(p in texto_lower for p in PALABRAS_ASUNTO)
+    return any(p in texto.lower() for p in PALABRAS_ASUNTO)
 
 def es_doc_alberto_valido(asunto):
     asunto_lower = asunto.lower()
-    # Excluir nóminas
+    # Prioridad 1: si contiene SS o listado costes → SIEMPRE incluir
+    # aunque el asunto también diga "nóminas"
+    if any(p in asunto_lower for p in ALBERTO_DOCS_SI):
+        return True
+    # Prioridad 2: excluir nóminas puras y otros docs no deseados
     if any(p in asunto_lower for p in ALBERTO_NOMINAS):
         return False
-    # Excluir otros documentos no deseados
     if any(p in asunto_lower for p in ALBERTO_DOCS_NO):
         return False
-    # Solo incluir SS y listado de costes
-    return any(p in asunto_lower for p in ALBERTO_DOCS_SI)
+    # Prioridad 3: factura de la asesoría (ej: "FACTURA FEBRERO")
+    return contiene_palabra_factura(asunto)
 
 def obtener_partes(payload):
     partes = []
@@ -175,7 +171,7 @@ def tiene_adjunto_pdf(payload):
             return True
     return False
 
-def descargar_adjuntos(service, msg_id, payload, carpeta, fecha_email):
+def descargar_adjuntos(service, msg_id, payload, carpeta, fecha_email, es_alberto=False):
     total = 0
     for parte in obtener_partes(payload):
         filename = parte.get('filename', '')
@@ -184,6 +180,12 @@ def descargar_adjuntos(service, msg_id, payload, carpeta, fecha_email):
         if not any(filename.lower().endswith(ext)
                   for ext in ['.pdf', '.doc', '.docx', '.xml']):
             continue
+        # Si es email de Alberto, saltar archivos de nóminas
+        if es_alberto:
+            nombre_lower = filename.lower()
+            if any(p in nombre_lower for p in ['nomina', 'nómina', 'nom_', '_nom']):
+                print(f"    ⏭️  Saltando nómina: {filename}")
+                continue
 
         body = parte.get('body', {})
         attachment_id = body.get('attachmentId')
@@ -198,7 +200,6 @@ def descargar_adjuntos(service, msg_id, payload, carpeta, fecha_email):
             continue
 
         bytes_data = base64.urlsafe_b64decode(data + '==')
-        # Usar nombre único con fecha para evitar sobreescrituras
         nombre_archivo = nombre_unico(carpeta, filename, fecha_email)
         filepath = os.path.join(carpeta, nombre_archivo)
 
@@ -217,7 +218,7 @@ def generar_informe(sin_adjunto, fecha_ini, fecha_fin, carpeta):
     filepath = os.path.join(carpeta, nombre)
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write("=" * 60 + "\n")
-        f.write("KIRA MARKET S.L. — FACTURAS PENDIENTES DE DESCARGA\n")
+        f.write("REYPIK MARKET S.L. — FACTURAS PENDIENTES DE DESCARGA\n")
         f.write("=" * 60 + "\n")
         f.write(f"Período: {fecha_ini.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}\n")
         f.write(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n")
@@ -236,7 +237,7 @@ def generar_informe(sin_adjunto, fecha_ini, fecha_fin, carpeta):
 
 if __name__ == "__main__":
     print("\n" + "=" * 60)
-    print("  KIRA MARKET S.L. — Gestión automática de facturas")
+    print("  REYPIK MARKET S.L. — Gestión automática de facturas")
     print("=" * 60)
 
     if not os.path.exists(CREDENTIALS_JSON):
@@ -247,7 +248,8 @@ if __name__ == "__main__":
     print(f"\n🔍 Período: {fecha_ini.strftime('%d/%m/%Y')} → {fecha_fin.strftime('%d/%m/%Y')}")
     print(f"📁 Carpeta: {nombre_carpeta}")
 
-    print("\n🔐 Autenticando con Gmail...")
+    print("\n🔐 Autenticando con Gmail de REYPIK (expresscatolica@gmail.com)...")
+    print("   (Se abrirá el navegador la primera vez)")
     try:
         service = autenticar_gmail()
         print("✅ Autenticación correcta")
@@ -257,12 +259,11 @@ if __name__ == "__main__":
 
     carpeta_periodo = carpeta_facturas(nombre_carpeta)
 
-    # Buscar todos los emails del período
     fecha_ini_str = fecha_ini.strftime("%Y/%m/%d")
     fecha_fin_str = fecha_fin.strftime("%Y/%m/%d")
     query = f"after:{fecha_ini_str} before:{fecha_fin_str}"
 
-    print(f"\n📬 Buscando emails...")
+    print(f"\n📬 Buscando emails en Gmail de REYPIK...")
     todos_emails = []
     page_token = None
     while True:
@@ -289,7 +290,6 @@ if __name__ == "__main__":
         ids_procesados.add(msg_ref['id'])
 
         try:
-            # Leer cabeceras
             msg_meta = service.users().messages().get(
                 userId='me', id=msg_ref['id'],
                 format='metadata',
@@ -305,25 +305,17 @@ if __name__ == "__main__":
             email_match = re.search(r'<(.+?)>', remitente_raw)
             email_rem   = email_match.group(1).lower() if email_match else remitente_raw.strip()
 
-            # Ignorar remitentes excluidos
             if any(ig in email_rem for ig in IGNORAR_REMITENTES):
                 continue
 
-            # Parsear fecha
             try:
                 fecha_email = parsedate_to_datetime(fecha_str).replace(tzinfo=None)
             except:
                 fecha_email = datetime.now()
 
-            # ── Lógica de filtrado ────────────────────────────────
-
-            es_carrefour = (email_rem == CARREFOUR_CENTRAL)
-
             if email_rem == ALBERTO_SERRANO:
                 if not es_doc_alberto_valido(asunto):
                     continue
-                es_factura = True
-            elif es_carrefour:
                 es_factura = True
             else:
                 es_factura = contiene_palabra_factura(asunto)
@@ -333,7 +325,6 @@ if __name__ == "__main__":
 
             total_procesados += 1
 
-            # ── Proveedores conocidos sin adjunto ─────────────────
             nombre_proveedor = PROVEEDORES_SIN_ADJUNTO.get(email_rem)
             if nombre_proveedor:
                 print(f"⚠️  SIN ADJUNTO: {nombre_proveedor} — {asunto[:55]}")
@@ -345,13 +336,11 @@ if __name__ == "__main__":
                 })
                 continue
 
-            # ── Leer email completo ───────────────────────────────
             msg_full = service.users().messages().get(
                 userId='me', id=msg_ref['id'], format='full').execute()
             payload = msg_full['payload']
 
             if not tiene_adjunto_pdf(payload):
-                # Email de factura sin adjunto → informe
                 print(f"⚠️  SIN ADJUNTO: {email_rem} — {asunto[:55]}")
                 sin_adjunto.append({
                     'proveedor': email_rem,
@@ -361,11 +350,10 @@ if __name__ == "__main__":
                 })
                 continue
 
-            # ── Descargar adjuntos ────────────────────────────────
             print(f"\n📧 {asunto[:65]}")
             print(f"   De: {email_rem} | {fecha_email.strftime('%d/%m/%Y')}")
 
-            carpeta_dest = carpeta_carrefour(fecha_email.year) if es_carrefour else carpeta_periodo
+            carpeta_dest = carpeta_periodo
             n = descargar_adjuntos(service, msg_ref['id'], payload, carpeta_dest, fecha_email)
             total_descargados += n
 
@@ -382,5 +370,4 @@ if __name__ == "__main__":
     print(f"  Facturas sin adjunto:    {len(sin_adjunto)} (ver informe TXT)")
     print(f"\n  📁 iCloud Drive → {EMPRESA_CARPETA}")
     print(f"     └── Facturas → {nombre_carpeta}")
-    print(f"     └── Carrefour Central → [año]")
     print(f"{'=' * 60}\n")
