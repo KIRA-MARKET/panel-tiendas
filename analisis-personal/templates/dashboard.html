@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis de Personal — KIRA & REYPIK</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f0f2f5; --surface: #fff; --text: #1a1a2e; --text2: #555;
+  --primary: #1a3c8f; --primary-light: #e8edf7;
+  --kira: #1a3c8f; --reypik: #e65100;
+  --green: #2e7d32; --red: #c62828;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+.header {
+  background: linear-gradient(135deg, var(--kira), #2d5dd4);
+  color: #fff; padding: 1.5rem 2rem; text-align: center;
+}
+.header h1 { font-size: 1.6rem; font-weight: 700; }
+.header p { opacity: 0.8; font-size: 0.9rem; margin-top: 0.3rem; }
+
+.container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+/* Filtros */
+.filtros {
+  display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+  background: var(--surface); padding: 1rem 1.5rem; border-radius: var(--radius);
+  box-shadow: var(--shadow); align-items: center;
+}
+.filtros label { font-size: 0.85rem; font-weight: 600; color: var(--text2); }
+.filtros select {
+  padding: 0.4rem 0.8rem; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 0.85rem; background: #fff;
+}
+
+/* Cards resumen */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.card {
+  background: var(--surface); border-radius: var(--radius); padding: 1.5rem;
+  box-shadow: var(--shadow); border-left: 4px solid var(--primary);
+}
+.card.kira { border-left-color: var(--kira); }
+.card.reypik { border-left-color: var(--reypik); }
+.card h3 { font-size: 0.8rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+.card .valor { font-size: 1.8rem; font-weight: 800; margin: 0.3rem 0; }
+.card .detalle { font-size: 0.8rem; color: var(--text2); }
+.card .valor.kira { color: var(--kira); }
+.card .valor.reypik { color: var(--reypik); }
+
+/* Gráficos */
+.graficos { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.grafico-box {
+  background: var(--surface); border-radius: var(--radius); padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+.grafico-box h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 1rem; }
+.grafico-box canvas { max-height: 300px; }
+
+/* Tabla */
+.tabla-box {
+  background: var(--surface); border-radius: var(--radius); padding: 1.5rem;
+  box-shadow: var(--shadow); margin-bottom: 1.5rem; overflow-x: auto;
+}
+.tabla-box h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 1rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th { background: var(--primary-light); color: var(--primary); text-align: left; padding: 0.6rem 0.8rem; font-weight: 600; position: sticky; top: 0; }
+td { padding: 0.5rem 0.8rem; border-bottom: 1px solid #eee; }
+tr:hover td { background: #f8f9ff; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.empresa-tag {
+  display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px;
+  font-size: 0.7rem; font-weight: 600;
+}
+.empresa-tag.kira { background: #e8edf7; color: var(--kira); }
+.empresa-tag.reypik { background: #fff3e0; color: var(--reypik); }
+
+.full-width { grid-column: 1 / -1; }
+
+@media (max-width: 900px) {
+  .graficos { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .cards { grid-template-columns: 1fr; }
+  .container { padding: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Análisis de Gasto de Personal</h1>
+  <p>KIRA MARKET & REYPIK MARKET — 2025</p>
+</div>
+
+<div class="container">
+
+  <!-- Filtros -->
+  <div class="filtros">
+    <label>Empresa:</label>
+    <select id="filtroEmpresa">
+      <option value="">Todas</option>
+    </select>
+    <label>Empleado:</label>
+    <select id="filtroEmpleado">
+      <option value="">Todos</option>
+    </select>
+  </div>
+
+  <!-- Cards resumen -->
+  <div class="cards" id="cards"></div>
+
+  <!-- Gráficos -->
+  <div class="graficos">
+    <div class="grafico-box">
+      <h3>Evolución mensual — H. Complementarias</h3>
+      <canvas id="chartHC"></canvas>
+    </div>
+    <div class="grafico-box">
+      <h3>Evolución mensual — Festivos</h3>
+      <canvas id="chartFest"></canvas>
+    </div>
+    <div class="grafico-box">
+      <h3>Coste total por empresa</h3>
+      <canvas id="chartCoste"></canvas>
+    </div>
+    <div class="grafico-box">
+      <h3>Distribución extras: H. Comp. vs Festivos</h3>
+      <canvas id="chartExtras"></canvas>
+    </div>
+  </div>
+
+  <!-- Ranking extras -->
+  <div class="tabla-box">
+    <h3>Ranking — Empleados con más horas extra (complementarias + festivos)</h3>
+    <table id="tablaRanking">
+      <thead>
+        <tr>
+          <th>#</th><th>Empresa</th><th>Empleado</th>
+          <th class="num">H. Comp. €</th><th class="num">Festivos €</th>
+          <th class="num">Total €</th><th class="num">H. Comp. (h)</th><th class="num">Festivos (h)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Rentabilidad -->
+  <div class="tabla-box" id="seccionRentabilidad">
+    <h3>Rentabilidad: ¿Contratar o pagar extras?</h3>
+    <div id="rentabilidadContent"></div>
+  </div>
+
+  <!-- Gráfico estacionalidad extras -->
+  <div class="graficos">
+    <div class="grafico-box full-width" style="grid-column: 1/-1;">
+      <h3>Estacionalidad — Extras mensuales vs coste de contratar</h3>
+      <canvas id="chartEquilibrio"></canvas>
+    </div>
+  </div>
+
+  <!-- Coste por empleado -->
+  <div class="tabla-box">
+    <h3>Coste empresa por empleado</h3>
+    <table id="tablaCoste">
+      <thead>
+        <tr>
+          <th>Empresa</th><th>Empleado</th>
+          <th class="num">Ene</th><th class="num">Feb</th><th class="num">Mar</th>
+          <th class="num">Abr</th><th class="num">May</th><th class="num">Jun</th>
+          <th class="num">Jul</th><th class="num">Ago</th><th class="num">Sep</th>
+          <th class="num">Oct</th><th class="num">Nov</th><th class="num">Dic</th>
+          <th class="num">Total</th><th class="num">Media</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+let datosGlobal = null;
+let charts = {};
+
+function fmt(n) { return n.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+function empresaTag(emp) {
+  const cls = emp.includes('KIRA') ? 'kira' : 'reypik';
+  const short = emp.includes('KIRA') ? 'KIRA' : 'REYPIK';
+  return `<span class="empresa-tag ${cls}">${short}</span>`;
+}
+
+function renderCards(data) {
+  const el = document.getElementById('cards');
+  let html = '';
+  const totalCoste = data.resumen_empresas.reduce((s, e) => s + e.coste_total, 0);
+  const totalExtras = data.resumen_empresas.reduce((s, e) => s + e.festivos_total + e.hc_total, 0);
+
+  html += `<div class="card">
+    <h3>Coste total empresas</h3>
+    <div class="valor">${fmt(totalCoste)} €</div>
+    <div class="detalle">${data.resumen_empresas.reduce((s,e)=>s+e.num_empleados,0)} empleados</div>
+  </div>`;
+
+  data.resumen_empresas.forEach(e => {
+    const cls = e.empresa.includes('KIRA') ? 'kira' : 'reypik';
+    html += `<div class="card ${cls}">
+      <h3>${e.empresa}</h3>
+      <div class="valor ${cls}">${fmt(e.coste_total)} €</div>
+      <div class="detalle">${e.num_empleados} empleados · ${e.num_meses} meses · Extras: ${fmt(e.hc_total + e.festivos_total)} €</div>
+    </div>`;
+  });
+
+  html += `<div class="card">
+    <h3>Total horas extra (comp. + festivos)</h3>
+    <div class="valor">${fmt(totalExtras)} €</div>
+    <div class="detalle">${((totalExtras/totalCoste)*100).toFixed(1)}% del coste total</div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+function renderCharts(data) {
+  // Destruir charts anteriores
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+
+  const empresas = Object.keys(data.evolucion);
+  const colores = {'KIRA MARKET SL': '#1a3c8f', 'REYPIK MARKET SL': '#e65100'};
+  const coloresBg = {'KIRA MARKET SL': 'rgba(26,60,143,0.1)', 'REYPIK MARKET SL': 'rgba(230,81,0,0.1)'};
+
+  // H. Complementarias
+  charts.hc = new Chart(document.getElementById('chartHC'), {
+    type: 'line',
+    data: {
+      labels: data.evolucion[empresas[0]]?.meses || [],
+      datasets: empresas.map(emp => ({
+        label: emp.includes('KIRA') ? 'KIRA' : 'REYPIK',
+        data: data.evolucion[emp]?.hc || [],
+        borderColor: colores[emp],
+        backgroundColor: coloresBg[emp],
+        fill: true, tension: 0.3, pointRadius: 4,
+      }))
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => fmt(v) + ' €' } } } }
+  });
+
+  // Festivos
+  charts.fest = new Chart(document.getElementById('chartFest'), {
+    type: 'line',
+    data: {
+      labels: data.evolucion[empresas[0]]?.meses || [],
+      datasets: empresas.map(emp => ({
+        label: emp.includes('KIRA') ? 'KIRA' : 'REYPIK',
+        data: data.evolucion[emp]?.festivos || [],
+        borderColor: colores[emp],
+        backgroundColor: coloresBg[emp],
+        fill: true, tension: 0.3, pointRadius: 4,
+      }))
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => fmt(v) + ' €' } } } }
+  });
+
+  // Coste por empresa (barras)
+  charts.coste = new Chart(document.getElementById('chartCoste'), {
+    type: 'bar',
+    data: {
+      labels: data.resumen_empresas.map(e => e.empresa.includes('KIRA') ? 'KIRA' : 'REYPIK'),
+      datasets: [{
+        label: 'Coste empresa',
+        data: data.resumen_empresas.map(e => e.coste_total),
+        backgroundColor: data.resumen_empresas.map(e => colores[e.empresa]),
+        borderRadius: 8,
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => (v/1000).toFixed(0) + 'k €' } } } }
+  });
+
+  // Extras distribución (donut)
+  const totalHC = data.resumen_empresas.reduce((s,e) => s + e.hc_total, 0);
+  const totalFest = data.resumen_empresas.reduce((s,e) => s + e.festivos_total, 0);
+  charts.extras = new Chart(document.getElementById('chartExtras'), {
+    type: 'doughnut',
+    data: {
+      labels: ['H. Complementarias', 'Festivos'],
+      datasets: [{
+        data: [totalHC, totalFest],
+        backgroundColor: ['#1565c0', '#ff8f00'],
+        borderWidth: 0,
+      }]
+    },
+    options: { responsive: true, plugins: {
+      legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fmt(ctx.raw)} €` } }
+    }}
+  });
+}
+
+function renderRanking(data) {
+  const tbody = document.querySelector('#tablaRanking tbody');
+  tbody.innerHTML = data.ranking.map((r, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${empresaTag(r.empresa)}</td>
+      <td>${r.nombre}</td>
+      <td class="num">${fmt(r.hc_euros)}</td>
+      <td class="num">${fmt(r.festivos_euros)}</td>
+      <td class="num"><strong>${fmt(r.total_euros)}</strong></td>
+      <td class="num">${r.hc_horas}</td>
+      <td class="num">${r.fest_horas}</td>
+    </tr>
+  `).join('');
+}
+
+function renderCosteEmpleado(data) {
+  const tbody = document.querySelector('#tablaCoste tbody');
+  tbody.innerHTML = data.coste_empleado.map(e => {
+    let celdas = '';
+    for (let m = 1; m <= 12; m++) {
+      const v = e.meses[m];
+      celdas += `<td class="num">${v ? fmt(v) : '-'}</td>`;
+    }
+    return `<tr>
+      <td>${empresaTag(e.empresa)}</td>
+      <td>${e.nombre}</td>
+      ${celdas}
+      <td class="num"><strong>${fmt(e.total_anual)}</strong></td>
+      <td class="num">${fmt(e.media_mensual)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRentabilidad(data) {
+  const r = data.rentabilidad;
+  if (!r) return;
+  const el = document.getElementById('rentabilidadContent');
+
+  // Tabla contratos
+  let html = `<table>
+    <thead><tr>
+      <th>Contrato</th><th class="num">Horas/sem</th><th class="num">Horas/mes</th>
+      <th class="num">Coste/mes</th><th class="num">Coste/año</th><th class="num">€/hora</th>
+      <th class="num">Equilibrio HC</th><th class="num">Equilibrio Fest.</th>
+    </tr></thead><tbody>`;
+  r.contratos.forEach(c => {
+    html += `<tr>
+      <td><strong>${c.tipo}</strong></td>
+      <td class="num">${c.horas_sem}</td><td class="num">${c.horas_mes}</td>
+      <td class="num">${fmt(c.coste_mes)}</td><td class="num">${fmt(c.coste_anual)}</td>
+      <td class="num">${fmt(c.coste_hora)}</td>
+      <td class="num"><strong>${c.equilibrio_hc} h/mes</strong></td>
+      <td class="num">${c.equilibrio_fest} h/mes</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+
+  // Info precios
+  html += `<p style="margin:1rem 0 0.5rem;font-size:0.82rem;color:var(--text2)">
+    Precio H. Complementarias: <strong>${fmt(r.precio_hc)} €/h</strong> ·
+    Precio Festivos: <strong>${fmt(r.precio_fest)} €/h</strong><br>
+    <em>Equilibrio = horas extras mensuales necesarias para igualar el coste de un contrato nuevo</em>
+  </p>`;
+
+  // Comparativa por empresa
+  for (const [emp, info] of Object.entries(r.por_empresa)) {
+    const short = emp.includes('KIRA') ? 'KIRA' : 'REYPIK';
+    const cls = emp.includes('KIRA') ? 'kira' : 'reypik';
+    html += `<div style="margin-top:1.5rem;padding:1rem;border-left:4px solid var(--${cls});background:var(--primary-light);border-radius:8px;">
+      <strong>${short}</strong> — Gasto anual extras: <strong>${fmt(info.total_extras_anual)} €</strong> (media: ${fmt(info.media_extras_mensual)} €/mes)<br>`;
+
+    r.contratos.forEach(c => {
+      const diff = info.total_extras_anual - c.coste_anual;
+      if (diff > c.coste_anual * 0.1)
+        html += `<span style="color:var(--red)">► ${c.tipo}: extras (${fmt(info.total_extras_anual)}€) > contrato (${fmt(c.coste_anual)}€) → <strong>CONTRATAR COMPENSA</strong> (+${fmt(diff)}€)</span><br>`;
+      else if (diff > 0)
+        html += `<span style="color:#e65100">► ${c.tipo}: extras ≈ contrato → Ajustado, valorar estacionalidad</span><br>`;
+      else
+        html += `<span style="color:var(--green)">► ${c.tipo}: extras (${fmt(info.total_extras_anual)}€) < contrato (${fmt(c.coste_anual)}€) → <strong>NO COMPENSA</strong></span><br>`;
+    });
+    html += '</div>';
+  }
+  el.innerHTML = html;
+
+  // Gráfico estacionalidad con líneas de equilibrio
+  if (charts.equilibrio) charts.equilibrio.destroy();
+
+  // Usar primera empresa disponible o la filtrada
+  const empresas = Object.keys(r.por_empresa);
+  const datasets = [];
+  const colores = {'KIRA MARKET SL': '#1a3c8f', 'REYPIK MARKET SL': '#e65100'};
+
+  empresas.forEach(emp => {
+    datasets.push({
+      label: emp.includes('KIRA') ? 'KIRA extras' : 'REYPIK extras',
+      data: r.por_empresa[emp].meses.map(m => m.total),
+      borderColor: colores[emp], backgroundColor: colores[emp] + '22',
+      fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2,
+    });
+  });
+
+  // Líneas de coste contrato
+  const coloresLinea = ['#e53935', '#fb8c00', '#43a047'];
+  r.contratos.forEach((c, i) => {
+    datasets.push({
+      label: `Contrato ${c.tipo} (${fmt(c.coste_mes)}€/mes)`,
+      data: Array(12).fill(c.coste_mes),
+      borderColor: coloresLinea[i], borderDash: [8, 4], borderWidth: 2,
+      pointRadius: 0, fill: false,
+    });
+  });
+
+  const labels = r.por_empresa[empresas[0]]?.meses.map(m => m.mes) || [];
+  charts.equilibrio = new Chart(document.getElementById('chartEquilibrio'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw)} €` } },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => fmt(v) + ' €' } }
+      }
+    }
+  });
+}
+
+function filtrarDatos(data, empresa, empleado) {
+  const filtrado = JSON.parse(JSON.stringify(data));
+
+  if (empresa) {
+    filtrado.resumen_empresas = filtrado.resumen_empresas.filter(e => e.empresa === empresa);
+    filtrado.ranking = filtrado.ranking.filter(r => r.empresa === empresa);
+    filtrado.coste_empleado = filtrado.coste_empleado.filter(e => e.empresa === empresa);
+    const evFiltrada = {};
+    if (filtrado.evolucion[empresa]) evFiltrada[empresa] = filtrado.evolucion[empresa];
+    filtrado.evolucion = evFiltrada;
+    if (filtrado.rentabilidad) {
+      const rentFiltrada = {};
+      if (filtrado.rentabilidad.por_empresa[empresa]) rentFiltrada[empresa] = filtrado.rentabilidad.por_empresa[empresa];
+      filtrado.rentabilidad = {...filtrado.rentabilidad, por_empresa: rentFiltrada};
+    }
+  }
+
+  if (empleado) {
+    filtrado.ranking = filtrado.ranking.filter(r => r.nombre === empleado);
+    filtrado.coste_empleado = filtrado.coste_empleado.filter(e => e.nombre === empleado);
+  }
+
+  return filtrado;
+}
+
+function poblarFiltros(data) {
+  const selEmp = document.getElementById('filtroEmpresa');
+  data.filtros.empresas.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e; opt.textContent = e.includes('KIRA') ? 'KIRA MARKET' : 'REYPIK MARKET';
+    selEmp.appendChild(opt);
+  });
+
+  const selEmpleado = document.getElementById('filtroEmpleado');
+  data.filtros.empleados.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e; opt.textContent = e;
+    selEmpleado.appendChild(opt);
+  });
+
+  // Eventos de filtro
+  selEmp.addEventListener('change', aplicarFiltros);
+  selEmpleado.addEventListener('change', aplicarFiltros);
+}
+
+function aplicarFiltros() {
+  const empresa = document.getElementById('filtroEmpresa').value;
+  const empleado = document.getElementById('filtroEmpleado').value;
+  const filtrado = filtrarDatos(datosGlobal, empresa, empleado);
+  renderCards(filtrado);
+  renderCharts(filtrado);
+  renderRentabilidad(filtrado);
+  renderRanking(filtrado);
+  renderCosteEmpleado(filtrado);
+}
+
+async function cargar() {
+  const resp = await fetch('/api/datos');
+  datosGlobal = await resp.json();
+  poblarFiltros(datosGlobal);
+  renderCards(datosGlobal);
+  renderCharts(datosGlobal);
+  renderRentabilidad(datosGlobal);
+  renderRanking(datosGlobal);
+  renderCosteEmpleado(datosGlobal);
+}
+
+cargar();
+</script>
+</body>
+</html>

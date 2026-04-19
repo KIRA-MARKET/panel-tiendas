@@ -21,3 +21,14 @@ assets/SELLO*
 assets/Icono*
 assets/icono_*
 assets/Gemini_*
+
+# Análisis personal: datos sensibles (nóminas, resultados con nombres)
+analisis-personal/nominas/
+analisis-personal/costes_laboral/
+analisis-personal/seguros_sociales/
+analisis-personal/resultados/
+analisis-personal/documentos/
+
+# Claude Code settings local
+.claude/settings.local.json
+__pycache__/
