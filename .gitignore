@@ -11,6 +11,7 @@ apps-script/.claspignore
 
 # Aplicaciones / ejecutables
 *.app/
+!assets/Panel de Gestión.app/
 
 # Datos sensibles (LOPD): plantillas, nóminas, dosieres
 *.xlsx
