@@ -776,6 +776,139 @@
       }
     });
 
+    test('FdS: propone OPCIONAL si mínimos cumplidos y hay excedente en otro turno del FdS', () => {
+      // Escenario: SAB_T GV con mínimos cumplidos pero DAVID ausente.
+      // DOM_T tiene excedente → alguien del DOM_T se puede mover al SAB_T.
+      const ausBackup = Store._state.ausenciasGV.slice();
+      const sustsBackup = Store._state.sustituciones.slice();
+      const mesBackup = Store._state.mesActual;
+      const añoBackup = Store._state.añoActual;
+      const origDetect = Cobertura.detectarSinCubrir;
+      const origCand = Motor._obtenerCandidatos;
+
+      Store._state.ausenciasGV = [];
+      Store._state.sustituciones = [];
+      Store._state.mesActual = 4;    // Mayo
+      Store._state.añoActual = 2026;
+
+      // Stub: un único turno sin cubrir en SAB_T GV, mínimos cumplidos
+      Cobertura.detectarSinCubrir = function (fecha, tienda) {
+        if (tienda !== 'granvia') return [];
+        if (Utils.formatFecha(fecha) !== '2026-05-30') return [];
+        return [{
+          emp: 'DAVID', franja: 'SAB_T',
+          entrada: 14.75, salida: 22.25,
+          turnoFds: 'SAB_T',
+          bajoMinimos: false, // ← clave: mínimos cumplidos
+          descartado: false, motivoDescarte: ''
+        }];
+      };
+
+      // Stub: un candidato válido con turno origen en DOM_T y excedente ≥ 1
+      Motor._obtenerCandidatos = function () {
+        return [{
+          alias: 'ALEX',
+          entrada: 14.75, salida: 22.25,
+          turnoOrigenFds: 'DOM_T', excedenteOrigen: 1,
+          coberturaOrigenTotal: 5,
+          esPropio: true, esGrupoDescarga: false, tieneAvisos: false,
+          avisos: [], margen: 0, color: '#888', preferenciaScore: 0
+        }];
+      };
+
+      const res = Motor.analizarMes();
+      const prop = res.propuestas.find(p => p.ausente === 'DAVID');
+      assert(prop, 'debe proponer sustituto para DAVID');
+      assertEq(prop.opcional, true, 'propuesta debe marcarse opcional');
+      assertEq(prop.sustituto, 'ALEX');
+
+      // Restaurar
+      Cobertura.detectarSinCubrir = origDetect;
+      Motor._obtenerCandidatos = origCand;
+      Store._state.ausenciasGV = ausBackup;
+      Store._state.sustituciones = sustsBackup;
+      Store._state.mesActual = mesBackup;
+      Store._state.añoActual = añoBackup;
+    });
+
+    test('FdS: NO propone opcional si candidato no tiene turno origen en el FdS', () => {
+      // Caso: candidato es refuerzo externo (excedenteOrigen=99) → no mueve a nadie,
+      // equivaldría a horas extra. Para OPCIONAL solo queremos redistribución.
+      const mesBackup = Store._state.mesActual;
+      const añoBackup = Store._state.añoActual;
+      const origDetect = Cobertura.detectarSinCubrir;
+      const origCand = Motor._obtenerCandidatos;
+
+      Store._state.mesActual = 4;
+      Store._state.añoActual = 2026;
+
+      Cobertura.detectarSinCubrir = function (fecha, tienda) {
+        if (tienda !== 'granvia') return [];
+        if (Utils.formatFecha(fecha) !== '2026-05-30') return [];
+        return [{
+          emp: 'DAVID', franja: 'SAB_T',
+          entrada: 14.75, salida: 22.25, turnoFds: 'SAB_T',
+          bajoMinimos: false, descartado: false, motivoDescarte: ''
+        }];
+      };
+      Motor._obtenerCandidatos = function () {
+        return [{
+          alias: 'EXTERNO', entrada: 14.75, salida: 22.25,
+          turnoOrigenFds: '', excedenteOrigen: 99, coberturaOrigenTotal: 0,
+          esPropio: false, esGrupoDescarga: false, tieneAvisos: false,
+          avisos: [], margen: 0, color: '#888', preferenciaScore: 0
+        }];
+      };
+
+      const res = Motor.analizarMes();
+      const prop = res.propuestas.find(p => p.ausente === 'DAVID');
+      assert(!prop, 'no debe proponer si candidato no viene de otro turno FdS');
+      const sinSol = res.sinSolucion.find(s => s.emp === 'DAVID');
+      assert(!sinSol, 'tampoco debe ir a sinSolucion (no es obligatorio)');
+
+      Cobertura.detectarSinCubrir = origDetect;
+      Motor._obtenerCandidatos = origCand;
+      Store._state.mesActual = mesBackup;
+      Store._state.añoActual = añoBackup;
+    });
+
+    test('L-V: NO propone opcional aunque haya candidato (solo FdS activa el equilibrio)', () => {
+      const mesBackup = Store._state.mesActual;
+      const añoBackup = Store._state.añoActual;
+      const origDetect = Cobertura.detectarSinCubrir;
+      const origCand = Motor._obtenerCandidatos;
+
+      Store._state.mesActual = 4;
+      Store._state.añoActual = 2026;
+
+      Cobertura.detectarSinCubrir = function (fecha, tienda) {
+        if (tienda !== 'granvia') return [];
+        if (Utils.formatFecha(fecha) !== '2026-05-06') return []; // miércoles
+        return [{
+          emp: 'EVA', franja: 'mañanas',
+          entrada: 7, salida: 15, turnoFds: null,
+          bajoMinimos: false, descartado: false, motivoDescarte: ''
+        }];
+      };
+      Motor._obtenerCandidatos = function () {
+        return [{
+          alias: 'SARA', entrada: 7, salida: 15,
+          turnoOrigenFds: '', excedenteOrigen: 2,
+          esPropio: true, esGrupoDescarga: false, tieneAvisos: false,
+          avisos: [], margen: 0, color: '#888', preferenciaScore: 0
+        }];
+      };
+
+      const res = Motor.analizarMes();
+      const prop = res.propuestas.find(p => p.ausente === 'EVA');
+      assert(!prop, 'L-V con mínimos cumplidos no debe proponer opcional');
+
+      Cobertura.detectarSinCubrir = origDetect;
+      Motor._obtenerCandidatos = origCand;
+      Store._state.mesActual = mesBackup;
+      Store._state.añoActual = añoBackup;
+    });
+
     test('aplicarPropuestas con accion=reorganizar crea modificación, no sustitución', () => {
       const sustsBackup = Store._state.sustituciones.slice();
       const modsBackup = Store._state.modificacionesHorario.slice();

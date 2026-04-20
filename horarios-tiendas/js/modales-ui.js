@@ -312,7 +312,9 @@ const Modales = {
             const esReorg = p.accion === 'reorganizar';
             const tagAccion = esReorg
               ? `<span style="background:#5c6bc0;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">REORGANIZAR</span>`
-              : `<span style="background:#2e7d32;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">SUSTITUIR</span>`;
+              : (p.opcional
+                ? `<span style="background:#42a5f5;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px" title="M\u00ednimos cumplidos; propuesta para equilibrar el fin de semana">OPCIONAL</span>`
+                : `<span style="background:#2e7d32;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">SUSTITUIR</span>`);
             const detalleReorg = esReorg
               ? ` <span style="color:#5c6bc0">(antes ${Utils.formatHora(p.entradaOriginal)}-${Utils.formatHora(p.salidaOriginal)})</span>`
               : '';

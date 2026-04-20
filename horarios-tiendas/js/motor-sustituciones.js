@@ -38,14 +38,24 @@ const Motor = {
 
     for (const turno of sinCubrir) {
       // ── REGLA FUNDAMENTAL ──
-      // ¿Se cumplen los mínimos sin esta persona?
-      // Si SÍ, no sustituir. Si NO, buscar sustituto.
-      if (!turno.bajoMinimos) {
-        continue; // Mínimos cumplidos, no hace falta
-      }
+      // L-V: solo proponer si los mínimos se rompen.
+      // FdS: además, proponer OPCIONAL si hay ausente sin cubrir y algún
+      // candidato viene de otro turno del mismo FdS con excedente real ≥ 1
+      // (equilibrio del fin de semana, sin bajar ningún turno origen).
+      const esOpcional = !turno.bajoMinimos;
+      if (esOpcional && !turno.turnoFds) continue; // L-V sigue igual
 
       // Buscar candidatos válidos
       let candidatos = Motor._obtenerCandidatos(turno, sustSimuladas);
+
+      // Propuesta opcional: solo candidatos con turno origen en el FdS y
+      // excedente real ≥ 1. Descarta refuerzos externos (excedente 99).
+      if (esOpcional) {
+        candidatos = candidatos.filter(c =>
+          c.turnoOrigenFds && c.excedenteOrigen >= 1 && c.excedenteOrigen < 99
+        );
+        if (candidatos.length === 0) continue; // no forzar, no ir a sinSolucion
+      }
 
       // Verificar continuidad de mínimos (sweep line) — AVISO, no bloqueante
       if (!turno.turnoFds && candidatos.length > 0) {
@@ -67,6 +77,7 @@ const Motor = {
         const mejor = candidatos[0];
         const propuesta = {
           accion: 'sustituir',
+          opcional: esOpcional,
           tienda: turno.tienda,
           fecha: turno.fecha,
           ausente: turno.emp,
