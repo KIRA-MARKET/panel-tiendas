@@ -176,9 +176,10 @@ const Festivos = {
     const idx = f.inscritos[tienda].indexOf(empleado);
     if (idx >= 0) {
       f.inscritos[tienda].splice(idx, 1);
-      // Si estaba asignado, desasignarlo también
-      const ai = f.asignados[tienda].indexOf(empleado);
-      if (ai >= 0) f.asignados[tienda].splice(ai, 1);
+      // Si estaba asignado, desasignarlo también (asignados puede contener strings u objetos)
+      f.asignados[tienda] = f.asignados[tienda].filter(a =>
+        typeof a === 'string' ? a !== empleado : a.empleado !== empleado
+      );
     } else {
       f.inscritos[tienda].push(empleado);
     }

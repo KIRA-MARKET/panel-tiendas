@@ -122,29 +122,34 @@
       assert(Festivos.getById(id).inscritos.granvia.includes('EVA'));
     });
 
+    // Helper: chequear si un empleado está en la lista de asignados (acepta string u objeto)
+    const estaAsignado = (lista, emp) => (lista || []).some(a =>
+      typeof a === 'string' ? a === emp : a.empleado === emp
+    );
+
     test('Asignar requiere estar inscrito', () => {
-      Festivos.toggleAsignado(id, 'granvia', 'SARA'); // no está inscrito
-      assert(!Festivos.getById(id).asignados.granvia.includes('SARA'));
+      Festivos.asignarTurno(id, 'granvia', 'SARA', 'mañanas'); // no está inscrito
+      assert(!estaAsignado(Festivos.getById(id).asignados.granvia, 'SARA'));
     });
 
     test('Asignar a inscrito funciona', () => {
-      Festivos.toggleAsignado(id, 'granvia', 'EVA');
-      assert(Festivos.getById(id).asignados.granvia.includes('EVA'));
+      Festivos.asignarTurno(id, 'granvia', 'EVA', 'mañanas');
+      assert(estaAsignado(Festivos.getById(id).asignados.granvia, 'EVA'));
     });
 
     test('Desinscribir limpia la asignación', () => {
       Festivos.toggleInscrito(id, 'granvia', 'EVA');
       const fr = Festivos.getById(id);
       assert(!fr.inscritos.granvia.includes('EVA'));
-      assert(!fr.asignados.granvia.includes('EVA'));
+      assert(!estaAsignado(fr.asignados.granvia, 'EVA'));
     });
 
     test('Recuento cuenta asignaciones de ambas tiendas', () => {
       Festivos.toggleInscrito(id, 'granvia', 'EVA');
-      Festivos.toggleAsignado(id, 'granvia', 'EVA');
+      Festivos.asignarTurno(id, 'granvia', 'EVA', 'mañanas');
       const f2 = Festivos.getAño(2030)[1];
       Festivos.toggleInscrito(f2.id, 'isabel', 'EVA');
-      Festivos.toggleAsignado(f2.id, 'isabel', 'EVA');
+      Festivos.asignarTurno(f2.id, 'isabel', 'EVA', 'mañanas');
       const r = Festivos.recuentoTrabajados(2030);
       assertEq(r.EVA.total, 2);
       assertEq(r.EVA.granvia, 1);
@@ -355,8 +360,8 @@
     test('17:30-22 → solo cierre', () => {
       assertDeep(f(17.5, 22), ['cierre']);
     });
-    test('9-15 → descarga + mañanas + tardes (cubre porción de cada)', () => {
-      assertDeep(f(9, 15), ['descarga', 'mañanas', 'tardes']);
+    test('9-15 → solo mañanas (1h descarga y 15min tardes no llegan al umbral 1.5h)', () => {
+      assertDeep(f(9, 15), ['mañanas']);
     });
   });
 

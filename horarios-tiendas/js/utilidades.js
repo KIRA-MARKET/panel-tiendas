@@ -106,17 +106,20 @@ const Utils = {
 
   /**
    * Devuelve TODAS las franjas que un horario [entrada, salida] cubre.
-   * Un empleado cuenta en una franja si su jornada SOLAPA con la ventana
-   * (intervalos abiertos por la derecha — tocarse en frontera no cuenta).
-   * Ejemplo: EVA 7-15 en GV → ['descarga','mañanas'] porque 7-9 y 9-15 solapan.
+   * Un empleado cuenta en una franja si su solape con la ventana es ≥1.5h
+   * (mismo umbral que Cobertura._coberturaSignificativa). Evita que
+   * quien apenas "pisa" una franja (últimos 30-60 min) se cuente como parte
+   * de ese turno. Ejemplo: EVA 7-15 en GV → ['descarga','mañanas']
+   * (en tardes solo cubre 14-15 = 1h, por debajo del umbral).
    */
   franjasQueCubre(entrada, salida, tienda, dow) {
+    const UMBRAL = 1.5;
     const out = [];
     for (const fr of ['descarga', 'mañanas', 'tardes', 'cierre']) {
       const w = CONFIG.getFranjaVentana(tienda, fr, dow);
       if (!w) continue;
-      // Solape de [entrada, salida) con [w[0], w[1])
-      if (entrada < w[1] && salida > w[0]) out.push(fr);
+      const overlap = Math.min(salida, w[1]) - Math.max(entrada, w[0]);
+      if (overlap >= UMBRAL) out.push(fr);
     }
     return out;
   },
