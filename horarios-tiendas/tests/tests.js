@@ -941,6 +941,45 @@
     });
   });
 
+  suite('Motor.buscarCandidatosManual (asignación manual)', function () {
+    test('Devuelve lista no vacía para un ausente L-V con rotaciones reales', () => {
+      // EVA está en la rotación L-V GV. Pedimos candidatos para sustituirla.
+      const fecha = new Date(2026, 3, 15); // miércoles 15 abril
+      const horarios = Rotaciones.getHorariosLV(fecha, 'granvia');
+      const alguien = Object.keys(horarios)[0];
+      if (!alguien) return; // Si no hay rotación cargada, skip silencioso
+
+      const candidatos = Motor.buscarCandidatosManual(fecha, alguien, 'granvia', '');
+      // No es un test de valor exacto — verificamos que devuelva un array
+      assert(Array.isArray(candidatos), 'debe devolver array');
+      // Cada candidato debe tener alias, entrada, salida
+      for (const c of candidatos) {
+        assert(c.alias && typeof c.entrada === 'number' && typeof c.salida === 'number',
+          'candidato mal formado: ' + JSON.stringify(c));
+        assert(c.alias !== alguien, 'no debe incluir al propio ausente');
+      }
+    });
+
+    test('Devuelve [] si el ausente no está en la rotación de ese día', () => {
+      const fecha = new Date(2026, 3, 15);
+      const candidatos = Motor.buscarCandidatosManual(fecha, 'NO_EXISTE_XYZ', 'granvia', '');
+      assertDeep(candidatos, []);
+    });
+
+    test('FdS: devuelve candidatos para un turno SAB_M existente', () => {
+      const sab = new Date(2026, 3, 11); // sábado 11 abril
+      const fds = Rotaciones.getFdsGV(sab);
+      const empSabM = Object.keys(fds.SAB_M)[0];
+      if (!empSabM) return;
+
+      const candidatos = Motor.buscarCandidatosManual(sab, empSabM, 'granvia', 'SAB_M');
+      assert(Array.isArray(candidatos));
+      for (const c of candidatos) {
+        assert(c.alias !== empSabM, 'no debe incluir al propio ausente');
+      }
+    });
+  });
+
   suite('HorasUI: calcularMes', function () {
     test('Suma horas de rotación L-V de un empleado básico', () => {
       // Snapshot

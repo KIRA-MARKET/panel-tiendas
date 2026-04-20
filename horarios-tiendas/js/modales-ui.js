@@ -705,6 +705,13 @@ const Modales = {
       const horario = (typeof ctx.entrada === 'number' && typeof ctx.salida === 'number')
         ? Utils.formatHora(ctx.entrada) + '–' + Utils.formatHora(ctx.salida) : '';
 
+      // ¿Está ausente ese día? Solo entonces tiene sentido asignar sustituto.
+      const ausente = Store.estaAusente(alias, fecha, tienda);
+      const sustActual = ausente ? Store.getSustituto(fecha, alias, tienda, ctx.turnoFds || '') : null;
+      const btnSustHtml = ausente
+        ? `<button class="btn btn-secondary" data-action="sustituto" style="justify-content:flex-start;padding:12px 14px">📋 ${sustActual ? 'Cambiar sustituto (actual: ' + Utils.escapeHtml(sustActual.sustituto) + ')' : 'Asignar sustituto'}</button>`
+        : '';
+
       const html = `
         <div class="modal" style="max-width:380px">
           <div class="modal-header">
@@ -714,6 +721,7 @@ const Modales = {
           <div class="modal-body">
             <p class="sub" style="margin-bottom:14px;font-size:12px">${Utils.escapeHtml(fechaES)} · ${Utils.escapeHtml(tiendaTxt)}${horario ? ' · ' + horario : ''}${ctx.turnoFds ? ' · ' + ctx.turnoFds : ''}</p>
             <div style="display:flex;flex-direction:column;gap:8px">
+              ${btnSustHtml}
               <button class="btn btn-secondary" data-action="modificar" style="justify-content:flex-start;padding:12px 14px">✎ Modificar horario hoy</button>
               <button class="btn btn-secondary" data-action="ausencia" style="justify-content:flex-start;padding:12px 14px">📅 Registrar ausencia</button>
               <button class="btn btn-secondary" data-action="ficha" style="justify-content:flex-start;padding:12px 14px">👤 Ficha del empleado</button>
@@ -729,6 +737,13 @@ const Modales = {
       overlay.querySelectorAll('[data-action="cancel"]').forEach(b => b.onclick = () => close(null));
       overlay.onclick = (e) => { if (e.target === overlay) close(null); };
 
+      const btnSust = overlay.querySelector('[data-action="sustituto"]');
+      if (btnSust) {
+        btnSust.onclick = () => {
+          close('sustituto');
+          Modales.elegirSustitutoManual(alias, fecha, tienda, ctx).then(() => CalendarioUI.render());
+        };
+      }
       overlay.querySelector('[data-action="modificar"]').onclick = () => {
         close('modificar');
         Modales.modificarHorario(alias, fecha, tienda, ctx).then(() => CalendarioUI.render());
@@ -741,6 +756,123 @@ const Modales = {
         close('ficha');
         Modales.editarEmpleado(alias, tienda).then(() => CalendarioUI.render());
       };
+    });
+  },
+
+  // ── Modal: elegir sustituto manual para un ausente ─────────
+
+  /**
+   * Muestra candidatos válidos del Motor y permite elegir sustituto
+   * para un empleado ausente. Si ya tiene sub, ofrece cambiarlo o quitarlo.
+   */
+  elegirSustitutoManual(ausente, fecha, tienda, ctx) {
+    return new Promise((resolve) => {
+      const overlay = Modales._crearOverlay();
+      const fechaES = Utils.formatFechaES ? Utils.formatFechaES(fecha) : fecha;
+      const tiendaTxt = tienda === 'granvia' ? 'Gran Vía' : 'Isabel';
+      const turnoLabel = ctx.turnoFds ? ctx.turnoFds : 'L-V';
+
+      // Candidatos vía motor (aplica las 33 reglas)
+      const candidatos = Motor.buscarCandidatosManual(
+        fecha instanceof Date ? fecha : Utils.parseFecha(fecha),
+        ausente, tienda, ctx.turnoFds || ''
+      );
+      const sustActual = Store.getSustituto(fecha, ausente, tienda, ctx.turnoFds || '');
+
+      let listaHtml = '';
+      if (candidatos.length === 0) {
+        listaHtml = `<p style="text-align:center;padding:20px;color:#c62828;font-size:12px">\u26a0 No hay candidatos válidos (todos fallan alguna de las 33 reglas).</p>`;
+      } else {
+        for (let i = 0; i < candidatos.length; i++) {
+          const c = candidatos[i];
+          const avisosHtml = c.avisos && c.avisos.length > 0
+            ? ` <span style="color:#e65100;font-size:10px" title="${Utils.escapeHtml(c.avisos.join(', '))}">\u26a0</span>`
+            : '';
+          const excedenteTxt = c.excedenteOrigen >= 99
+            ? 'disponible'
+            : 'excedente:' + c.excedenteOrigen + (c.turnoOrigenFds ? ' (' + c.turnoOrigenFds + ')' : '');
+          const esActual = sustActual && sustActual.sustituto === c.alias;
+          listaHtml += `
+            <div class="cand-option" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;border:1px solid ${esActual ? '#2e7d32' : '#e0e0e0'};background:${esActual ? '#e8f5e9' : '#fff'};margin-bottom:4px"
+              onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background='${esActual ? '#e8f5e9' : '#fff'}'">
+              <strong style="flex:1">${Utils.escapeHtml(c.alias)}${esActual ? ' <span style="color:#2e7d32;font-size:10px">(actual)</span>' : ''}</strong>
+              <span style="color:#666;font-size:11px">${Utils.formatHora(c.entrada)}–${Utils.formatHora(c.salida)}</span>
+              <span style="color:#888;font-size:10px">${excedenteTxt}</span>${avisosHtml}
+            </div>`;
+        }
+      }
+
+      const html = `
+        <div class="modal" style="max-width:460px">
+          <div class="modal-header">
+            <h3>Asignar sustituto — ${Utils.escapeHtml(ausente)}</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body" style="max-height:60vh;overflow-y:auto">
+            <p class="sub" style="font-size:12px;margin-bottom:12px">${Utils.escapeHtml(fechaES)} · ${Utils.escapeHtml(tiendaTxt)} · ${Utils.escapeHtml(turnoLabel)}</p>
+            ${listaHtml}
+          </div>
+          <div class="modal-footer">
+            ${sustActual ? `<button class="btn btn-danger" data-action="quitar" style="margin-right:auto">Quitar sustituto</button>` : ''}
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+          </div>
+        </div>
+      `;
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const close = (val) => { Modales._cerrarOverlay(overlay); resolve(val); };
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => b.onclick = () => close(null));
+      overlay.onclick = (e) => { if (e.target === overlay) close(null); };
+
+      // Click en candidato → crear/reemplazar sustitución
+      overlay.querySelectorAll('.cand-option').forEach(el => {
+        el.onclick = () => {
+          const i = parseInt(el.dataset.idx);
+          const c = candidatos[i];
+          const fs = typeof fecha === 'string' ? fecha : Utils.formatFecha(fecha);
+
+          // Si ya había sustituto distinto, quitarlo primero
+          if (sustActual && sustActual.sustituto !== c.alias) {
+            Store.removeSustitucion(s =>
+              s.fecha === fs && s.ausente === ausente && s.tienda === tienda &&
+              (ctx.turnoFds ? s.turnoFds === ctx.turnoFds : !s.turnoFds)
+            );
+          }
+          // Si ya estaba asignado el mismo, no hacer nada
+          if (!(sustActual && sustActual.sustituto === c.alias)) {
+            Store.addSustitucion({
+              fecha: fs,
+              ausente,
+              sustituto: c.alias,
+              entrada: c.entrada,
+              salida: c.salida,
+              franja: ctx.turnoFds ? '' : Utils.getFranja(c.entrada, c.salida, tienda),
+              turnoFds: ctx.turnoFds || '',
+              tienda,
+              tipo: 'movimiento'
+            });
+            if (Sync && Sync.syncSustituciones) Sync.syncSustituciones();
+            CalendarioUI.toast && CalendarioUI.toast('Sustituto asignado: ' + c.alias, 'success');
+          }
+          close('asignado');
+        };
+      });
+
+      const btnQuitar = overlay.querySelector('[data-action="quitar"]');
+      if (btnQuitar) {
+        btnQuitar.onclick = () => {
+          const fs = typeof fecha === 'string' ? fecha : Utils.formatFecha(fecha);
+          Store.removeSustitucion(s =>
+            s.fecha === fs && s.ausente === ausente && s.tienda === tienda &&
+            (ctx.turnoFds ? s.turnoFds === ctx.turnoFds : !s.turnoFds)
+          );
+          if (Sync && Sync.syncSustituciones) Sync.syncSustituciones();
+          CalendarioUI.toast && CalendarioUI.toast('Sustituto eliminado', 'success');
+          close('quitado');
+        };
+      }
     });
   },
 
