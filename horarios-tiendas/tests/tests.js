@@ -1348,6 +1348,117 @@
   });
 
   // ============================================================
+  // Reemplazos — baja definitiva y sustituto temporal en un slot
+  // ============================================================
+  suite('Reemplazos: estaActivo, aliasEfectivo, aplicarA', function () {
+    // Snapshots para restaurar
+    const origEmpGV = Store._state.empleadosGV;
+    const origEmpIS = Store._state.empleadosIS;
+    const origReemp = Store._state.reemplazos;
+
+    // Plantilla mínima: JUAN titular en GV hasta 2026-05-15.
+    // PEDRO (nuevo fijo) entra 2026-05-16. PEDROTEMP cubre otra baja 1-30.
+    Store._state.empleadosGV = {
+      JUAN:      { alias: 'JUAN',      tienda: 'granvia', fechaAlta: '2020-01-01', fechaBaja: '2026-05-15', contrato: 30, franja: 'tardes' },
+      PEDRO:     { alias: 'PEDRO',     tienda: 'granvia', fechaAlta: '2026-05-16', contrato: 30, franja: 'tardes' },
+      MARIA:     { alias: 'MARIA',     tienda: 'granvia', fechaAlta: '2020-01-01', contrato: 30, franja: 'mañanas' },
+      PEDROTEMP: { alias: 'PEDROTEMP', tienda: 'granvia', fechaAlta: '2026-06-01', fechaBaja: '2026-06-30', contrato: 30, franja: 'mañanas' }
+    };
+    Store._state.empleadosIS = {};
+    Store._state.reemplazos = [
+      { tienda: 'granvia', aliasOriginal: 'JUAN',  aliasNuevo: 'PEDRO',     desde: '2026-05-16', hasta: '',          motivo: 'Baja definitiva' },
+      { tienda: 'granvia', aliasOriginal: 'MARIA', aliasNuevo: 'PEDROTEMP', desde: '2026-06-01', hasta: '2026-06-30', motivo: 'Baja médica' }
+    ];
+
+    test('estaActivo: titular activo antes de su fechaBaja', () => {
+      assert(Reemplazos.estaActivo('JUAN', '2026-05-14', 'granvia'));
+    });
+    test('estaActivo: titular inactivo el día después de la baja', () => {
+      assert(!Reemplazos.estaActivo('JUAN', '2026-05-16', 'granvia'));
+    });
+    test('estaActivo: empleado no existe → true (no filtrar)', () => {
+      // Si la rotación menciona un alias que no está en la plantilla cargada,
+      // no queremos ocultarlo: asumimos activo por compatibilidad.
+      assert(Reemplazos.estaActivo('NADIE', '2026-05-16', 'granvia'));
+    });
+    test('estaActivo: sustituto temporal fuera de rango → false', () => {
+      assert(!Reemplazos.estaActivo('PEDROTEMP', '2026-07-01', 'granvia'));
+    });
+    test('estaActivo: sustituto temporal dentro de rango → true', () => {
+      assert(Reemplazos.estaActivo('PEDROTEMP', '2026-06-15', 'granvia'));
+    });
+
+    test('aliasEfectivo: fuera del rango devuelve el original', () => {
+      assertEq(Reemplazos.aliasEfectivo('JUAN', '2026-05-15', 'granvia'), 'JUAN');
+    });
+    test('aliasEfectivo: dentro del rango remapea al sustituto', () => {
+      assertEq(Reemplazos.aliasEfectivo('JUAN', '2026-05-16', 'granvia'), 'PEDRO');
+    });
+    test('aliasEfectivo: tienda distinta no afecta', () => {
+      assertEq(Reemplazos.aliasEfectivo('JUAN', '2026-05-16', 'isabel'), 'JUAN');
+    });
+    test('aliasEfectivo: reemplazo temporal solo en su ventana', () => {
+      assertEq(Reemplazos.aliasEfectivo('MARIA', '2026-05-31', 'granvia'), 'MARIA');
+      assertEq(Reemplazos.aliasEfectivo('MARIA', '2026-06-15', 'granvia'), 'PEDROTEMP');
+      assertEq(Reemplazos.aliasEfectivo('MARIA', '2026-07-01', 'granvia'), 'MARIA');
+    });
+
+    test('aplicarA: remapea JUAN→PEDRO conservando el horario del slot', () => {
+      const crudo = { JUAN: [17.75, 22.25], MARIA: [7, 15] };
+      const out = Reemplazos.aplicarA(crudo, '2026-05-20', 'granvia');
+      assert(!('JUAN' in out));
+      assertDeep(out.PEDRO, [17.75, 22.25]);
+      assertDeep(out.MARIA, [7, 15]);
+    });
+    test('aplicarA: titular de baja sin reemplazo activo se elimina', () => {
+      Store._state.reemplazos = []; // sin reemplazos
+      const crudo = { JUAN: [17.75, 22.25], MARIA: [7, 15] };
+      const out = Reemplazos.aplicarA(crudo, '2026-05-20', 'granvia');
+      assert(!('JUAN' in out));
+      assertDeep(out.MARIA, [7, 15]);
+      // Restaurar reemplazos para los tests siguientes
+      Store._state.reemplazos = [
+        { tienda: 'granvia', aliasOriginal: 'JUAN', aliasNuevo: 'PEDRO', desde: '2026-05-16', hasta: '', motivo: '' },
+        { tienda: 'granvia', aliasOriginal: 'MARIA', aliasNuevo: 'PEDROTEMP', desde: '2026-06-01', hasta: '2026-06-30', motivo: '' }
+      ];
+    });
+    test('aplicarA: antes del reemplazo el titular aún aparece', () => {
+      // El reemplazo JUAN→PEDRO empieza el 2026-05-16. El día 10 aún no aplica.
+      const crudo = { JUAN: [17.75, 22.25] };
+      const out = Reemplazos.aplicarA(crudo, '2026-05-10', 'granvia');
+      assertDeep(out.JUAN, [17.75, 22.25]);
+      assert(!('PEDRO' in out));
+    });
+
+    test('aplicarA: reemplazo activo pero sustituto sin alta todavía → slot vacío', () => {
+      // PEDRO tiene fechaAlta 2026-05-16; consultamos el mismo día, debería
+      // estar activo. Forzamos un caso en el que el sustituto aún NO tiene alta:
+      const origPedro = Store._state.empleadosGV.PEDRO;
+      Store._state.empleadosGV.PEDRO = { ...origPedro, fechaAlta: '2026-06-01' };
+      const crudo = { JUAN: [17.75, 22.25] };
+      const out = Reemplazos.aplicarA(crudo, '2026-05-20', 'granvia');
+      // JUAN ya estaba de baja (fechaBaja 15/5) y PEDRO aún no tiene alta → nadie
+      assert(!('JUAN' in out));
+      assert(!('PEDRO' in out));
+      Store._state.empleadosGV.PEDRO = origPedro;
+    });
+
+    test('aliasEfectivo: encadena Juan→Pedro→Luis sin caer en bucles', () => {
+      Store._state.empleadosGV.LUIS = { alias: 'LUIS', tienda: 'granvia', fechaAlta: '2026-08-01', contrato: 30 };
+      Store._state.reemplazos.push({
+        tienda: 'granvia', aliasOriginal: 'PEDRO', aliasNuevo: 'LUIS',
+        desde: '2026-08-01', hasta: '', motivo: 'Relevo'
+      });
+      assertEq(Reemplazos.aliasEfectivo('JUAN', '2026-09-01', 'granvia'), 'LUIS');
+    });
+
+    // Cleanup
+    Store._state.empleadosGV = origEmpGV;
+    Store._state.empleadosIS = origEmpIS;
+    Store._state.reemplazos = origReemp;
+  });
+
+  // ============================================================
   // RESUMEN
   // ============================================================
   const sum = document.getElementById('summary');

@@ -328,7 +328,8 @@ var HOJAS = {
   faltas:         'Faltas',
   festivos:       'Festivos',
   descartadas:    'Descartadas',
-  decisiones:     'Decisiones'
+  decisiones:     'Decisiones',
+  reemplazos:     'Reemplazos'
 };
 
 function doGet(e)  { return handleRequest(e); }

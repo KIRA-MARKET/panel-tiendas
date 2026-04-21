@@ -147,6 +147,22 @@ const Sync = {
         Sync._mergeFestivos(data.festivos);
       }
 
+      // Reemplazos de slot
+      if (data.reemplazos) {
+        const reemp = [];
+        for (const r of data.reemplazos) {
+          reemp.push({
+            tienda: r.tienda,
+            aliasOriginal: r.aliasOriginal,
+            aliasNuevo: r.aliasNuevo,
+            desde: r.desde || '',
+            hasta: r.hasta || '',
+            motivo: r.motivo || ''
+          });
+        }
+        Store._state.reemplazos = reemp;
+      }
+
       // Decisiones (Capa 2: historial de decisiones de Nacho)
       if (data.decisiones && data.decisiones.length > 0) {
         Store._state.decisiones = data.decisiones.map(d => ({
@@ -323,6 +339,11 @@ const Sync = {
   syncDecisiones() {
     const h = ['timestamp', 'fecha', 'tienda', 'turnoFds', 'franja', 'ausente', 'motorSugirio', 'nachoEligio', 'accion'];
     Sync.guardar('decisiones', h, Store.getDecisiones());
+  },
+
+  syncReemplazos() {
+    const h = ['tienda', 'aliasOriginal', 'aliasNuevo', 'desde', 'hasta', 'motivo'];
+    Sync.guardar('reemplazos', h, Store.getReemplazos());
   },
 
   syncFestivos() {

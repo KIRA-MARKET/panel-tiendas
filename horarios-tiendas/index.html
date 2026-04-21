@@ -95,6 +95,7 @@
 <script src="js/config.js"></script>
 <script src="js/datos.js"></script>
 <script src="js/empleados.js"></script>
+<script src="js/reemplazos.js"></script>
 <script src="js/rotaciones.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/cobertura.js"></script>
@@ -140,6 +141,9 @@ const App = {
       if (Sync && Sync.syncFestivos && !Sync._loading) Sync.syncFestivos();
     });
     Store.on('syncStatus', (status) => App._updateSyncUI(status));
+    Store.on('reemplazos', () => {
+      if (Sync && Sync.syncReemplazos && !Sync._loading) Sync.syncReemplazos();
+    });
 
     // Renderizar calendario inicial
     CalendarioUI.render();

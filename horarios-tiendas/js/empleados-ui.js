@@ -25,6 +25,8 @@ const EmpleadosUI = {
       const cls = 'btn ' + (tiendaSel === t[0] ? 'btn-primary' : 'btn-secondary');
       html += '<button class="' + cls + '" onclick="EmpleadosUI.setTienda(\'' + t[0] + '\')">' + t[1] + '</button>';
     }
+    html += '    <button class="btn btn-orange" onclick="EmpleadosUI.gestionarReemplazos()" style="margin-left:8px">Reemplazos</button>';
+    html += '    <button class="btn btn-success" onclick="EmpleadosUI.nuevoEmpleado()" style="margin-left:4px">+ Empleado</button>';
     html += '  </div>';
     html += '</div>';
 
@@ -38,11 +40,17 @@ const EmpleadosUI = {
     if (filas.length === 0) {
       html += '<tr><td colspan="8" class="empty" style="text-align:center;padding:24px">Sin empleados</td></tr>';
     } else {
+      const hoy = Utils.formatFecha(new Date());
       for (const e of filas) {
         const tiendaTxt = e.tienda === 'ambas' ? 'GV + IS' : (e.tienda === 'granvia' ? 'GV' : 'IS');
         const nombre = (e.nombre || '') + (e.apellidos ? ' ' + e.apellidos : '');
-        html += '<tr>';
-        html += '<td><strong style="color:' + Utils.escapeHtml(e.color || '#333') + '">' + Utils.escapeHtml(e.alias) + '</strong></td>';
+        const deBaja = e.fechaBaja && e.fechaBaja < hoy;
+        const pendiente = e.fechaAlta && e.fechaAlta > hoy;
+        const estadoTag = deBaja
+          ? ' <span class="sub" style="color:#c62828">· baja ' + Utils.escapeHtml(e.fechaBaja) + '</span>'
+          : (pendiente ? ' <span class="sub" style="color:#1565c0">· entra ' + Utils.escapeHtml(e.fechaAlta) + '</span>' : '');
+        html += '<tr' + (deBaja ? ' style="opacity:0.55"' : '') + '>';
+        html += '<td><strong style="color:' + Utils.escapeHtml(e.color || '#333') + '">' + Utils.escapeHtml(e.alias) + '</strong>' + estadoTag + '</td>';
         html += '<td>' + Utils.escapeHtml(nombre) + '</td>';
         html += '<td>' + (e.contrato || 0) + ' h/sem</td>';
         html += '<td>' + Utils.escapeHtml(e.franja || '—') + '</td>';
@@ -71,6 +79,21 @@ const EmpleadosUI = {
     Modales.editarEmpleado(alias, tienda).then(actualizado => {
       if (actualizado) {
         if (CalendarioUI && CalendarioUI.toast) CalendarioUI.toast('Empleado actualizado: ' + actualizado.alias, 'success');
+        EmpleadosUI.render();
+      }
+    });
+  },
+
+  gestionarReemplazos() {
+    const tienda = EmpleadosUI._tienda || Store.getTienda();
+    Modales.gestionarReemplazos(tienda).then(() => EmpleadosUI.render());
+  },
+
+  nuevoEmpleado() {
+    const tienda = EmpleadosUI._tienda || Store.getTienda();
+    Modales.nuevoEmpleado(tienda).then(creado => {
+      if (creado) {
+        if (CalendarioUI && CalendarioUI.toast) CalendarioUI.toast('Empleado creado: ' + creado.alias, 'success');
         EmpleadosUI.render();
       }
     });

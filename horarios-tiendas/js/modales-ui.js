@@ -1036,8 +1036,14 @@ const Modales = {
                 <div class="form-group"><label>DNI</label><input type="text" id="emp-dni" value="${e(emp.dni)}" disabled></div>
                 <div class="form-group"><label>Email</label><input type="email" id="emp-email" value="${e(emp.email)}" disabled></div>
               </div>
-              <div class="form-group">
-                <label>Fecha de alta</label><input type="date" id="emp-fechaAlta" value="${e(emp.fechaAlta)}" disabled>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Fecha de alta</label><input type="date" id="emp-fechaAlta" value="${e(emp.fechaAlta)}" disabled>
+                </div>
+                <div class="form-group">
+                  <label>Fecha de baja <span class="sub" style="font-weight:400">(deja vacío si sigue activo)</span></label>
+                  <input type="date" id="emp-fechaBaja" value="${e(emp.fechaBaja)}" disabled>
+                </div>
               </div>
               <p id="emp-unlock-status" class="sub" style="margin-top:6px;font-size:11px">Bloqueado. Pulsa "Desbloquear edición" para modificar estos campos.</p>
             </div>
@@ -1058,7 +1064,7 @@ const Modales = {
       const showErr = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
 
       // Desbloqueo de campos sensibles (segunda confirmación)
-      const sensitiveIds = ['emp-dni', 'emp-email', 'emp-fechaAlta'];
+      const sensitiveIds = ['emp-dni', 'emp-email', 'emp-fechaAlta', 'emp-fechaBaja'];
       let desbloqueado = false;
       overlay.querySelector('#emp-unlock-btn').onclick = () => {
         if (desbloqueado) return;
@@ -1102,6 +1108,11 @@ const Modales = {
           actualizado.dni = v('emp-dni').trim();
           actualizado.email = v('emp-email').trim();
           actualizado.fechaAlta = v('emp-fechaAlta');
+          actualizado.fechaBaja = v('emp-fechaBaja'); // '' si vacío → empleado activo
+          if (actualizado.fechaBaja && actualizado.fechaAlta &&
+              actualizado.fechaBaja < actualizado.fechaAlta) {
+            return showErr('La fecha de baja no puede ser anterior a la de alta');
+          }
         }
 
         // Aplicar al store (puede haber cambio de alias)
@@ -1114,6 +1125,261 @@ const Modales = {
 
         Modales._cerrarOverlay(overlay);
         resolve(actualizado);
+      };
+    });
+  },
+
+  // ── Nuevo empleado (útil para dar de alta temporales) ──────
+
+  nuevoEmpleado(tiendaPref) {
+    return new Promise((resolve) => {
+      const overlay = Modales._crearOverlay();
+      const e = (v) => Utils.escapeHtml(v == null ? '' : String(v));
+      const franjas = ['descarga', 'mañanas', 'tardes', 'cierre', 'rotativo'];
+      const tiendas = [['granvia', 'Solo Gran Vía'], ['isabel', 'Solo Isabel'], ['ambas', 'Ambas']];
+      const pref = tiendaPref === 'isabel' ? 'isabel' : (tiendaPref === 'ambas' ? 'ambas' : 'granvia');
+
+      let optFranjas = '';
+      for (const f of franjas) optFranjas += `<option value="${f}">${f}</option>`;
+      let optTiendas = '';
+      for (const t of tiendas) optTiendas += `<option value="${t[0]}"${t[0] === pref ? ' selected' : ''}>${t[1]}</option>`;
+
+      overlay.innerHTML = `
+        <div class="modal modal-lg">
+          <div class="modal-header">
+            <h3>Nuevo empleado</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="sub" style="margin-bottom:10px">Para sustitutos temporales rellena <b>fechaAlta</b> y <b>fechaBaja</b> con el rango del contrato temporal.</p>
+            <div class="form-row">
+              <div class="form-group"><label>Alias *</label><input type="text" id="nemp-alias" placeholder="Ej: PEDRO_T"></div>
+              <div class="form-group"><label>Color</label><input type="color" id="nemp-color" value="#2c5aa0" style="height:36px"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Nombre *</label><input type="text" id="nemp-nombre"></div>
+              <div class="form-group"><label>Apellidos</label><input type="text" id="nemp-apellidos"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Contrato (h/sem)</label><input type="number" step="0.5" id="nemp-contrato" value="30"></div>
+              <div class="form-group"><label>Franja</label><select id="nemp-franja">${optFranjas}</select></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Tienda(s)</label><select id="nemp-tienda">${optTiendas}</select></div>
+              <div class="form-group"><label>Restricción</label><input type="text" id="nemp-restriccion" placeholder="ej: solo-mañanas"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Fecha alta *</label><input type="date" id="nemp-fechaAlta"></div>
+              <div class="form-group"><label>Fecha baja <span class="sub">(si es temporal)</span></label><input type="date" id="nemp-fechaBaja"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>DNI</label><input type="text" id="nemp-dni"></div>
+              <div class="form-group"><label>Teléfono</label><input type="text" id="nemp-telefono"></div>
+            </div>
+            <div id="nemp-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-success" data-action="ok">Crear</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const errEl = overlay.querySelector('#nemp-error');
+      const showErr = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+      const v = (id) => overlay.querySelector('#' + id).value;
+
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => {
+        b.onclick = () => { Modales._cerrarOverlay(overlay); resolve(null); };
+      });
+      overlay.querySelector('[data-action="ok"]').onclick = () => {
+        const alias = v('nemp-alias').trim().toUpperCase();
+        if (!alias) return showErr('El alias es obligatorio');
+        if (!v('nemp-nombre').trim()) return showErr('El nombre es obligatorio');
+        if (!v('nemp-fechaAlta')) return showErr('La fecha de alta es obligatoria');
+        const fBaja = v('nemp-fechaBaja');
+        if (fBaja && fBaja < v('nemp-fechaAlta')) return showErr('La fecha de baja no puede ser anterior a la de alta');
+
+        const tiendaSel = v('nemp-tienda');
+        const empsKey = tiendaSel === 'isabel' ? 'empleadosIS' : 'empleadosGV';
+        const emps = Object.assign({}, Store.get(empsKey));
+        if (emps[alias]) return showErr('Ya existe un empleado con ese alias en esta tienda');
+
+        const nuevo = {
+          alias, nombre: v('nemp-nombre').trim(), apellidos: v('nemp-apellidos').trim(),
+          dni: v('nemp-dni').trim(), telefono: v('nemp-telefono').trim(), email: '',
+          fechaAlta: v('nemp-fechaAlta'), fechaBaja: fBaja || '',
+          contrato: parseFloat(v('nemp-contrato')) || 0,
+          tienda: tiendaSel, franja: v('nemp-franja'), restriccion: v('nemp-restriccion').trim(),
+          color: v('nemp-color')
+        };
+        emps[alias] = nuevo;
+        Store.set(empsKey, emps);
+        if (Sync && Sync.syncEmpleados) Sync.syncEmpleados();
+        Modales._cerrarOverlay(overlay);
+        resolve(nuevo);
+      };
+    });
+  },
+
+  // ── Gestión de reemplazos (baja definitiva / sustituto temporal) ──
+
+  gestionarReemplazos(tienda) {
+    return new Promise((resolve) => {
+      const overlay = Modales._crearOverlay();
+      const render = () => {
+        const e = Utils.escapeHtml;
+        const lista = Store.getReemplazos().filter(r => r.tienda === tienda);
+        const hoy = Utils.formatFecha(new Date());
+
+        let filas = '';
+        if (lista.length === 0) {
+          filas = '<tr><td colspan="6" class="empty" style="text-align:center;padding:18px">Sin reemplazos en ' + (tienda === 'granvia' ? 'Gran Vía' : 'Isabel') + '</td></tr>';
+        } else {
+          lista.forEach((r, idx) => {
+            const enCurso = (!r.desde || r.desde <= hoy) && (!r.hasta || r.hasta >= hoy);
+            const hasta = r.hasta ? e(r.hasta) : '<span class="sub">indefinido</span>';
+            const idxReal = Store.getReemplazos().indexOf(r);
+            filas += '<tr' + (enCurso ? '' : ' style="opacity:0.6"') + '>';
+            filas += '<td><strong>' + e(r.aliasOriginal) + '</strong></td>';
+            filas += '<td>→</td>';
+            filas += '<td><strong>' + e(r.aliasNuevo) + '</strong></td>';
+            filas += '<td>' + e(r.desde || '—') + ' – ' + hasta + '</td>';
+            filas += '<td><span class="sub">' + e(r.motivo || '') + '</span></td>';
+            filas += '<td><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="Modales._eliminarReemplazo(' + idxReal + ')">Eliminar</button></td>';
+            filas += '</tr>';
+          });
+        }
+
+        overlay.innerHTML = `
+          <div class="modal modal-lg">
+            <div class="modal-header">
+              <h3>Reemplazos — ${tienda === 'granvia' ? 'Gran Vía' : 'Isabel'}</h3>
+              <button class="modal-close" data-action="cancel">×</button>
+            </div>
+            <div class="modal-body">
+              <p class="sub" style="margin-bottom:10px">Un reemplazo hace que un alias sea ocupado por otro en un rango de fechas. Sin fecha de fin = baja definitiva.</p>
+              <table class="control-tabla" style="width:100%">
+                <thead><tr><th>Titular</th><th></th><th>Sustituto</th><th>Rango</th><th>Motivo</th><th></th></tr></thead>
+                <tbody>${filas}</tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-action="cancel">Cerrar</button>
+              <button class="btn btn-success" data-action="nuevo">+ Reemplazo</button>
+            </div>
+          </div>
+        `;
+        overlay.querySelectorAll('[data-action="cancel"]').forEach(b => {
+          b.onclick = () => { Modales._cerrarOverlay(overlay); resolve(); };
+        });
+        overlay.querySelector('[data-action="nuevo"]').onclick = () => {
+          Modales.nuevoReemplazo(tienda).then(creado => {
+            if (creado) {
+              if (CalendarioUI && CalendarioUI.toast) CalendarioUI.toast('Reemplazo creado', 'success');
+              CalendarioUI.render();
+              render();
+            }
+          });
+        };
+      };
+
+      Modales._rerenderReemplazos = render; // para _eliminarReemplazo
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+      render();
+    });
+  },
+
+  _eliminarReemplazo(idx) {
+    Modales.confirmar('¿Eliminar este reemplazo? El titular volverá a ocupar sus slots.', 'Eliminar reemplazo').then(ok => {
+      if (!ok) return;
+      Reemplazos.remove(idx);
+      if (Sync && Sync.syncReemplazos) Sync.syncReemplazos();
+      if (CalendarioUI && CalendarioUI.toast) CalendarioUI.toast('Reemplazo eliminado', 'success');
+      CalendarioUI.render();
+      if (Modales._rerenderReemplazos) Modales._rerenderReemplazos();
+    });
+  },
+
+  nuevoReemplazo(tienda) {
+    return new Promise((resolve) => {
+      const overlay = Modales._crearOverlay();
+      const empleados = Object.values(Store.getEmpleadosTienda(tienda) || {})
+        .sort((a, b) => a.alias.localeCompare(b.alias));
+      const hoy = Utils.formatFecha(new Date());
+
+      const opts = empleados.map(emp =>
+        '<option value="' + Utils.escapeHtml(emp.alias) + '">' + Utils.escapeHtml(emp.alias) + ' — ' + Utils.escapeHtml(emp.nombre || '') + '</option>'
+      ).join('');
+
+      overlay.innerHTML = `
+        <div class="modal modal-lg">
+          <div class="modal-header">
+            <h3>Nuevo reemplazo — ${tienda === 'granvia' ? 'Gran Vía' : 'Isabel'}</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Titular (quien deja el slot)</label>
+                <select id="rmp-original"><option value="">—</option>${opts}</select>
+              </div>
+              <div class="form-group">
+                <label>Sustituto (quien ocupa el slot)</label>
+                <select id="rmp-nuevo"><option value="">—</option>${opts}</select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Desde</label><input type="date" id="rmp-desde" value="${hoy}"></div>
+              <div class="form-group">
+                <label>Hasta <span class="sub">(vacío = indefinido, baja definitiva)</span></label>
+                <input type="date" id="rmp-hasta">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Motivo</label>
+              <input type="text" id="rmp-motivo" placeholder="Ej: Baja médica, baja definitiva, excedencia...">
+            </div>
+            <p class="sub" style="margin-top:8px">Consejo: si el sustituto todavía no existe, ciérralo, crea el empleado con <b>+ Empleado</b> y vuelve aquí.</p>
+            <div id="rmp-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-success" data-action="ok">Crear reemplazo</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const errEl = overlay.querySelector('#rmp-error');
+      const showErr = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+      const v = (id) => overlay.querySelector('#' + id).value;
+
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => {
+        b.onclick = () => { Modales._cerrarOverlay(overlay); resolve(null); };
+      });
+      overlay.querySelector('[data-action="ok"]').onclick = () => {
+        const orig = v('rmp-original');
+        const nuevo = v('rmp-nuevo');
+        const desde = v('rmp-desde');
+        const hasta = v('rmp-hasta');
+        if (!orig || !nuevo) return showErr('Selecciona titular y sustituto');
+        if (orig === nuevo) return showErr('El titular y el sustituto no pueden ser la misma persona');
+        if (!desde) return showErr('Fecha "desde" obligatoria');
+        if (hasta && hasta < desde) return showErr('La fecha "hasta" no puede ser anterior a "desde"');
+
+        const reemp = {
+          tienda, aliasOriginal: orig, aliasNuevo: nuevo,
+          desde, hasta: hasta || '', motivo: v('rmp-motivo').trim()
+        };
+        Reemplazos.add(reemp);
+        if (Sync && Sync.syncReemplazos) Sync.syncReemplazos();
+        Modales._cerrarOverlay(overlay);
+        resolve(reemp);
       };
     });
   },

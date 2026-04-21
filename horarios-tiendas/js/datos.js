@@ -38,6 +38,11 @@ const Store = {
     festivos: [],
     decisiones: [], // Capa 2: historial de decisiones de Nacho
 
+    // Reemplazos de slot: un alias es ocupado por otro en un rango de fechas.
+    // Estructura: { tienda, aliasOriginal, aliasNuevo, desde, hasta, motivo }
+    // hasta === null/'' → indefinido (baja definitiva). Ver reemplazos.js.
+    reemplazos: [],
+
     // Estado de sync
     syncStatus: 'loading' // 'loading' | 'ok' | 'error'
   },
@@ -109,6 +114,10 @@ const Store = {
 
   getFestivos() {
     return Store._state.festivos;
+  },
+
+  getReemplazos() {
+    return Store._state.reemplazos;
   },
 
   // ── Setters (emiten eventos) ───────────────────────────────

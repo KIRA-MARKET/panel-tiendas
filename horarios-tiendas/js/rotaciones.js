@@ -71,12 +71,15 @@ const Rotaciones = {
     return horarios;
   },
 
-  /** Obtener horarios L-V según tienda */
+  /** Obtener horarios L-V según tienda (aplica reemplazos de slot) */
   getHorariosLV(fecha, tienda) {
     tienda = tienda || Store.getTienda();
-    return tienda === 'granvia'
+    const crudo = tienda === 'granvia'
       ? Rotaciones.getHorariosGV(fecha)
       : Rotaciones.getHorariosIS(fecha);
+    return (typeof Reemplazos !== 'undefined')
+      ? Reemplazos.aplicarA(crudo, fecha, tienda)
+      : crudo;
   },
 
   // ── Rotación Isabel L-V (ciclo 4) ─────────────────────────
@@ -251,12 +254,15 @@ const Rotaciones = {
     return result;
   },
 
-  /** Obtener FdS según tienda */
+  /** Obtener FdS según tienda (aplica reemplazos de slot) */
   getFds(fecha, tienda) {
     tienda = tienda || Store.getTienda();
-    return tienda === 'granvia'
+    const crudo = tienda === 'granvia'
       ? Rotaciones.getFdsGV(fecha)
       : Rotaciones.getFdsIS(fecha);
+    return (typeof Reemplazos !== 'undefined')
+      ? Reemplazos.aplicarAFds(crudo, fecha, tienda)
+      : crudo;
   },
 
   // ── Helpers de rotación ────────────────────────────────────
