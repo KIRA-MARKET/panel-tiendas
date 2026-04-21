@@ -127,7 +127,18 @@ const App = {
 
     // Escuchar eventos del Store
     Store.on('cambioVista', () => CalendarioUI.render());
-    Store.on('festivos', () => { CalendarioUI.render(); Festivos._guardarLocal(); if (Sync && Sync.syncFestivos) Sync.syncFestivos(); });
+    Store.on('festivos', () => {
+      CalendarioUI.render();
+      // Refrescar la pestaña Festivos si está activa — si no, al abrirla
+      // queda desactualizada aunque los datos sí estén en el Store
+      // (bug 2026-04-21: inscripciones cargadas pero no visibles).
+      const tabFest = document.getElementById('tab-festivos');
+      if (tabFest && tabFest.classList.contains('active')) FestivosUI.render();
+      Festivos._guardarLocal();
+      // Durante Sync.cargar() el flag está activo: no re-sincronizar a Sheets
+      // o sobreescribiríamos los datos que acabamos de leer.
+      if (Sync && Sync.syncFestivos && !Sync._loading) Sync.syncFestivos();
+    });
     Store.on('syncStatus', (status) => App._updateSyncUI(status));
 
     // Renderizar calendario inicial

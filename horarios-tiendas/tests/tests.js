@@ -165,6 +165,94 @@
   });
 
   // ============================================================
+  // Sync._mergeFestivos — carga desde Sheets sin autodestruir datos
+  // Regresión del bug 2026-04-21: asegurarAño durante la carga
+  // emitía 'festivos' → syncFestivos saliente con defaults vacíos.
+  // ============================================================
+  suite('Sync: carga de festivos no sobrescribe el Sheet', function () {
+    // Aislar estado: vaciar festivos y quitar localStorage
+    const origFestivos = Store._state.festivos;
+    const origLS = (typeof localStorage !== 'undefined') ? localStorage.getItem('yolanda_festivos') : null;
+    Store._state.festivos = [];
+    try { localStorage.removeItem('yolanda_festivos'); } catch (e) {}
+
+    // Interceptar el listener 'festivos' como lo haría App.init:
+    // debe respetar Sync._loading para no re-sincronizar a Sheets.
+    const emisionesSync = []; // cada vez que el listener intentaría llamar a syncFestivos
+    const unsub = Store.on('festivos', () => {
+      if (Sync && !Sync._loading) emisionesSync.push('saliente');
+    });
+
+    // Simular filas que vendrían del Sheet: inscrito en festivo default
+    // + asignado en festivo MANUAL (id man-*) + festivo de OTRO año.
+    const rows = [
+      { id: 'def-2030-01-01', fecha: '2030-01-01', nombre: 'Año Nuevo', ambito: 'nacional',
+        tienda: 'granvia', inscritos: 'EVA,SARA', asignados: 'EVA:mañanas:7.25:14.75' },
+      { id: 'def-2030-01-01', fecha: '2030-01-01', nombre: 'Año Nuevo', ambito: 'nacional',
+        tienda: 'isabel', inscritos: 'CAROLINA', asignados: '' },
+      { id: 'man-custom-1', fecha: '2030-07-15', nombre: 'Feria Local', ambito: 'local',
+        tienda: 'granvia', inscritos: 'DAVID', asignados: '' },
+      { id: 'def-2031-01-01', fecha: '2031-01-01', nombre: 'Año Nuevo', ambito: 'nacional',
+        tienda: 'granvia', inscritos: 'LETI', asignados: '' }
+    ];
+
+    // Ejecutar merge en el mismo contexto que Sync.cargar()
+    Sync._loading = true;
+    Sync._mergeFestivos(rows);
+    Sync._loading = false;
+
+    test('No se disparan escrituras salientes durante la carga', () => {
+      assertEq(emisionesSync.length, 0);
+    });
+
+    test('Inscripciones del sheet sobreviven en el festivo default', () => {
+      const f = Store.getFestivos().find(x => x.id === 'def-2030-01-01');
+      assert(f, 'festivo no encontrado');
+      assertDeep(f.inscritos.granvia.sort(), ['EVA', 'SARA']);
+      assertDeep(f.inscritos.isabel, ['CAROLINA']);
+    });
+
+    test('Asignación con turno se parsea a objeto', () => {
+      const f = Store.getFestivos().find(x => x.id === 'def-2030-01-01');
+      assertEq(f.asignados.granvia.length, 1);
+      const a = f.asignados.granvia[0];
+      assertEq(a.empleado, 'EVA');
+      assertEq(a.turno, 'mañanas');
+      assertEq(a.entrada, 7.25);
+      assertEq(a.salida, 14.75);
+    });
+
+    test('Festivo manual huérfano se añade al Store (no se pierde)', () => {
+      const f = Store.getFestivos().find(x => x.id === 'man-custom-1');
+      assert(f, 'festivo manual perdido tras cargar');
+      assertEq(f.nombre, 'Feria Local');
+      assertDeep(f.inscritos.granvia, ['DAVID']);
+    });
+
+    test('Festivos de otros años también se cargan', () => {
+      const f = Store.getFestivos().find(x => x.id === 'def-2031-01-01');
+      assert(f, 'festivo 2031 no cargado');
+      assertDeep(f.inscritos.granvia, ['LETI']);
+    });
+
+    test('Re-merge es idempotente (no duplica festivos manuales)', () => {
+      Sync._loading = true;
+      Sync._mergeFestivos(rows);
+      Sync._loading = false;
+      const manuales = Store.getFestivos().filter(x => x.id === 'man-custom-1');
+      assertEq(manuales.length, 1);
+    });
+
+    // Cleanup
+    unsub();
+    Store._state.festivos = origFestivos;
+    try {
+      if (origLS) localStorage.setItem('yolanda_festivos', origLS);
+      else localStorage.removeItem('yolanda_festivos');
+    } catch (e) {}
+  });
+
+  // ============================================================
   // AUDITOR — detección de huecos de continuidad horaria
   // ============================================================
   suite('Auditor: detectarHuecos (sweep de eventos)', function () {

@@ -11,10 +11,17 @@ const Sync = {
   _writeQueue: [],
   _writing: false,
 
+  // Flag activo durante cargar(): suprime sync saliente por eventos
+  // que se emiten al hidratar el Store desde Sheets. Sin esto, un
+  // asegurarAño() durante la carga provocaba que syncFestivos()
+  // sobrescribiera el Sheet con los defaults vacíos (bug 2026-04-21).
+  _loading: false,
+
   // ── Cargar todos los datos desde Sheets ────────────────────
 
   async cargar() {
     Store.setSyncStatus('loading');
+    Sync._loading = true;
     try {
       const response = await fetch(CONFIG.SHEETS_API + '?action=readAll');
       const data = await response.json();
@@ -136,26 +143,8 @@ const Sync = {
       }
 
       // Festivos (inscritos + asignaciones con turno)
-      if (data.festivos && data.festivos.length > 0) {
-        const año = Store.getAño();
-        if (typeof Festivos !== 'undefined') Festivos.asegurarAño(año);
-        for (const row of data.festivos) {
-          const f = Store.getFestivos().find(x => x.id === row.id && x.fecha === row.fecha);
-          if (!f) continue;
-          const tienda = row.tienda;
-          if (row.inscritos) {
-            f.inscritos[tienda] = row.inscritos.split(',').filter(Boolean);
-          }
-          if (row.asignados) {
-            f.asignados[tienda] = row.asignados.split(',').filter(Boolean).map(s => {
-              const parts = s.split(':');
-              if (parts.length >= 4) {
-                return { empleado: parts[0], turno: parts[1], entrada: parseFloat(parts[2]), salida: parseFloat(parts[3]) };
-              }
-              return parts[0]; // formato antiguo: solo nombre
-            });
-          }
-        }
+      if (data.festivos && data.festivos.length > 0 && typeof Festivos !== 'undefined') {
+        Sync._mergeFestivos(data.festivos);
       }
 
       // Decisiones (Capa 2: historial de decisiones de Nacho)
@@ -181,7 +170,76 @@ const Sync = {
       Store.setSyncStatus('error');
       console.error('Error cargando Sheets:', err);
       return false;
+    } finally {
+      Sync._loading = false;
     }
+  },
+
+  // ── Merge de festivos desde Sheets ─────────────────────────
+  // Diseñado para ser idempotente y no perder datos:
+  //  - Asegura los años presentes en rows (no solo el actual).
+  //  - Agrupa rows por (id, fecha) para combinar granvia+isabel.
+  //  - Si el festivo ya existe en Store, actualiza inscritos/asignados.
+  //  - Si no existe (festivo manual creado en otro dispositivo), lo añade.
+  // Se llama con Sync._loading=true, así que los eventos 'festivos'
+  // emitidos aquí NO disparan un syncFestivos() que sobreescriba el Sheet.
+  _mergeFestivos(rows) {
+    // 1. Asegurar años
+    const años = new Set();
+    for (const r of rows) {
+      const m = String(r.fecha || '').match(/^(\d{4})-/);
+      if (m) años.add(parseInt(m[1], 10));
+    }
+    años.add(Store.getAño());
+    for (const a of años) Festivos.asegurarAño(a);
+
+    // 2. Agrupar por (id, fecha)
+    const agrupados = {};
+    for (const row of rows) {
+      const key = row.id + '|' + row.fecha;
+      if (!agrupados[key]) {
+        agrupados[key] = {
+          id: row.id, fecha: row.fecha,
+          nombre: row.nombre || '', ambito: row.ambito || 'local',
+          inscritos: { granvia: [], isabel: [] },
+          asignados: { granvia: [], isabel: [] }
+        };
+      }
+      const g = agrupados[key];
+      const tienda = row.tienda === 'granvia' || row.tienda === 'isabel' ? row.tienda : null;
+      if (!tienda) continue;
+      if (row.inscritos) {
+        g.inscritos[tienda] = String(row.inscritos).split(',').filter(Boolean);
+      }
+      if (row.asignados) {
+        g.asignados[tienda] = String(row.asignados).split(',').filter(Boolean).map(s => {
+          const parts = String(s).split(':');
+          if (parts.length >= 4) {
+            return { empleado: parts[0], turno: parts[1], entrada: parseFloat(parts[2]), salida: parseFloat(parts[3]) };
+          }
+          return parts[0]; // formato antiguo: solo nombre
+        });
+      }
+    }
+
+    // 3. Aplicar al Store: actualizar existentes, añadir manuales huérfanos
+    const festivos = Store._state.festivos;
+    for (const key in agrupados) {
+      const g = agrupados[key];
+      const idx = festivos.findIndex(x => x.id === g.id && x.fecha === g.fecha);
+      if (idx >= 0) {
+        festivos[idx].inscritos = g.inscritos;
+        festivos[idx].asignados = g.asignados;
+      } else {
+        festivos.push({
+          id: g.id, fecha: g.fecha, nombre: g.nombre, ambito: g.ambito,
+          inscritos: g.inscritos, asignados: g.asignados
+        });
+      }
+    }
+    festivos.sort((a, b) => a.fecha.localeCompare(b.fecha));
+    Festivos._guardarLocal();
+    Store._emit('festivos', festivos);
   },
 
   // ── Guardar con cola (evita race conditions) ───────────────
