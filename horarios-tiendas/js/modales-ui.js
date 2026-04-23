@@ -1203,9 +1203,18 @@ const Modales = {
         if (fBaja && fBaja < v('nemp-fechaAlta')) return showErr('La fecha de baja no puede ser anterior a la de alta');
 
         const tiendaSel = v('nemp-tienda');
-        const empsKey = tiendaSel === 'isabel' ? 'empleadosIS' : 'empleadosGV';
-        const emps = Object.assign({}, Store.get(empsKey));
-        if (emps[alias]) return showErr('Ya existe un empleado con ese alias en esta tienda');
+        // Cada tienda mantiene su propio registro (contrato distinto por CIF).
+        // 'ambas' crea un registro en los dos stores; cada tienda solo en el suyo.
+        const destinos = tiendaSel === 'ambas' ? ['empleadosGV', 'empleadosIS']
+                        : tiendaSel === 'isabel' ? ['empleadosIS']
+                        : ['empleadosGV'];
+
+        for (const k of destinos) {
+          if (Store.get(k)[alias]) {
+            const nombreTienda = k === 'empleadosGV' ? 'Gran Vía' : 'Isabel';
+            return showErr('Ya existe un empleado con alias "' + alias + '" en ' + nombreTienda);
+          }
+        }
 
         const nuevo = {
           alias, nombre: v('nemp-nombre').trim(), apellidos: v('nemp-apellidos').trim(),
@@ -1215,8 +1224,11 @@ const Modales = {
           tienda: tiendaSel, franja: v('nemp-franja'), restriccion: v('nemp-restriccion').trim(),
           color: v('nemp-color')
         };
-        emps[alias] = nuevo;
-        Store.set(empsKey, emps);
+        for (const k of destinos) {
+          const emps = Object.assign({}, Store.get(k));
+          emps[alias] = Object.assign({}, nuevo);
+          Store.set(k, emps);
+        }
         if (Sync && Sync.syncEmpleados) Sync.syncEmpleados();
         Modales._cerrarOverlay(overlay);
         resolve(nuevo);
