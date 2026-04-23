@@ -1268,6 +1268,62 @@ const Modales = {
   // ── Intercambio puntual de turno entre dos empleados ──────
 
   /**
+   * Simula el intercambio y devuelve las alertas de mínimos que
+   * aparecerían DESPUÉS pero NO existían ANTES. Formato: string legible.
+   * No persiste nada: añade y quita el intercambio en memoria.
+   */
+  _alertasNuevasPorIntercambio(inter, esFds) {
+    const key = (a) => a.franja + ':' + a.actual + '/' + a.minimo;
+
+    // Fechas a comprobar
+    const fechas = [];
+    if (esFds) {
+      const sab = Utils.parseFecha(inter.fecha);
+      const dom = new Date(sab.getTime() + 86400000);
+      fechas.push({ fecha: sab, fds: true });
+      fechas.push({ fecha: dom, fds: true });
+    } else {
+      fechas.push({ fecha: Utils.parseFecha(inter.fecha), fds: false });
+    }
+
+    // Snapshot ANTES
+    const antes = new Set();
+    for (const { fecha, fds } of fechas) {
+      const alertas = fds
+        ? Cobertura.verificarMinimosFds(fecha, inter.tienda)
+        : Cobertura.verificarMinimosLV(fecha, inter.tienda);
+      for (const a of alertas) antes.add(key(a));
+    }
+
+    // Aplicar temporalmente
+    Store._state.intercambios.push(inter);
+
+    // Snapshot DESPUÉS
+    const despues = [];
+    for (const { fecha, fds } of fechas) {
+      const alertas = fds
+        ? Cobertura.verificarMinimosFds(fecha, inter.tienda)
+        : Cobertura.verificarMinimosLV(fecha, inter.tienda);
+      for (const a of alertas) despues.push(a);
+    }
+
+    // Revertir
+    Store._state.intercambios.pop();
+
+    // Nuevas = las que aparecen en DESPUÉS con key no presente en ANTES
+    const nuevasStr = [];
+    const vistas = new Set();
+    for (const a of despues) {
+      const k = key(a);
+      if (antes.has(k)) continue;
+      if (vistas.has(k)) continue;
+      vistas.add(k);
+      nuevasStr.push(a.franja + ' (' + a.actual + '/' + a.minimo + ')');
+    }
+    return nuevasStr;
+  },
+
+  /**
    * Modal para intercambiar turno de un empleado con otro que trabaje
    * el mismo día (L-V) o el mismo FdS (FdS). Sin ausente de por medio:
    * los dos empleados están presentes, solo cambian de hueco.
@@ -1378,11 +1434,26 @@ const Modales = {
           empleadoB: c.alias, turnoB,
           motivo
         };
-        Intercambios.add(inter);
-        if (Sync && Sync.syncIntercambios) Sync.syncIntercambios();
-        if (CalendarioUI && CalendarioUI.toast) CalendarioUI.toast('Intercambio creado: ' + alias + ' ↔ ' + c.alias, 'success');
-        Modales._cerrarOverlay(overlay);
-        resolve(inter);
+
+        // Validar mínimos: snapshot antes y después para detectar nuevas violaciones.
+        const alertasNuevas = Modales._alertasNuevasPorIntercambio(inter, esFds);
+
+        const confirmarYGuardar = () => {
+          Intercambios.add(inter);
+          if (Sync && Sync.syncIntercambios) Sync.syncIntercambios();
+          if (CalendarioUI && CalendarioUI.toast) CalendarioUI.toast('Intercambio creado: ' + alias + ' ↔ ' + c.alias, 'success');
+          Modales._cerrarOverlay(overlay);
+          resolve(inter);
+        };
+
+        if (alertasNuevas.length > 0) {
+          Modales.confirmar(
+            'Con este intercambio quedan por debajo del mínimo: ' + alertasNuevas.join(', ') + '. ¿Continuar igualmente?',
+            'Aviso de mínimos'
+          ).then(ok => { if (ok) confirmarYGuardar(); });
+        } else {
+          confirmarYGuardar();
+        }
       };
     });
   },

@@ -173,9 +173,15 @@ const CalendarioUI = {
 
         const nombreSafe = Utils.escapeHtml(turno.nombre);
         const modIcon = turno.modificado ? ' \u270e' : '';
+        const intActivoLV = typeof Intercambios !== 'undefined'
+          ? Intercambios.getActivoPara(turno.nombre, fs, tienda, 'LV') : null;
+        const intIconLV = intActivoLV ? ' \u{1F504}' : '';
+        const intTitleLV = intActivoLV
+          ? ' title="Intercambio con ' + Utils.escapeHtml(intActivoLV.intercambio.empleadoA === turno.nombre ? intActivoLV.intercambio.empleadoB : intActivoLV.intercambio.empleadoA) + '"'
+          : '';
 
-        html += '<div class="' + cls + '" data-emp="' + nombreSafe + '" data-fecha="' + fs + '" data-entrada="' + turno.e + '" data-salida="' + turno.s + '" data-franja="' + fr + '">';
-        html += '<span class="turno-nombre">' + nombreSafe + modIcon + '</span>';
+        html += '<div class="' + cls + '" data-emp="' + nombreSafe + '" data-fecha="' + fs + '" data-entrada="' + turno.e + '" data-salida="' + turno.s + '" data-franja="' + fr + '"' + intTitleLV + '>';
+        html += '<span class="turno-nombre">' + nombreSafe + modIcon + intIconLV + '</span>';
         html += '<span class="turno-hora">' + Utils.formatHora(turno.e) + '-' + Utils.formatHora(turno.s) + '</span>';
         html += '</div>';
 
@@ -319,9 +325,15 @@ const CalendarioUI = {
       const nombreSafe = Utils.escapeHtml(n);
       const cls = 'turno fds' + (aus ? ' ausente' : '') + (tieneModificacion ? ' modificado' : '');
       const modIcon = tieneModificacion ? ' \u270e' : '';
+      const intActivoFds = typeof Intercambios !== 'undefined'
+        ? Intercambios.getActivoPara(n, fs, tienda, turnoKey) : null;
+      const intIconFds = intActivoFds ? ' \u{1F504}' : '';
+      const intTitleFds = intActivoFds
+        ? ' title="Intercambio con ' + Utils.escapeHtml(intActivoFds.intercambio.empleadoA === n ? intActivoFds.intercambio.empleadoB : intActivoFds.intercambio.empleadoA) + '"'
+        : '';
 
-      html += '<div class="' + cls + '" data-emp="' + nombreSafe + '" data-fecha="' + fs + '" data-entrada="' + h[0] + '" data-salida="' + h[1] + '" data-turno-fds="' + turnoKey + '">';
-      html += '<span class="turno-nombre">' + nombreSafe + modIcon + '</span>';
+      html += '<div class="' + cls + '" data-emp="' + nombreSafe + '" data-fecha="' + fs + '" data-entrada="' + h[0] + '" data-salida="' + h[1] + '" data-turno-fds="' + turnoKey + '"' + intTitleFds + '>';
+      html += '<span class="turno-nombre">' + nombreSafe + modIcon + intIconFds + '</span>';
       html += '<span class="turno-hora">' + Utils.formatHora(h[0]) + '-' + Utils.formatHora(h[1]) + '</span>';
       html += '</div>';
 
