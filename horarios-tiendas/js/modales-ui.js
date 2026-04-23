@@ -1302,16 +1302,16 @@ const Modales = {
 
       let listaHtml = '';
       if (candidatos.length === 0) {
-        listaHtml = `<p style="text-align:center;padding:20px;color:#c62828;font-size:12px">No hay compañeros disponibles para intercambiar este turno.</p>`;
+        listaHtml = `<p style="text-align:center;padding:20px;color:var(--err);font-size:12px">No hay compañeros disponibles para intercambiar este turno.</p>`;
       } else {
         for (let i = 0; i < candidatos.length; i++) {
           const c = candidatos[i];
           const sub = esFds ? c.turno + ' · ' : '';
           listaHtml += `
-            <div class="cand-option" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-radius:6px;border:1px solid #e0e0e0;background:#fff;margin-bottom:4px"
-              onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background='#fff'">
+            <div class="cand-option" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);margin-bottom:4px"
+              onmouseover="if(!this.classList.contains('selected'))this.style.background='var(--primary-light)'" onmouseout="if(!this.classList.contains('selected'))this.style.background='var(--surface)'">
               <strong style="flex:1">${e(c.alias)}</strong>
-              <span class="sub" style="font-size:11px;color:#666">${e(sub)}${Utils.formatHora(c.entrada)}–${Utils.formatHora(c.salida)}</span>
+              <span style="font-size:11px;color:var(--text-secondary)">${e(sub)}${Utils.formatHora(c.entrada)}–${Utils.formatHora(c.salida)}</span>
             </div>
           `;
         }
@@ -1331,7 +1331,7 @@ const Modales = {
               <label>Motivo <span class="sub">(opcional)</span></label>
               <input type="text" id="int-motivo" placeholder="Ej: cita médica, asunto personal…">
             </div>
-            <div id="int-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+            <div id="int-error" style="display:none;background:var(--err-light);color:var(--err);padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
@@ -1351,11 +1351,13 @@ const Modales = {
         el.onclick = () => {
           elegido = parseInt(el.dataset.idx, 10);
           overlay.querySelectorAll('.cand-option').forEach(o => {
-            o.style.background = '#fff';
-            o.style.borderColor = '#e0e0e0';
+            o.classList.remove('selected');
+            o.style.background = 'var(--surface)';
+            o.style.borderColor = 'var(--border)';
           });
-          el.style.background = '#e8f5e9';
-          el.style.borderColor = '#2e7d32';
+          el.classList.add('selected');
+          el.style.background = 'var(--ok-light)';
+          el.style.borderColor = 'var(--ok)';
           btnOk.disabled = false;
           btnOk.style.opacity = '1';
         };
