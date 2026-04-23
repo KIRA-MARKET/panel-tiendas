@@ -712,6 +712,14 @@ const Modales = {
         ? `<button class="btn btn-secondary" data-action="sustituto" style="justify-content:flex-start;padding:12px 14px">📋 ${sustActual ? 'Cambiar sustituto (actual: ' + Utils.escapeHtml(sustActual.sustituto) + ')' : 'Asignar sustituto'}</button>`
         : '';
 
+      // ¿Ya hay un intercambio activo para este empleado? Solo tiene sentido ofrecer el swap si está presente.
+      const turnoAct = ctx.turnoFds ? ctx.turnoFds : 'LV';
+      const intActivo = !ausente && typeof Intercambios !== 'undefined'
+        ? Intercambios.getActivoPara(alias, fecha, tienda, turnoAct) : null;
+      const btnIntercambioHtml = ausente ? '' : (intActivo
+        ? `<button class="btn btn-secondary" data-action="quitarIntercambio" style="justify-content:flex-start;padding:12px 14px">🔄 Deshacer intercambio (con ${Utils.escapeHtml(intActivo.intercambio.empleadoA === alias ? intActivo.intercambio.empleadoB : intActivo.intercambio.empleadoA)})</button>`
+        : `<button class="btn btn-secondary" data-action="intercambiar" style="justify-content:flex-start;padding:12px 14px">🔄 Intercambiar turno con…</button>`);
+
       const html = `
         <div class="modal" style="max-width:380px">
           <div class="modal-header">
@@ -723,6 +731,7 @@ const Modales = {
             <div style="display:flex;flex-direction:column;gap:8px">
               ${btnSustHtml}
               <button class="btn btn-secondary" data-action="modificar" style="justify-content:flex-start;padding:12px 14px">✎ Modificar horario hoy</button>
+              ${btnIntercambioHtml}
               <button class="btn btn-secondary" data-action="ausencia" style="justify-content:flex-start;padding:12px 14px">📅 Registrar ausencia</button>
               <button class="btn btn-secondary" data-action="ficha" style="justify-content:flex-start;padding:12px 14px">👤 Ficha del empleado</button>
             </div>
@@ -748,6 +757,26 @@ const Modales = {
         close('modificar');
         Modales.modificarHorario(alias, fecha, tienda, ctx).then(() => CalendarioUI.render());
       };
+      const btnInt = overlay.querySelector('[data-action="intercambiar"]');
+      if (btnInt) {
+        btnInt.onclick = () => {
+          close('intercambiar');
+          Modales.elegirIntercambio(alias, fecha, tienda, ctx).then(() => CalendarioUI.render());
+        };
+      }
+      const btnDesInt = overlay.querySelector('[data-action="quitarIntercambio"]');
+      if (btnDesInt) {
+        btnDesInt.onclick = () => {
+          close('quitarIntercambio');
+          Modales.confirmar('¿Deshacer este intercambio? Los dos empleados vuelven a su turno original.', 'Deshacer intercambio').then(ok => {
+            if (!ok) return;
+            Intercambios.remove(intActivo.idx);
+            if (Sync && Sync.syncIntercambios) Sync.syncIntercambios();
+            if (CalendarioUI && CalendarioUI.toast) CalendarioUI.toast('Intercambio deshecho', 'success');
+            CalendarioUI.render();
+          });
+        };
+      }
       overlay.querySelector('[data-action="ausencia"]').onclick = () => {
         close('ausencia');
         Modales.nuevaAusencia(alias).then(() => CalendarioUI.render());
@@ -1232,6 +1261,126 @@ const Modales = {
         if (Sync && Sync.syncEmpleados) Sync.syncEmpleados();
         Modales._cerrarOverlay(overlay);
         resolve(nuevo);
+      };
+    });
+  },
+
+  // ── Intercambio puntual de turno entre dos empleados ──────
+
+  /**
+   * Modal para intercambiar turno de un empleado con otro que trabaje
+   * el mismo día (L-V) o el mismo FdS (FdS). Sin ausente de por medio:
+   * los dos empleados están presentes, solo cambian de hueco.
+   */
+  elegirIntercambio(alias, fecha, tienda, ctx) {
+    return new Promise((resolve) => {
+      const overlay = Modales._crearOverlay();
+      const fechaES = Utils.formatFechaES ? Utils.formatFechaES(fecha) : fecha;
+      const esFds = !!ctx.turnoFds;
+      const turnoTxt = esFds ? ctx.turnoFds : 'L-V';
+      const e = Utils.escapeHtml;
+
+      // Candidatos + fecha ancla para el intercambio
+      let candidatos = [];
+      let fechaAncla;
+      if (esFds) {
+        const d = typeof fecha === 'string' ? Utils.parseFecha(fecha) : fecha;
+        const sab = d.getDay() === 0 ? new Date(d.getTime() - 86400000) : d;
+        fechaAncla = Utils.formatFecha(sab);
+        candidatos = Intercambios.candidatosFds(alias, sab, tienda);
+      } else {
+        fechaAncla = typeof fecha === 'string' ? fecha : Utils.formatFecha(fecha);
+        candidatos = Intercambios.candidatosLV(alias, fecha, tienda);
+      }
+
+      // Filtrar candidatos que ya estén metidos en otro intercambio ese día
+      candidatos = candidatos.filter(c => {
+        const t = esFds ? c.turno : 'LV';
+        const act = Intercambios.getActivoPara(c.alias, fechaAncla, tienda, t);
+        return !act;
+      });
+
+      let listaHtml = '';
+      if (candidatos.length === 0) {
+        listaHtml = `<p style="text-align:center;padding:20px;color:#c62828;font-size:12px">No hay compañeros disponibles para intercambiar este turno.</p>`;
+      } else {
+        for (let i = 0; i < candidatos.length; i++) {
+          const c = candidatos[i];
+          const sub = esFds ? c.turno + ' · ' : '';
+          listaHtml += `
+            <div class="cand-option" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-radius:6px;border:1px solid #e0e0e0;background:#fff;margin-bottom:4px"
+              onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background='#fff'">
+              <strong style="flex:1">${e(c.alias)}</strong>
+              <span class="sub" style="font-size:11px;color:#666">${e(sub)}${Utils.formatHora(c.entrada)}–${Utils.formatHora(c.salida)}</span>
+            </div>
+          `;
+        }
+      }
+
+      overlay.innerHTML = `
+        <div class="modal" style="max-width:460px">
+          <div class="modal-header">
+            <h3>Intercambiar turno — ${e(alias)}</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="sub" style="margin-bottom:10px;font-size:12px">${e(fechaES)} · ${e(turnoTxt)}${ctx.entrada != null ? ' · ' + Utils.formatHora(ctx.entrada) + '–' + Utils.formatHora(ctx.salida) : ''}</p>
+            <p class="sub" style="margin-bottom:6px;font-size:12px">Elige con quién intercambia:</p>
+            <div id="int-lista">${listaHtml}</div>
+            <div class="form-group" style="margin-top:10px">
+              <label>Motivo <span class="sub">(opcional)</span></label>
+              <input type="text" id="int-motivo" placeholder="Ej: cita médica, asunto personal…">
+            </div>
+            <div id="int-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-success" data-action="ok" disabled style="opacity:0.5">Intercambiar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const errEl = overlay.querySelector('#int-error');
+      const showErr = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+      const btnOk = overlay.querySelector('[data-action="ok"]');
+      let elegido = -1;
+
+      overlay.querySelectorAll('.cand-option').forEach(el => {
+        el.onclick = () => {
+          elegido = parseInt(el.dataset.idx, 10);
+          overlay.querySelectorAll('.cand-option').forEach(o => {
+            o.style.background = '#fff';
+            o.style.borderColor = '#e0e0e0';
+          });
+          el.style.background = '#e8f5e9';
+          el.style.borderColor = '#2e7d32';
+          btnOk.disabled = false;
+          btnOk.style.opacity = '1';
+        };
+      });
+
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => {
+        b.onclick = () => { Modales._cerrarOverlay(overlay); resolve(null); };
+      });
+      btnOk.onclick = () => {
+        if (elegido < 0) return showErr('Elige un compañero');
+        const c = candidatos[elegido];
+        const turnoA = esFds ? ctx.turnoFds : 'LV';
+        const turnoB = esFds ? c.turno : 'LV';
+        const motivo = overlay.querySelector('#int-motivo').value.trim();
+        const inter = {
+          fecha: fechaAncla, tienda,
+          empleadoA: alias, turnoA,
+          empleadoB: c.alias, turnoB,
+          motivo
+        };
+        Intercambios.add(inter);
+        if (Sync && Sync.syncIntercambios) Sync.syncIntercambios();
+        if (CalendarioUI && CalendarioUI.toast) CalendarioUI.toast('Intercambio creado: ' + alias + ' ↔ ' + c.alias, 'success');
+        Modales._cerrarOverlay(overlay);
+        resolve(inter);
       };
     });
   },

@@ -163,6 +163,23 @@ const Sync = {
         Store._state.reemplazos = reemp;
       }
 
+      // Intercambios puntuales de turno
+      if (data.intercambios) {
+        const inter = [];
+        for (const x of data.intercambios) {
+          inter.push({
+            fecha: x.fecha,
+            tienda: x.tienda,
+            empleadoA: x.empleadoA,
+            turnoA: x.turnoA,
+            empleadoB: x.empleadoB,
+            turnoB: x.turnoB,
+            motivo: x.motivo || ''
+          });
+        }
+        Store._state.intercambios = inter;
+      }
+
       // Decisiones (Capa 2: historial de decisiones de Nacho)
       if (data.decisiones && data.decisiones.length > 0) {
         Store._state.decisiones = data.decisiones.map(d => ({
@@ -344,6 +361,11 @@ const Sync = {
   syncReemplazos() {
     const h = ['tienda', 'aliasOriginal', 'aliasNuevo', 'desde', 'hasta', 'motivo'];
     Sync.guardar('reemplazos', h, Store.getReemplazos());
+  },
+
+  syncIntercambios() {
+    const h = ['fecha', 'tienda', 'empleadoA', 'turnoA', 'empleadoB', 'turnoB', 'motivo'];
+    Sync.guardar('intercambios', h, Store.getIntercambios());
   },
 
   syncFestivos() {

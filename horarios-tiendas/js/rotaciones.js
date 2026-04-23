@@ -71,15 +71,19 @@ const Rotaciones = {
     return horarios;
   },
 
-  /** Obtener horarios L-V según tienda (aplica reemplazos de slot) */
+  /** Obtener horarios L-V según tienda (aplica reemplazos de slot e intercambios). */
   getHorariosLV(fecha, tienda) {
     tienda = tienda || Store.getTienda();
     const crudo = tienda === 'granvia'
       ? Rotaciones.getHorariosGV(fecha)
       : Rotaciones.getHorariosIS(fecha);
-    return (typeof Reemplazos !== 'undefined')
+    let res = (typeof Reemplazos !== 'undefined')
       ? Reemplazos.aplicarA(crudo, fecha, tienda)
       : crudo;
+    if (typeof Intercambios !== 'undefined') {
+      res = Intercambios.aplicarA(res, fecha, tienda);
+    }
+    return res;
   },
 
   // ── Rotación Isabel L-V (ciclo 4) ─────────────────────────
@@ -254,15 +258,23 @@ const Rotaciones = {
     return result;
   },
 
-  /** Obtener FdS según tienda (aplica reemplazos de slot) */
+  /** Obtener FdS según tienda (aplica reemplazos de slot e intercambios). */
   getFds(fecha, tienda) {
     tienda = tienda || Store.getTienda();
     const crudo = tienda === 'granvia'
       ? Rotaciones.getFdsGV(fecha)
       : Rotaciones.getFdsIS(fecha);
-    return (typeof Reemplazos !== 'undefined')
+    let res = (typeof Reemplazos !== 'undefined')
       ? Reemplazos.aplicarAFds(crudo, fecha, tienda)
       : crudo;
+    if (typeof Intercambios !== 'undefined') {
+      // El intercambio FdS se ancla al sábado del FdS.
+      const d = typeof fecha === 'string' ? Utils.parseFecha(fecha) : fecha;
+      const dow = d.getDay(); // 0=dom, 6=sab
+      const sab = dow === 0 ? new Date(d.getTime() - 86400000) : d;
+      res = Intercambios.aplicarAFds(res, sab, tienda);
+    }
+    return res;
   },
 
   // ── Helpers de rotación ────────────────────────────────────

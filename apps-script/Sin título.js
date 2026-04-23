@@ -13,6 +13,7 @@ function inicializarTodo() {
   crearSustituciones(ss);
   crearModificaciones(ss);
   crearFaltas(ss);
+  crearIntercambios(ss);
   var hoja1 = ss.getSheetByName('Hoja 1');
   if (hoja1 && ss.getSheets().length > 1) {
     ss.deleteSheet(hoja1);
@@ -247,6 +248,11 @@ function crearFaltas(ss) {
   writeData(ss, 'Faltas', h, []);
 }
 
+function crearIntercambios(ss) {
+  var h = ['fecha','tienda','empleadoA','turnoA','empleadoB','turnoB','motivo'];
+  writeData(ss, 'Intercambios', h, []);
+}
+
 var HOJAS = {
   empleadosGV: 'EmpleadosGV',
   empleadosIS: 'EmpleadosIS',
@@ -261,7 +267,8 @@ var HOJAS = {
   descartadas: 'Descartadas',
   festivos: 'Festivos',
   decisiones: 'Decisiones',
-  reemplazos: 'Reemplazos'
+  reemplazos: 'Reemplazos',
+  intercambios: 'Intercambios'
 };
 
 function doGet(e) { return handleRequest(e); }

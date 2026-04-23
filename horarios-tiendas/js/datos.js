@@ -43,6 +43,11 @@ const Store = {
     // hasta === null/'' → indefinido (baja definitiva). Ver reemplazos.js.
     reemplazos: [],
 
+    // Intercambios puntuales de turno entre dos empleados presentes.
+    // Estructura: { fecha, tienda, empleadoA, turnoA, empleadoB, turnoB, motivo }
+    // turnoA/B = 'LV' (L-V) o 'SAB_M'/'SAB_T'/'DOM_M'/'DOM_T' (FdS, fecha=sábado). Ver intercambios.js.
+    intercambios: [],
+
     // Estado de sync
     syncStatus: 'loading' // 'loading' | 'ok' | 'error'
   },
@@ -118,6 +123,10 @@ const Store = {
 
   getReemplazos() {
     return Store._state.reemplazos;
+  },
+
+  getIntercambios() {
+    return Store._state.intercambios;
   },
 
   // ── Setters (emiten eventos) ───────────────────────────────

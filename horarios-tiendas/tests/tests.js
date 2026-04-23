@@ -1459,6 +1459,123 @@
   });
 
   // ============================================================
+  // Intercambios — swap puntual de turno entre dos empleados
+  // ============================================================
+  suite('Intercambios: aplicarA (L-V) y aplicarAFds', function () {
+    const origInter = Store._state.intercambios;
+
+    test('aplicarA L-V sin intercambios devuelve el mapa tal cual', () => {
+      Store._state.intercambios = [];
+      const crudo = { ANA: [7, 15], BEA: [14, 22] };
+      const out = Intercambios.aplicarA(crudo, '2026-04-20', 'granvia');
+      assertDeep(out.ANA, [7, 15]);
+      assertDeep(out.BEA, [14, 22]);
+    });
+
+    test('aplicarA L-V: swap de horarios entre A y B en el mismo día', () => {
+      Store._state.intercambios = [{
+        fecha: '2026-04-20', tienda: 'granvia',
+        empleadoA: 'ANA', turnoA: 'LV',
+        empleadoB: 'BEA', turnoB: 'LV',
+        motivo: ''
+      }];
+      const crudo = { ANA: [7, 15], BEA: [14, 22], CARLOS: [10, 14] };
+      const out = Intercambios.aplicarA(crudo, '2026-04-20', 'granvia');
+      assertDeep(out.ANA, [14, 22]);
+      assertDeep(out.BEA, [7, 15]);
+      assertDeep(out.CARLOS, [10, 14]); // sin tocar
+    });
+
+    test('aplicarA L-V: fecha o tienda distinta no aplica', () => {
+      Store._state.intercambios = [{
+        fecha: '2026-04-20', tienda: 'granvia',
+        empleadoA: 'ANA', turnoA: 'LV', empleadoB: 'BEA', turnoB: 'LV', motivo: ''
+      }];
+      const crudo = { ANA: [7, 15], BEA: [14, 22] };
+      const outOtraFecha = Intercambios.aplicarA(crudo, '2026-04-21', 'granvia');
+      assertDeep(outOtraFecha.ANA, [7, 15]);
+      const outOtraTienda = Intercambios.aplicarA(crudo, '2026-04-20', 'isabel');
+      assertDeep(outOtraTienda.ANA, [7, 15]);
+    });
+
+    test('aplicarA L-V: si falta uno de los dos en el mapa, no toca nada', () => {
+      Store._state.intercambios = [{
+        fecha: '2026-04-20', tienda: 'granvia',
+        empleadoA: 'ANA', turnoA: 'LV', empleadoB: 'INEXISTENTE', turnoB: 'LV', motivo: ''
+      }];
+      const crudo = { ANA: [7, 15] };
+      const out = Intercambios.aplicarA(crudo, '2026-04-20', 'granvia');
+      assertDeep(out.ANA, [7, 15]);
+    });
+
+    test('aplicarAFds: A de SAB_T se va a SAB_M y B de SAB_M se va a SAB_T', () => {
+      Store._state.intercambios = [{
+        fecha: '2026-04-25', tienda: 'granvia',
+        empleadoA: 'ANDREA', turnoA: 'SAB_T',
+        empleadoB: 'ABEL',   turnoB: 'SAB_M',
+        motivo: ''
+      }];
+      const crudo = {
+        SAB_M: { ABEL: [7, 14] },
+        SAB_T: { ANDREA: [15, 22] },
+        DOM_M: {}, DOM_T: {}
+      };
+      const out = Intercambios.aplicarAFds(crudo, '2026-04-25', 'granvia');
+      assert(!('ABEL' in out.SAB_M));
+      assert(!('ANDREA' in out.SAB_T));
+      assertDeep(out.SAB_M.ANDREA, [7, 14]);
+      assertDeep(out.SAB_T.ABEL, [15, 22]);
+    });
+
+    test('aplicarAFds: swap cruzando día (SAB_T ↔ DOM_M) mantiene horarios de cada hueco', () => {
+      Store._state.intercambios = [{
+        fecha: '2026-04-25', tienda: 'granvia',
+        empleadoA: 'DAVID', turnoA: 'SAB_T',
+        empleadoB: 'LETI',  turnoB: 'DOM_M',
+        motivo: ''
+      }];
+      const crudo = {
+        SAB_M: {}, SAB_T: { DAVID: [15, 22] },
+        DOM_M: { LETI: [9, 15] }, DOM_T: {}
+      };
+      const out = Intercambios.aplicarAFds(crudo, '2026-04-25', 'granvia');
+      assertDeep(out.SAB_T.LETI, [15, 22]);
+      assertDeep(out.DOM_M.DAVID, [9, 15]);
+      assert(!('DAVID' in out.SAB_T));
+      assert(!('LETI' in out.DOM_M));
+    });
+
+    test('aplicarAFds: sin intercambios devuelve los 4 turnos intactos', () => {
+      Store._state.intercambios = [];
+      const crudo = {
+        SAB_M: { X: [7, 14] }, SAB_T: { Y: [15, 22] },
+        DOM_M: { Z: [9, 15] }, DOM_T: { W: [15, 22] }
+      };
+      const out = Intercambios.aplicarAFds(crudo, '2026-04-25', 'granvia');
+      assertDeep(out.SAB_M.X, [7, 14]);
+      assertDeep(out.SAB_T.Y, [15, 22]);
+      assertDeep(out.DOM_M.Z, [9, 15]);
+      assertDeep(out.DOM_T.W, [15, 22]);
+    });
+
+    test('getActivoPara: encuentra intercambio anclado al sábado desde el domingo', () => {
+      Store._state.intercambios = [{
+        fecha: '2026-04-25', tienda: 'granvia',
+        empleadoA: 'DAVID', turnoA: 'SAB_T',
+        empleadoB: 'LETI',  turnoB: 'DOM_M',
+        motivo: ''
+      }];
+      // Consultando desde el domingo (LETI realmente trabajaba DOM_M) también debe encontrarlo.
+      const res = Intercambios.getActivoPara('LETI', '2026-04-26', 'granvia', 'DOM_M');
+      assert(res !== null);
+      assertEq(res.intercambio.empleadoA, 'DAVID');
+    });
+
+    // Cleanup
+    Store._state.intercambios = origInter;
+  });
+
+  // ============================================================
   // RESUMEN
   // ============================================================
   const sum = document.getElementById('summary');
