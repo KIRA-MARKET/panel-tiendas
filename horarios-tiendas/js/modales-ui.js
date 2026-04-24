@@ -984,6 +984,25 @@ const Modales = {
         listaHtml += '</details>';
       }
 
+      // ── Qué ve el motor: rotación efectiva del finde (diagnóstico) ─
+      if (ctx.turnoFds) {
+        const fechaDate = fecha instanceof Date ? fecha : Utils.parseFecha(fecha);
+        const fdsDebug = Rotaciones.getFds(fechaDate, tienda);
+        const orden = ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T'];
+        listaHtml += '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:11px;color:var(--text-muted);padding:6px 0">Qué ve el motor en este finde (diagnóstico)</summary>';
+        for (const tk of orden) {
+          const mapa = fdsDebug[tk] || {};
+          const nombres = Object.keys(mapa).sort().map(n => {
+            const fs = Utils.formatFecha(fechaDate);
+            const aus = Store.estaAusente(n, fs, tienda) ? ' (ausente)' : '';
+            return Utils.escapeHtml(n) + aus;
+          });
+          const destacar = tk === ctx.turnoFds ? 'font-weight:600;color:var(--text)' : 'color:var(--text-muted)';
+          listaHtml += '<div style="padding:4px 10px;font-size:11px;' + destacar + '"><strong>' + tk + ':</strong> ' + (nombres.join(', ') || '—') + '</div>';
+        }
+        listaHtml += '</details>';
+      }
+
       const html = `
         <div class="modal" style="max-width:460px">
           <div class="modal-header">
