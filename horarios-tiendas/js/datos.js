@@ -78,7 +78,11 @@ const Store = {
     return tienda === 'granvia' ? Store._state.empleadosGV : Store._state.empleadosIS;
   },
 
-  /** Como getEmpleadosTienda pero excluye a los dados de baja (fechaBaja ya pasada). */
+  /** Como getEmpleadosTienda pero excluye:
+   *   - Dados de baja definitiva (fechaBaja ya pasada).
+   *   - Temporalmente fuera por reemplazo activo en la fecha (baja médica, excedencia).
+   *  Útil para dropdowns donde solo queremos ofrecer a quien realmente está ahora.
+   */
   getEmpleadosActivos(tienda, fechaRef) {
     const todos = Store.getEmpleadosTienda(tienda) || {};
     const ref = fechaRef || Utils.formatFecha(new Date());
@@ -86,6 +90,10 @@ const Store = {
     for (const alias in todos) {
       const e = todos[alias];
       if (e.fechaBaja && e.fechaBaja < ref) continue;
+      if (typeof Reemplazos !== 'undefined' &&
+          Reemplazos.getActivoEn && Reemplazos.getActivoEn(alias, ref, tienda)) {
+        continue;
+      }
       out[alias] = e;
     }
     return out;

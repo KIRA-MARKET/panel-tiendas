@@ -1719,18 +1719,30 @@ const Modales = {
                 <select id="rmp-nuevo"><option value="">—</option>${opts}</select>
               </div>
             </div>
+            <div class="form-group">
+              <label>Tipo de baja</label>
+              <div style="display:flex;gap:14px;font-size:13px;margin-top:4px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                  <input type="radio" name="rmp-tipo" value="temporal" id="rmp-tipo-temp" checked> Baja temporal (médica, excedencia…) — <em>volverá</em>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                  <input type="radio" name="rmp-tipo" value="definitiva" id="rmp-tipo-def"> Baja definitiva — <em>se archiva</em>
+                </label>
+              </div>
+            </div>
             <div class="form-row">
               <div class="form-group"><label>Desde</label><input type="date" id="rmp-desde" value="${hoy}"></div>
-              <div class="form-group">
-                <label>Hasta <span class="sub">(vacío = indefinido, baja definitiva)</span></label>
+              <div class="form-group" id="rmp-hasta-wrap">
+                <label>Hasta (fecha de regreso prevista)</label>
                 <input type="date" id="rmp-hasta">
+                <span class="sub" style="font-size:11px">Si no la sabes, déjalo vacío; podrás cerrar el reemplazo cuando vuelva.</span>
               </div>
             </div>
             <div class="form-group">
               <label>Motivo</label>
-              <input type="text" id="rmp-motivo" placeholder="Ej: Baja médica, baja definitiva, excedencia...">
+              <input type="text" id="rmp-motivo" placeholder="Ej: Baja médica, fin de contrato, excedencia...">
             </div>
-            <p class="sub" style="margin-top:8px">Consejo: si el sustituto todavía no existe, ciérralo, crea el empleado con <b>+ Empleado</b> y vuelve aquí.</p>
+            <p class="sub" style="margin-top:8px">Si el sustituto todavía no existe, cierra este modal, crea el empleado con <b>+ Empleado</b> y vuelve aquí.</p>
             <div id="rmp-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
           </div>
           <div class="modal-footer">
@@ -1749,21 +1761,53 @@ const Modales = {
       overlay.querySelectorAll('[data-action="cancel"]').forEach(b => {
         b.onclick = () => { Modales._cerrarOverlay(overlay); resolve(null); };
       });
+      // Toggle del campo "hasta" según el tipo de baja
+      const tipoRadios = overlay.querySelectorAll('input[name="rmp-tipo"]');
+      const hastaWrap = overlay.querySelector('#rmp-hasta-wrap');
+      const sincronizarTipo = () => {
+        const tipo = overlay.querySelector('input[name="rmp-tipo"]:checked').value;
+        if (tipo === 'definitiva') {
+          hastaWrap.style.display = 'none';
+          overlay.querySelector('#rmp-hasta').value = '';
+        } else {
+          hastaWrap.style.display = '';
+        }
+      };
+      tipoRadios.forEach(r => r.addEventListener('change', sincronizarTipo));
+
       overlay.querySelector('[data-action="ok"]').onclick = () => {
         const orig = v('rmp-original');
         const nuevo = v('rmp-nuevo');
         const desde = v('rmp-desde');
         const hasta = v('rmp-hasta');
+        const tipo = overlay.querySelector('input[name="rmp-tipo"]:checked').value;
         if (!orig || !nuevo) return showErr('Selecciona titular y sustituto');
         if (orig === nuevo) return showErr('El titular y el sustituto no pueden ser la misma persona');
         if (!desde) return showErr('Fecha "desde" obligatoria');
-        if (hasta && hasta < desde) return showErr('La fecha "hasta" no puede ser anterior a "desde"');
+        if (tipo === 'temporal' && hasta && hasta < desde) {
+          return showErr('La fecha "hasta" no puede ser anterior a "desde"');
+        }
 
         const reemp = {
           tienda, aliasOriginal: orig, aliasNuevo: nuevo,
-          desde, hasta: hasta || '', motivo: v('rmp-motivo').trim()
+          desde,
+          hasta: tipo === 'definitiva' ? '' : (hasta || ''),
+          motivo: v('rmp-motivo').trim()
         };
         Reemplazos.add(reemp);
+
+        // Baja definitiva: archivar al titular fijando su fechaBaja
+        if (tipo === 'definitiva') {
+          const emp = Store.getEmpleado(orig, tienda);
+          if (emp && (!emp.fechaBaja || emp.fechaBaja > desde)) {
+            const empsMap = tienda === 'granvia' ? 'empleadosGV' : 'empleadosIS';
+            const empsActualizados = Object.assign({}, Store._state[empsMap]);
+            empsActualizados[orig] = Object.assign({}, emp, { fechaBaja: desde });
+            Store.set(empsMap, empsActualizados);
+            if (Sync && Sync.syncEmpleados) Sync.syncEmpleados();
+          }
+        }
+
         if (Sync && Sync.syncReemplazos) Sync.syncReemplazos();
         Modales._cerrarOverlay(overlay);
         resolve(reemp);

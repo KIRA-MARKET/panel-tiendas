@@ -58,10 +58,18 @@ const EmpleadosUI = {
         const nombre = (e.nombre || '') + (e.apellidos ? ' ' + e.apellidos : '');
         const deBaja = e.fechaBaja && e.fechaBaja < hoy;
         const pendiente = e.fechaAlta && e.fechaAlta > hoy;
-        const estadoTag = deBaja
-          ? ' <span class="sub" style="color:#c62828">· baja ' + Utils.escapeHtml(e.fechaBaja) + '</span>'
-          : (pendiente ? ' <span class="sub" style="color:#1565c0">· entra ' + Utils.escapeHtml(e.fechaAlta) + '</span>' : '');
-        html += '<tr' + (deBaja ? ' style="opacity:0.55"' : '') + '>';
+        const remp = !deBaja && typeof Reemplazos !== 'undefined'
+          ? Reemplazos.getActivoEn(e.alias, hoy, tiendaSel) : null;
+        let estadoTag = '';
+        if (deBaja) {
+          estadoTag = ' <span class="sub" style="color:#c62828">· baja definitiva ' + Utils.escapeHtml(e.fechaBaja) + '</span>';
+        } else if (remp) {
+          estadoTag = ' <span class="sub" style="color:#e65100">· baja temporal — cubre ' + Utils.escapeHtml(remp.aliasNuevo) + (remp.hasta ? ' hasta ' + Utils.escapeHtml(remp.hasta) : '') + '</span>';
+        } else if (pendiente) {
+          estadoTag = ' <span class="sub" style="color:#1565c0">· entra ' + Utils.escapeHtml(e.fechaAlta) + '</span>';
+        }
+        const rowOpacity = deBaja ? 0.55 : (remp ? 0.75 : 1);
+        html += '<tr' + (rowOpacity < 1 ? ' style="opacity:' + rowOpacity + '"' : '') + '>';
         html += '<td><strong style="color:' + Utils.escapeHtml(e.color || '#333') + '">' + Utils.escapeHtml(e.alias) + '</strong>' + estadoTag + '</td>';
         html += '<td>' + Utils.escapeHtml(nombre) + '</td>';
         html += '<td>' + (e.contrato || 0) + ' h/sem</td>';
