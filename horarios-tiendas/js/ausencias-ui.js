@@ -24,8 +24,8 @@ const AusenciasUI = {
     if (AusenciasUI._filtroTipo) filas = filas.filter(a => a.tipo === AusenciasUI._filtroTipo);
     if (AusenciasUI._filtroEmp) filas = filas.filter(a => a.empleado === AusenciasUI._filtroEmp);
 
-    // Aliases para filtro de empleado
-    const empleadosTienda = Store.getEmpleadosTienda(tiendaSel) || {};
+    // Aliases para filtro de empleado (solo activos)
+    const empleadosTienda = Store.getEmpleadosActivos(tiendaSel) || {};
     const aliases = Object.keys(empleadosTienda).sort();
 
     let html = '';

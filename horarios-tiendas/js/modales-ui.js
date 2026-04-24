@@ -137,7 +137,7 @@ const Modales = {
     return new Promise((resolve) => {
       const overlay = Modales._crearOverlay();
       const tienda = Store.getTienda();
-      const empleados = Store.getEmpleadosTienda(tienda);
+      const empleados = Store.getEmpleadosActivos(tienda);
 
       let optionsEmp = '<option value="">-- Selecciona --</option>';
       for (const alias in empleados) {
@@ -931,9 +931,16 @@ const Modales = {
         ausente, tienda, ctx.turnoFds || ''
       );
       const candidatos = debug.validos;
-      const rechazados = debug.rechazados.filter(r =>
-        r.alias !== ausente && !candidatos.some(c => c.alias === r.alias)
-      );
+      // Quitar al propio ausente y quitar los que son definitivamente no-empleados
+      // (dados de baja, reemplazados por otro) — no aportan información útil.
+      const rechazados = debug.rechazados.filter(r => {
+        if (r.alias === ausente) return false;
+        if (candidatos.some(c => c.alias === r.alias)) return false;
+        const mot = (r.errores && r.errores[0]) || '';
+        if (mot.indexOf('dado de baja') >= 0) return false;
+        if (mot.indexOf('Reemplazado') >= 0) return false;
+        return true;
+      });
       const sustActual = Store.getSustituto(fecha, ausente, tienda, ctx.turnoFds || '');
 
       let listaHtml = '';
@@ -1687,7 +1694,7 @@ const Modales = {
   nuevoReemplazo(tienda) {
     return new Promise((resolve) => {
       const overlay = Modales._crearOverlay();
-      const empleados = Object.values(Store.getEmpleadosTienda(tienda) || {})
+      const empleados = Object.values(Store.getEmpleadosActivos(tienda) || {})
         .sort((a, b) => a.alias.localeCompare(b.alias));
       const hoy = Utils.formatFecha(new Date());
 

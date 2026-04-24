@@ -92,14 +92,20 @@ const Reglas = {
       errores.push('Solo puede descarga (inamovible)');
     }
 
-    // max-15 (EVA, EDU)
-    if (restr.tipo.includes('max-15') && turno.salida > 15) {
-      errores.push('No puede salir despu\u00e9s de 15:00');
+    // max-15 (EVA, EDU) \u2014 solo L-V; los FdS son voluntarios y s\u00ed cierran por tarde
+    if (restr.tipo.includes('max-15') && esLV && turno.salida > 15) {
+      errores.push('No puede salir despu\u00e9s de 15:00 en L-V');
     }
 
-    // no-fds (EVA)
+    // no-fds (EVA, ELI) — no sustituye otros turnos FdS aparte del fijo propio
     if (restr.tipo.includes('no-fds') && esFds) {
-      errores.push('No trabaja fines de semana');
+      const fijosGV = CONFIG.FIJOS_FDS_GV || {};
+      const fijo = fijosGV[candidato];
+      if (fijo) {
+        errores.push('Ya está fija en ' + (fijo.turno || (fijo.turnos || []).join('/')) + ', no sustituye otros FdS');
+      } else {
+        errores.push('No trabaja fines de semana');
+      }
     }
 
     // no-cierre-lv (SILVIA)
@@ -156,11 +162,42 @@ const Reglas = {
         }
       }
     } else if (turno.turnoFds) {
-      // Usar Cobertura.calcularFds: integra rotación + reemplazos + sustituciones
-      // ya registradas. Más robusto que leer solo fdsData en crudo.
-      const cob = Cobertura.calcularFds(turno.fecha, turno.turnoFds, turno.tienda);
-      if (cob && cob.includes(candidato)) {
-        errores.push('Ya trabaja en este turno FdS');
+      // 1) Rotación base (con reemplazos ya aplicados)
+      const fdsData = Rotaciones.getFds(turno.fecha, turno.tienda);
+      const enRotacion = fdsData[turno.turnoFds] && fdsData[turno.turnoFds][candidato];
+
+      // 2) Defensivo: si la reemplazo de slot está desfasada por fechas,
+      //    mirar el crudo y remapear al efectivo para este día concreto.
+      let enRotacionViaReemplazo = false;
+      if (!enRotacion) {
+        const crudo = turno.tienda === 'granvia'
+          ? Rotaciones.getFdsGV(turno.fecha)
+          : Rotaciones.getFdsIS(turno.fecha);
+        if (crudo && crudo[turno.turnoFds]) {
+          for (const aliasBase in crudo[turno.turnoFds]) {
+            const ef = (typeof Reemplazos !== 'undefined')
+              ? Reemplazos.aliasEfectivo(aliasBase, turno.fecha, turno.tienda)
+              : aliasBase;
+            if (ef === candidato) { enRotacionViaReemplazo = true; break; }
+          }
+        }
+      }
+
+      // 3) Sustitución ya registrada en este turno (para otro ausente)
+      const fsTurno = Utils.formatFecha(turno.fecha);
+      const susts = Store.getSustituciones();
+      const suSust = susts.find(s =>
+        s.sustituto === candidato &&
+        s.fecha === fsTurno &&
+        s.tienda === turno.tienda &&
+        s.turnoFds === turno.turnoFds &&
+        s.ausente !== turno.ausente
+      );
+
+      if (enRotacion || enRotacionViaReemplazo) {
+        errores.push('Ya trabaja en este turno FdS (rotación)');
+      } else if (suSust) {
+        errores.push('Ya sustituye en este turno a ' + (suSust.ausente || 'alguien'));
       }
     }
 

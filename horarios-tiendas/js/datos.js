@@ -78,6 +78,19 @@ const Store = {
     return tienda === 'granvia' ? Store._state.empleadosGV : Store._state.empleadosIS;
   },
 
+  /** Como getEmpleadosTienda pero excluye a los dados de baja (fechaBaja ya pasada). */
+  getEmpleadosActivos(tienda, fechaRef) {
+    const todos = Store.getEmpleadosTienda(tienda) || {};
+    const ref = fechaRef || Utils.formatFecha(new Date());
+    const out = {};
+    for (const alias in todos) {
+      const e = todos[alias];
+      if (e.fechaBaja && e.fechaBaja < ref) continue;
+      out[alias] = e;
+    }
+    return out;
+  },
+
   getEmpleado(alias, tienda) {
     const gv = Store._state.empleadosGV[alias];
     const is = Store._state.empleadosIS[alias];

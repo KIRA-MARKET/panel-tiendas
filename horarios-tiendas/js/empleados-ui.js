@@ -8,6 +8,7 @@
 const EmpleadosUI = {
 
   _tienda: null, // null = usar Store.getTienda()
+  _mostrarArchivados: false,
 
   render() {
     const cont = document.getElementById('tab-empleados');
@@ -15,7 +16,12 @@ const EmpleadosUI = {
 
     const tiendaSel = EmpleadosUI._tienda || Store.getTienda();
     const empleados = Store.getEmpleadosTienda(tiendaSel) || {};
-    const filas = Object.values(empleados).sort((a, b) => a.alias.localeCompare(b.alias));
+    const hoyStr = Utils.formatFecha(new Date());
+    const todos = Object.values(empleados).sort((a, b) => a.alias.localeCompare(b.alias));
+    const archivados = todos.filter(e => e.fechaBaja && e.fechaBaja < hoyStr);
+    const filas = EmpleadosUI._mostrarArchivados
+      ? todos
+      : todos.filter(e => !(e.fechaBaja && e.fechaBaja < hoyStr));
 
     let html = '';
     html += '<div class="control-header">';
@@ -27,6 +33,12 @@ const EmpleadosUI = {
     }
     html += '    <button class="btn btn-orange" onclick="EmpleadosUI.gestionarReemplazos()" style="margin-left:8px">Reemplazos</button>';
     html += '    <button class="btn btn-success" onclick="EmpleadosUI.nuevoEmpleado()" style="margin-left:4px">+ Empleado</button>';
+    if (archivados.length > 0) {
+      const lbl = EmpleadosUI._mostrarArchivados
+        ? 'Ocultar archivados (' + archivados.length + ')'
+        : 'Ver archivados (' + archivados.length + ')';
+      html += '    <button class="btn btn-secondary" onclick="EmpleadosUI.toggleArchivados()" style="margin-left:4px">' + lbl + '</button>';
+    }
     html += '  </div>';
     html += '</div>';
 
@@ -40,7 +52,7 @@ const EmpleadosUI = {
     if (filas.length === 0) {
       html += '<tr><td colspan="8" class="empty" style="text-align:center;padding:24px">Sin empleados</td></tr>';
     } else {
-      const hoy = Utils.formatFecha(new Date());
+      const hoy = hoyStr;
       for (const e of filas) {
         const tiendaTxt = e.tienda === 'ambas' ? 'GV + IS' : (e.tienda === 'granvia' ? 'GV' : 'IS');
         const nombre = (e.nombre || '') + (e.apellidos ? ' ' + e.apellidos : '');
@@ -64,13 +76,21 @@ const EmpleadosUI = {
     html += '</tbody></table>';
     html += '</div>';
 
-    html += '<p class="control-nota">' + filas.length + ' empleados en ' + (tiendaSel === 'granvia' ? 'Gran Vía' : 'Isabel') + '. Los datos se cargan desde Sheets; la edición vive de momento en la hoja de cálculo.</p>';
+    const notaArch = archivados.length > 0 && !EmpleadosUI._mostrarArchivados
+      ? ' · ' + archivados.length + ' archivado(s) ocultos (dados de baja)'
+      : '';
+    html += '<p class="control-nota">' + filas.length + ' empleados activos en ' + (tiendaSel === 'granvia' ? 'Gran Vía' : 'Isabel') + notaArch + '.</p>';
 
     cont.innerHTML = html;
   },
 
   setTienda(t) {
     EmpleadosUI._tienda = t;
+    EmpleadosUI.render();
+  },
+
+  toggleArchivados() {
+    EmpleadosUI._mostrarArchivados = !EmpleadosUI._mostrarArchivados;
     EmpleadosUI.render();
   },
 
