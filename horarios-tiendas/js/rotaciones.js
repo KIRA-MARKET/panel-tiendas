@@ -102,16 +102,18 @@ const Rotaciones = {
     const cfgRot7 = CONFIG.ROTACIONES.fds_gv;
     const sheetsFds = Store.get('sheetsFdsGV');
 
-    // Índice de semana para rotación 7
+    // Índice de semana para rotación 7 — usar diferencia en días UTC para que
+    // el cambio DST (marzo/octubre) no desalinee sábado y domingo de la misma
+    // semana (hacía que sábado=fi-1 y domingo=fi tras el salto de hora).
     const inicioFecha = sheetsFds && sheetsFds.fecha_inicio
       ? Utils.parseFecha(sheetsFds.fecha_inicio)
       : Utils.parseFecha(cfgRot7.fecha_inicio);
-    const fi = Math.floor((fecha - inicioFecha) / (7 * 24 * 60 * 60 * 1000));
+    const fi = Rotaciones._semanasEntre(inicioFecha, fecha);
     const fiNorm = ((fi % 21) + 21) % 21;
 
     // Índice para descarga ABC (referencia 18 abril 2026)
     const inicioABC = Utils.parseFecha(cfgDesc.fecha_inicio);
-    let fiABC = Math.floor((fecha - inicioABC) / (7 * 24 * 60 * 60 * 1000));
+    let fiABC = Rotaciones._semanasEntre(inicioABC, fecha);
     if (fiABC < 0) fiABC = ((fiABC % 3) + 3) % 3;
 
     const result = { SAB_M: {}, SAB_T: {}, DOM_M: {}, DOM_T: {} };
@@ -278,6 +280,18 @@ const Rotaciones = {
   },
 
   // ── Helpers de rotación ────────────────────────────────────
+
+  /** Diferencia en semanas entre dos fechas, DST-safe.
+   *  Usa días UTC para que el salto de horario no desalinee sábado y domingo
+   *  de la misma semana (bug que hacía que sábado devolviera fi-1 y domingo fi
+   *  después del cambio de hora de primavera/otoño).
+   */
+  _semanasEntre(inicio, fin) {
+    const toDayNum = (d) => Math.floor(
+      Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000
+    );
+    return Math.floor((toDayNum(fin) - toDayNum(inicio)) / 7);
+  },
 
   /** Turno en rotación de 7 (FdS GV) */
   _getTurnoRotacion7(empIndex, fi) {

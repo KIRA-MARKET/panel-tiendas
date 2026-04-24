@@ -1710,6 +1710,33 @@
   });
 
   // ============================================================
+  // ROTACIONES — DST no desalinea sábado y domingo del mismo finde
+  // ============================================================
+  suite('Rotaciones: DST-safe (sábado y domingo misma semana)', function () {
+    test('Semanas entre fechas con DST en medio (Feb 28 → May 9 = 10 sem)', () => {
+      const ini = Utils.parseFecha('2026-02-28'); // sábado
+      const sab = Utils.parseFecha('2026-05-09'); // sábado, tras DST primavera
+      const dom = Utils.parseFecha('2026-05-10'); // domingo
+      // Tras el fix, ambos deben devolver la misma semana (10).
+      assertEq(Rotaciones._semanasEntre(ini, sab), 10);
+      assertEq(Rotaciones._semanasEntre(ini, dom), 10);
+    });
+
+    test('getFdsGV produce la misma rotación el sábado y el domingo de un mismo finde', () => {
+      const sab = Utils.parseFecha('2026-05-09');
+      const dom = Utils.parseFecha('2026-05-10');
+      const dataSab = Rotaciones.getFdsGV(sab);
+      const dataDom = Rotaciones.getFdsGV(dom);
+      // Las claves de rotación base deben coincidir en cada turno.
+      for (const tk of ['SAB_M', 'SAB_T', 'DOM_M', 'DOM_T']) {
+        const keysSab = Object.keys(dataSab[tk] || {}).sort().join(',');
+        const keysDom = Object.keys(dataDom[tk] || {}).sort().join(',');
+        assertEq(keysDom, keysSab, 'Turno ' + tk + ' difiere entre sábado y domingo');
+      }
+    });
+  });
+
+  // ============================================================
   // RESUMEN
   // ============================================================
   const sum = document.getElementById('summary');
