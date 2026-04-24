@@ -257,9 +257,25 @@ const App = {
     const el = document.getElementById('sync-status');
     if (!el) return;
     el.className = 'sync-status ' + status;
-    if (status === 'ok') el.textContent = 'Sincronizado';
-    else if (status === 'error') el.textContent = 'Sin conexi\u00f3n';
-    else el.textContent = 'Cargando...';
+    el.style.cursor = '';
+    el.title = '';
+    el.onclick = null;
+    if (status === 'ok') {
+      el.textContent = 'Sincronizado';
+      el.title = 'Datos al d\u00eda con Google Sheets';
+    } else if (status === 'error') {
+      el.textContent = 'Sin conexi\u00f3n \u00b7 reintentar';
+      el.title = 'No se pudo conectar con Google Sheets. Click para reintentar.';
+      el.style.cursor = 'pointer';
+      el.onclick = () => {
+        if (Sync && Sync.cargar) {
+          Sync.cargar().then(() => CalendarioUI.render());
+        }
+      };
+    } else {
+      el.textContent = 'Cargando\u2026';
+      el.title = 'Sincronizando con Google Sheets';
+    }
   },
 
   // ── Ausencias ──────────────────────────────────────────
