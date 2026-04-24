@@ -803,6 +803,25 @@ const Modales = {
         ? `<button class="btn btn-secondary" data-action="sustituto" style="justify-content:flex-start;padding:12px 14px">📋 ${sustActual ? 'Cambiar sustituto (actual: ' + Utils.escapeHtml(sustActual.sustituto) + ')' : 'Asignar sustituto'}</button>`
         : '';
 
+      // Índice de la ausencia activa (para poder editarla directamente)
+      let ausenciaIdx = -1;
+      let ausenciaActual = null;
+      if (ausente) {
+        const lista = Store.getAusencias(tienda);
+        const fs = typeof fecha === 'string' ? fecha : Utils.formatFecha(fecha);
+        for (let i = 0; i < lista.length; i++) {
+          const a = lista[i];
+          if (a.empleado === alias && a.desde <= fs && a.hasta >= fs) {
+            ausenciaIdx = i;
+            ausenciaActual = a;
+            break;
+          }
+        }
+      }
+      const btnEditAusHtml = ausente && ausenciaIdx >= 0
+        ? `<button class="btn btn-secondary" data-action="editar-ausencia" style="justify-content:flex-start;padding:12px 14px">✎ Editar ausencia (${Utils.escapeHtml(Ausencias.getTipoLabel(ausenciaActual.tipo))})</button>`
+        : '';
+
       // ¿Ya hay un intercambio activo para este empleado? Solo tiene sentido ofrecer el swap si está presente.
       const turnoAct = ctx.turnoFds ? ctx.turnoFds : 'LV';
       const intActivo = !ausente && typeof Intercambios !== 'undefined'
@@ -821,6 +840,7 @@ const Modales = {
             <p class="sub" style="margin-bottom:14px;font-size:12px">${Utils.escapeHtml(fechaES)} · ${Utils.escapeHtml(tiendaTxt)}${horario ? ' · ' + horario : ''}${ctx.turnoFds ? ' · ' + ctx.turnoFds : ''}</p>
             <div style="display:flex;flex-direction:column;gap:8px">
               ${btnSustHtml}
+              ${btnEditAusHtml}
               <button class="btn btn-secondary" data-action="modificar" style="justify-content:flex-start;padding:12px 14px">✎ Modificar horario hoy</button>
               ${btnIntercambioHtml}
               <button class="btn btn-secondary" data-action="ausencia" style="justify-content:flex-start;padding:12px 14px">📅 Registrar ausencia</button>
@@ -872,6 +892,18 @@ const Modales = {
         close('ausencia');
         Modales.nuevaAusencia(alias).then(() => CalendarioUI.render());
       };
+      const btnEditAus = overlay.querySelector('[data-action="editar-ausencia"]');
+      if (btnEditAus) {
+        btnEditAus.onclick = () => {
+          close('editar-ausencia');
+          Modales.editarAusencia(tienda, ausenciaIdx).then(res => {
+            if (res) {
+              if (Sync && Sync.syncAusencias) Sync.syncAusencias();
+              CalendarioUI.render();
+            }
+          });
+        };
+      }
       overlay.querySelector('[data-action="ficha"]').onclick = () => {
         close('ficha');
         Modales.editarEmpleado(alias, tienda).then(() => CalendarioUI.render());
