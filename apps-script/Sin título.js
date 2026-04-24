@@ -301,21 +301,46 @@ function readSheet(ss, sheetName) {
   return rows;
 }
 
+// Escritura "casi-atómica": construye el nuevo bloque entero en memoria y
+// lo escribe con UN solo setValues. Sólo después limpia las filas sobrantes
+// si la nueva escritura es más corta que la previa.
+//
+// Si el cliente pierde la conexión a mitad del save, lo peor que puede
+// pasar es que queden filas viejas residuales por debajo de las nuevas
+// (datos válidos), no la hoja vacía como hacía clearContents+setValues.
 function writeSheet(ss, sheetName, headers, rows) {
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
   }
-  sheet.clearContents();
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
+
+  // Construir todo el bloque (cabecera + filas) en memoria.
+  var allRows = [headers];
   if (rows && rows.length > 0) {
-    var data = rows.map(function(obj) {
-      return headers.map(function(h) {
-        var v = obj[h];
-        return (v === undefined || v === null) ? '' : v;
-      });
-    });
-    sheet.getRange(2, 1, data.length, headers.length).setValues(data);
+    for (var i = 0; i < rows.length; i++) {
+      var obj = rows[i];
+      var fila = [];
+      for (var j = 0; j < headers.length; j++) {
+        var v = obj[headers[j]];
+        fila.push((v === undefined || v === null) ? '' : v);
+      }
+      allRows.push(fila);
+    }
+  }
+
+  // Sobreescritura en una sola operación. Si falla aquí, los datos previos
+  // siguen intactos: no se ha hecho clearContents.
+  sheet.getRange(1, 1, allRows.length, headers.length).setValues(allRows);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+
+  // Limpiar el "tail": filas que sobraban de la escritura anterior.
+  // Si nos interrumpen entre el setValues y este clear, lo peor es tener
+  // filas viejas tras las nuevas — datos válidos, no hoja vacía.
+  var prevLastRow = sheet.getLastRow();
+  if (prevLastRow > allRows.length) {
+    var sobrante = prevLastRow - allRows.length;
+    var ancho = Math.max(headers.length, sheet.getLastColumn());
+    sheet.getRange(allRows.length + 1, 1, sobrante, ancho).clearContent();
   }
 }
 
