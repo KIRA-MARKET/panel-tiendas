@@ -1576,6 +1576,70 @@
   });
 
   // ============================================================
+  // AUSENCIAS — editar (cambio de tipo, fechas, motivo)
+  // ============================================================
+  suite('Ausencias.editar', function () {
+    const origAusGV = Store._state.ausenciasGV;
+    const origSync = Sync.syncAusencias;
+    Store._state.ausenciasGV = [];
+    Sync.syncAusencias = function () {}; // stub para evitar fetch
+
+    // Seed: dos ausencias para la misma empleada
+    Store._state.ausenciasGV = [
+      { empleado: 'EVA', tipo: 'vacaciones', desde: '2026-07-01', hasta: '2026-07-07', motivo: '' },
+      { empleado: 'EVA', tipo: 'baja',       desde: '2026-08-10', hasta: '2026-08-15', motivo: '' }
+    ];
+
+    test('Editar solo el tipo: vacaciones → baja (ya no resta cupo)', () => {
+      const antes = Ausencias.calcularVacaciones('EVA', 'granvia', 2026).usados;
+      const r = Ausencias.editar('granvia', 0, { tipo: 'baja' });
+      assert(r.ok, r.error);
+      assertEq(Store.getAusencias('granvia')[0].tipo, 'baja');
+      const despues = Ausencias.calcularVacaciones('EVA', 'granvia', 2026).usados;
+      assert(despues < antes, 'cambiar a baja debería reducir días usados');
+    });
+
+    test('Editar tipo baja → vacaciones (vuelve a restar cupo)', () => {
+      const r = Ausencias.editar('granvia', 0, { tipo: 'vacaciones' });
+      assert(r.ok, r.error);
+      const v = Ausencias.calcularVacaciones('EVA', 'granvia', 2026);
+      assertEq(v.usados, 7); // del 1 al 7 julio = 7 días naturales
+    });
+
+    test('Editar fechas con solapamiento con otra ausencia propia → error', () => {
+      // Intentar mover la primera (julio) para que pise la segunda (agosto)
+      const r = Ausencias.editar('granvia', 0, { desde: '2026-08-12', hasta: '2026-08-13' });
+      assert(!r.ok);
+      assert(r.error.indexOf('Ya existe') === 0, 'debe avisar solapamiento');
+    });
+
+    test('Editar fechas sin solapamiento (excluye la propia) → ok', () => {
+      const r = Ausencias.editar('granvia', 0, { desde: '2026-07-01', hasta: '2026-07-10' });
+      assert(r.ok, r.error);
+      assertEq(Store.getAusencias('granvia')[0].hasta, '2026-07-10');
+    });
+
+    test('Tipo inválido → error', () => {
+      const r = Ausencias.editar('granvia', 0, { tipo: 'inventado' });
+      assert(!r.ok);
+    });
+
+    test('Fecha desde > hasta → error', () => {
+      const r = Ausencias.editar('granvia', 0, { desde: '2026-07-20', hasta: '2026-07-10' });
+      assert(!r.ok);
+    });
+
+    test('Índice fuera de rango → error', () => {
+      const r = Ausencias.editar('granvia', 99, { tipo: 'baja' });
+      assert(!r.ok);
+    });
+
+    // Cleanup
+    Store._state.ausenciasGV = origAusGV;
+    Sync.syncAusencias = origSync;
+  });
+
+  // ============================================================
   // RESUMEN
   // ============================================================
   const sum = document.getElementById('summary');

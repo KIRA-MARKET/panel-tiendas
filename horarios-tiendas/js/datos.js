@@ -191,6 +191,15 @@ const Store = {
     Store._emit('cambioVista');
   },
 
+  updateAusencia(tienda, index, cambios) {
+    const aus = tienda === 'granvia' ? Store._state.ausenciasGV : Store._state.ausenciasIS;
+    if (index < 0 || index >= aus.length) return null;
+    aus[index] = Object.assign({}, aus[index], cambios);
+    Store._emit('ausencias', { tienda, ausencias: aus });
+    Store._emit('cambioVista');
+    return aus[index];
+  },
+
   /** Capa 2: registrar decisión de Nacho (motor sugirió X, Nacho eligió Y) */
   addDecision(decision) {
     Store._state.decisiones.push(decision);
@@ -241,9 +250,11 @@ const Store = {
   // ── Validaciones ───────────────────────────────────────────
 
   /** Verificar si ya existe una ausencia solapada para el mismo empleado */
-  ausenciaSolapada(tienda, empleado, desde, hasta) {
+  ausenciaSolapada(tienda, empleado, desde, hasta, excludeIndex) {
     const ausencias = Store.getAusencias(tienda);
-    for (const aus of ausencias) {
+    for (let i = 0; i < ausencias.length; i++) {
+      if (i === excludeIndex) continue;
+      const aus = ausencias[i];
       if (aus.empleado === empleado) {
         // Hay solapamiento si no están completamente separados
         if (!(hasta < aus.desde || desde > aus.hasta)) {

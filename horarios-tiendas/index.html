@@ -9,8 +9,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Horarios KR">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/calendario.css">
+<script>
+// Cache-busting: añade ?v=timestamp a CSS y JS para que cada recarga
+// coja los archivos frescos sin tener que forzar desde DevTools.
+window.__APP_VERSION__ = Date.now();
+</script>
+<script>
+(function () {
+  const v = '?v=' + window.__APP_VERSION__;
+  document.write('<link rel="stylesheet" href="css/base.css' + v + '">');
+  document.write('<link rel="stylesheet" href="css/calendario.css' + v + '">');
+})();
+</script>
 </head>
 <body>
 
@@ -89,29 +99,24 @@
 </main>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SCRIPTS (orden importa)
+     SCRIPTS (orden importa — document.write preserva el orden síncrono)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/utilidades.js"></script>
-<script src="js/config.js"></script>
-<script src="js/datos.js"></script>
-<script src="js/empleados.js"></script>
-<script src="js/reemplazos.js"></script>
-<script src="js/intercambios.js"></script>
-<script src="js/rotaciones.js"></script>
-<script src="js/sync.js"></script>
-<script src="js/cobertura.js"></script>
-<script src="js/reglas.js"></script>
-<script src="js/ausencias.js"></script>
-<script src="js/motor-sustituciones.js"></script>
-<script src="js/festivos.js"></script>
-<script src="js/control.js"></script>
-<script src="js/horas.js"></script>
-<script src="js/empleados-ui.js"></script>
-<script src="js/ausencias-ui.js"></script>
-<script src="js/auditor.js"></script>
-<script src="js/calendario-ui.js"></script>
-<script src="js/modales-ui.js"></script>
-<script src="js/pdf.js"></script>
+<script>
+(function () {
+  const v = '?v=' + window.__APP_VERSION__;
+  const files = [
+    'utilidades.js', 'config.js', 'datos.js', 'empleados.js',
+    'reemplazos.js', 'intercambios.js', 'rotaciones.js', 'sync.js',
+    'cobertura.js', 'reglas.js', 'ausencias.js', 'motor-sustituciones.js',
+    'festivos.js', 'control.js', 'horas.js', 'empleados-ui.js',
+    'ausencias-ui.js', 'auditor.js', 'calendario-ui.js', 'modales-ui.js',
+    'pdf.js'
+  ];
+  for (const f of files) {
+    document.write('<script src="js/' + f + v + '"><\/script>');
+  }
+})();
+</script>
 
 <script>
 // ═══════════════════════════════════════════════════════════

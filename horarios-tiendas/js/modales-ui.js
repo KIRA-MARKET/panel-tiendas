@@ -233,6 +233,97 @@ const Modales = {
     });
   },
 
+  // ── Modal de editar ausencia ───────────────────────────────
+
+  editarAusencia(tienda, index) {
+    return new Promise((resolve) => {
+      const ausencias = Store.getAusencias(tienda);
+      const aus = ausencias[index];
+      if (!aus) return resolve(null);
+
+      const overlay = Modales._crearOverlay();
+
+      let optionsTipo = '';
+      for (const t of Ausencias.TIPOS) {
+        const sel = t.value === aus.tipo ? ' selected' : '';
+        optionsTipo += `<option value="${t.value}"${sel}>${t.icon} ${t.label}</option>`;
+      }
+
+      const tiendaLabel = tienda === 'granvia' ? 'Gran Vía' : 'Isabel';
+      const restanAntes = CONFIG.TIPOS_RESTAN_DIAS.includes(aus.tipo);
+
+      const html = `
+        <div class="modal modal-lg">
+          <div class="modal-header">
+            <h3>Editar ausencia — ${tiendaLabel}</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Empleado</label>
+              <input type="text" value="${Utils.escapeHtml(aus.empleado)}" disabled>
+            </div>
+            <div class="form-group">
+              <label>Tipo de ausencia</label>
+              <select id="aus-edit-tipo">${optionsTipo}</select>
+              <div class="sub" style="margin-top:4px;font-size:11px">
+                ${restanAntes ? 'Actualmente <strong>resta</strong> días de vacaciones.' : 'Actualmente <strong>no resta</strong> días de vacaciones.'}
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Desde</label>
+                <input type="date" id="aus-edit-desde" value="${aus.desde}">
+              </div>
+              <div class="form-group">
+                <label>Hasta</label>
+                <input type="date" id="aus-edit-hasta" value="${aus.hasta}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Motivo (opcional)</label>
+              <input type="text" id="aus-edit-motivo" value="${Utils.escapeHtml(aus.motivo || '')}" placeholder="Motivo o detalle...">
+            </div>
+            <div id="aus-edit-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-success" data-action="ok">Guardar cambios</button>
+          </div>
+        </div>
+      `;
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const errorEl = overlay.querySelector('#aus-edit-error');
+      const showError = (msg) => { errorEl.textContent = msg; errorEl.style.display = 'block'; };
+      const hideError = () => { errorEl.style.display = 'none'; };
+
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => {
+        b.onclick = () => { Modales._cerrarOverlay(overlay); resolve(null); };
+      });
+
+      overlay.querySelector('[data-action="ok"]').onclick = () => {
+        const tipo = overlay.querySelector('#aus-edit-tipo').value;
+        const desde = overlay.querySelector('#aus-edit-desde').value;
+        const hasta = overlay.querySelector('#aus-edit-hasta').value;
+        const motivo = overlay.querySelector('#aus-edit-motivo').value;
+
+        if (!tipo) return showError('Selecciona el tipo');
+        if (!desde || !hasta) return showError('Selecciona las fechas');
+
+        hideError();
+        const r = Ausencias.editar(tienda, index, { tipo, desde, hasta, motivo });
+        if (!r.ok) return showError(r.error);
+
+        Modales._cerrarOverlay(overlay);
+        CalendarioUI.toast('Ausencia actualizada', 'success');
+        resolve(r.ausencia);
+      };
+    });
+  },
+
   /** Pregunta si quiere asignar sustitutos manualmente */
   _preguntarAsignarSustitutos(tienda, ausencia) {
     return new Promise((resolve) => {

@@ -69,6 +69,80 @@ const Ausencias = {
     return { ok: true, ausencia };
   },
 
+  // ── Editar ausencia ────────────────────────────────────────
+
+  /**
+   * Edita una ausencia existente (tipo, fechas, motivo).
+   * Revalida solapamientos (excluyendo la propia) y días de vacaciones
+   * si el tipo nuevo resta del cupo.
+   * Devuelve { ok, error, ausencia? }
+   */
+  editar(tienda, index, cambios) {
+    const ausencias = Store.getAusencias(tienda);
+    if (index < 0 || index >= ausencias.length) {
+      return { ok: false, error: 'Ausencia no encontrada' };
+    }
+    const actual = ausencias[index];
+
+    const tipo = cambios.tipo != null ? cambios.tipo : actual.tipo;
+    const desde = cambios.desde != null ? cambios.desde : actual.desde;
+    const hasta = cambios.hasta != null ? cambios.hasta : actual.hasta;
+    const motivo = cambios.motivo != null ? cambios.motivo : (actual.motivo || '');
+
+    if (!desde || !hasta) {
+      return { ok: false, error: 'Faltan fechas' };
+    }
+    if (desde > hasta) {
+      return { ok: false, error: 'La fecha "desde" debe ser anterior o igual a "hasta"' };
+    }
+    if (!Ausencias.TIPOS.some(t => t.value === tipo)) {
+      return { ok: false, error: 'Tipo de ausencia inválido' };
+    }
+
+    // Solapamiento (excluyendo la propia)
+    const solapada = Store.ausenciaSolapada(tienda, actual.empleado, desde, hasta, index);
+    if (solapada) {
+      return {
+        ok: false,
+        error: 'Ya existe una ausencia de ' + actual.empleado + ' del ' +
+               Utils.formatFechaES(solapada.desde) + ' al ' +
+               Utils.formatFechaES(solapada.hasta) + ' (' + solapada.tipo + ')'
+      };
+    }
+
+    // Si el tipo nuevo resta vacaciones, revalidar cupo descontando los días
+    // que ya contaba esta ausencia en su estado previo.
+    if (CONFIG.TIPOS_RESTAN_DIAS.includes(tipo)) {
+      const año = parseInt(desde.substring(0, 4));
+      const diasNuevos = Utils.contarDiasNaturales(desde, hasta);
+      const vac = Ausencias.calcularVacaciones(actual.empleado, tienda, año);
+      // Días que esta ausencia ya imputaba al año (0 si antes no restaba)
+      let diasPrevios = 0;
+      if (CONFIG.TIPOS_RESTAN_DIAS.includes(actual.tipo)) {
+        const yDesde = parseInt(actual.desde.substring(0, 4));
+        const yHasta = parseInt(actual.hasta.substring(0, 4));
+        if (yDesde === año || yHasta === año) {
+          let d = actual.desde, h = actual.hasta;
+          if (yDesde < año) d = año + '-01-01';
+          if (yHasta > año) h = año + '-12-31';
+          diasPrevios = Utils.contarDiasNaturales(d, h);
+        }
+      }
+      const disponibles = vac.restantes + diasPrevios;
+      if (disponibles - diasNuevos < 0) {
+        return {
+          ok: false,
+          error: actual.empleado + ' solo tiene ' + disponibles +
+                 ' días disponibles en ' + año + ' y estás pidiendo ' + diasNuevos
+        };
+      }
+    }
+
+    const actualizada = Store.updateAusencia(tienda, index, { tipo, desde, hasta, motivo });
+    Sync.syncAusencias();
+    return { ok: true, ausencia: actualizada };
+  },
+
   // ── Cancelar ausencia ──────────────────────────────────────
 
   /**

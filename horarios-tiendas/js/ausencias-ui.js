@@ -85,7 +85,10 @@ const AusenciasUI = {
         html += '<td>' + dias + '</td>';
         html += '<td class="' + estadoCls + '">' + estado + '</td>';
         html += '<td><span class="sub">' + Utils.escapeHtml(a.motivo || '—') + '</span></td>';
-        html += '<td><button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="AusenciasUI.cancelar(' + a._index + ')">Cancelar</button></td>';
+        html += '<td style="white-space:nowrap">';
+        html += '<button class="btn btn-primary" style="padding:4px 10px;font-size:11px;margin-right:4px" onclick="AusenciasUI.editar(' + a._index + ')">Editar</button>';
+        html += '<button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="AusenciasUI.cancelar(' + a._index + ')">Cancelar</button>';
+        html += '</td>';
         html += '</tr>';
       }
     }
@@ -104,6 +107,13 @@ const AusenciasUI = {
 
   nueva() {
     Modales.nuevaAusencia().then(() => AusenciasUI.render());
+  },
+
+  editar(index) {
+    const tienda = AusenciasUI._tienda || Store.getTienda();
+    Modales.editarAusencia(tienda, index).then(res => {
+      if (res) AusenciasUI.render();
+    });
   },
 
   cancelar(index) {
