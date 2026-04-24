@@ -156,8 +156,10 @@ const Reglas = {
         }
       }
     } else if (turno.turnoFds) {
-      const fdsData = Rotaciones.getFds(turno.fecha, turno.tienda);
-      if (fdsData[turno.turnoFds] && fdsData[turno.turnoFds][candidato]) {
+      // Usar Cobertura.calcularFds: integra rotación + reemplazos + sustituciones
+      // ya registradas. Más robusto que leer solo fdsData en crudo.
+      const cob = Cobertura.calcularFds(turno.fecha, turno.turnoFds, turno.tienda);
+      if (cob && cob.includes(candidato)) {
         errores.push('Ya trabaja en este turno FdS');
       }
     }

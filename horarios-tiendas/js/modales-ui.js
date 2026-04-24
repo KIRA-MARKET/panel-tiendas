@@ -924,16 +924,21 @@ const Modales = {
       const tiendaTxt = tienda === 'granvia' ? 'Gran Vía' : 'Isabel';
       const turnoLabel = ctx.turnoFds ? ctx.turnoFds : 'L-V';
 
-      // Candidatos vía motor (aplica las 33 reglas)
-      const candidatos = Motor.buscarCandidatosManual(
+      // Candidatos vía motor (aplica las 33 reglas). Usamos la variante
+      // debug para poder mostrar también los rechazados con el motivo.
+      const debug = Motor.buscarCandidatosManualDebug(
         fecha instanceof Date ? fecha : Utils.parseFecha(fecha),
         ausente, tienda, ctx.turnoFds || ''
+      );
+      const candidatos = debug.validos;
+      const rechazados = debug.rechazados.filter(r =>
+        r.alias !== ausente && !candidatos.some(c => c.alias === r.alias)
       );
       const sustActual = Store.getSustituto(fecha, ausente, tienda, ctx.turnoFds || '');
 
       let listaHtml = '';
       if (candidatos.length === 0) {
-        listaHtml = `<p style="text-align:center;padding:20px;color:#c62828;font-size:12px">\u26a0 No hay candidatos válidos (todos fallan alguna de las 33 reglas).</p>`;
+        listaHtml = `<p style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">\u26a0 No hay candidatos válidos (todos fallan alguna de las 33 reglas).</p>`;
       } else {
         for (let i = 0; i < candidatos.length; i++) {
           const c = candidatos[i];
@@ -955,6 +960,21 @@ const Modales = {
               <span style="color:var(--text-muted);font-size:10px;opacity:0.85">${excedenteTxt}</span>${avisosHtml}
             </div>`;
         }
+      }
+
+      // ── Rechazados (informativo, no clicables) ────────────────
+      if (rechazados.length > 0) {
+        listaHtml += '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:11px;color:var(--text-muted);padding:6px 0">'
+          + rechazados.length + ' rechazados — ver por qué</summary>';
+        for (const r of rechazados) {
+          const motivo = Utils.escapeHtml(r.errores[0] || 'No válido');
+          listaHtml += `
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--text-muted);margin-bottom:4px;opacity:0.75">
+              <strong style="flex:1;font-weight:500">${Utils.escapeHtml(r.alias)}</strong>
+              <span style="font-size:10px;font-style:italic">${motivo}</span>
+            </div>`;
+        }
+        listaHtml += '</details>';
       }
 
       const html = `

@@ -157,9 +157,16 @@ const Motor = {
 
   // ── Obtener candidatos válidos ordenados por prioridad ─────
 
-  _obtenerCandidatos(turno, sustSimuladas) {
+  _obtenerCandidatos(turno, sustSimuladas, outRechazados) {
     const candidatos = [];
     const tienda = turno.tienda;
+    const trackRechazos = Array.isArray(outRechazados);
+    const pushRechazo = (alias, motivo) => {
+      if (!trackRechazos) return;
+      const prev = outRechazados.find(r => r.alias === alias);
+      if (prev) { if (!prev.errores.includes(motivo)) prev.errores.push(motivo); }
+      else outRechazados.push({ alias, errores: [motivo] });
+    };
 
     // Empleados de esta tienda + compartidos de la otra (solo L-V)
     const empsTienda = tienda === 'granvia' ? Store.get('empleadosGV') : Store.get('empleadosIS');
@@ -239,12 +246,18 @@ const Motor = {
           }
         }
       }
-      if (yaAsignado) continue;
+      if (yaAsignado) {
+        pushRechazo(alias, 'Ya asignado en esta ronda');
+        continue;
+      }
 
       // Validar con todas las reglas
       const validacion = Reglas.validarCandidato(alias, turnoValidacion);
 
-      if (!validacion.valido) continue;
+      if (!validacion.valido) {
+        for (const e of validacion.errores) pushRechazo(alias, e);
+        continue;
+      }
 
       // Calcular puntuación de prioridad
       const empData = candidatosPosibles[alias];
@@ -321,7 +334,10 @@ const Motor = {
         // Si no tiene turno base en ningún FdS → no resta de ningún sitio
         if (!turnoOrigen) excedenteOrigen = 99;
         // Nunca sacar de un turno en su mínimo exacto (excedente 0)
-        if (turnoOrigen && excedenteOrigen <= 0) continue;
+        if (turnoOrigen && excedenteOrigen <= 0) {
+          pushRechazo(alias, 'Dejaría ' + turnoOrigen + ' en mínimo exacto (excedente 0)');
+          continue;
+        }
       } else {
         // ── L-V: excedente de franja origen ──
         const dowDia = turno.fecha.getDay();
@@ -650,5 +666,34 @@ const Motor = {
     };
 
     return Motor._obtenerCandidatos(turnoObj, []);
+  },
+
+  /**
+   * Variante de buscarCandidatosManual que devuelve también los
+   * candidatos rechazados con sus motivos, para que la UI pueda
+   * mostrárselos al usuario y él entienda por qué faltan.
+   * Devuelve { validos: [...], rechazados: [{alias, errores}] }
+   */
+  buscarCandidatosManualDebug(fecha, ausente, tienda, turnoFds) {
+    let entrada, salida, franja;
+    if (turnoFds) {
+      const fdsData = Rotaciones.getFds(fecha, tienda);
+      const t = fdsData[turnoFds] && fdsData[turnoFds][ausente];
+      if (!t) return { validos: [], rechazados: [] };
+      entrada = t[0]; salida = t[1];
+    } else {
+      const horarios = Rotaciones.getHorariosLV(fecha, tienda);
+      const t = horarios && horarios[ausente];
+      if (!t) return { validos: [], rechazados: [] };
+      entrada = t[0]; salida = t[1];
+      franja = Utils.getFranja(entrada, salida, tienda);
+    }
+    const turnoObj = {
+      tienda, fecha, fechaStr: Utils.formatFecha(fecha),
+      emp: ausente, franja, turnoFds, entrada, salida, bajoMinimos: true
+    };
+    const rechazados = [];
+    const validos = Motor._obtenerCandidatos(turnoObj, [], rechazados);
+    return { validos, rechazados };
   }
 };
