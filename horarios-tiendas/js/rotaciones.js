@@ -315,8 +315,11 @@ const Rotaciones = {
   /** Orden visual de empleados dentro de un turno FdS de GV:
    *  1) Fijos (ANTONIO en SAB_M, ELI en DOM_M, ALFREDO/ALEX VERA en SAB_T/DOM_T)
    *  2) Descarga ABC (LETI/DAVID/EDU) en el orden del array
-   *  3) Rotación 7, ordenados por su posición del ciclo ASC — así el que
-   *     entra al turno esa semana va arriba y el que sale va abajo.
+   *  3) Rotación 7, ordenados simulando una rueda horaria:
+   *     - SAB_M (arriba-izq del grid): entra por abajo, sale por arriba
+   *       → pos 1 arriba, pos 0 abajo (invertido).
+   *     - DOM_M, DOM_T: entra por arriba, sale por abajo → pos ASC.
+   *     - SAB_T: una sola posición (6).
    *  Devuelve un array de aliases ordenado.
    */
   ordenarEmpleadosFdsGV(aliases, fecha) {
@@ -335,17 +338,22 @@ const Rotaciones = {
     const fijosGV = CONFIG.FIJOS_FDS_GV || {};
     const setDescarga = new Set(cfgDesc.orden);
 
+    // Clave de orden dentro de la rotación 7:
+    // Para SAB_M (pos 0, 1) → invertir (rueda sube).
+    // Para DOM_M (2, 3), DOM_T (4, 5), SAB_T (6) → tal cual.
+    const claveRot7 = (pos) => (pos === 0 ? 1 : pos === 1 ? 0 : pos);
+
     const rank = (alias) => {
       if (fijosGV[alias]) return [0, Object.keys(fijosGV).indexOf(alias)];
       if (setDescarga.has(alias)) return [1, cfgDesc.orden.indexOf(alias)];
       const idx = rOrden.indexOf(alias);
-      if (idx >= 0) return [2, Rotaciones._getPosRotacion7(idx, fi)];
+      if (idx >= 0) return [2, claveRot7(Rotaciones._getPosRotacion7(idx, fi))];
       // Reemplazos: alias no en rot7 original pero efectivo via reemplazo.
       // Buscar al que reemplaza en el orden original.
       if (typeof Reemplazos !== 'undefined') {
         for (let i = 0; i < rOrden.length; i++) {
           if (Reemplazos.aliasEfectivo(rOrden[i], fecha, 'granvia') === alias) {
-            return [2, Rotaciones._getPosRotacion7(i, fi)];
+            return [2, claveRot7(Rotaciones._getPosRotacion7(i, fi))];
           }
         }
       }
