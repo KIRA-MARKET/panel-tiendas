@@ -311,7 +311,15 @@ const CalendarioUI = {
     const horariosAj = Rotaciones.aplicarModificacionesFds(horarios, dia, turnoKey, tienda);
     const fs = Utils.formatFecha(dia);
 
-    for (const n in horariosAj) {
+    // Orden visual: fijos → descarga → rotación 7 por pos ASC (GV).
+    // Para Isabel mantenemos el orden de inserción (no hay rotación posicional
+    // equivalente). El criterio: quien entra al turno esa semana va primero
+    // y quien sale la siguiente va último.
+    const aliasesOrdenados = tienda === 'granvia'
+      ? Rotaciones.ordenarEmpleadosFdsGV(Object.keys(horariosAj), dia)
+      : Object.keys(horariosAj);
+
+    for (const n of aliasesOrdenados) {
       const h = horariosAj[n];
       const aus = Store.estaAusente(n, fs, tienda);
       const sust = Store.getSustituto(fs, n, tienda, turnoKey);

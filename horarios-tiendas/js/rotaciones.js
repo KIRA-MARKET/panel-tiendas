@@ -303,6 +303,63 @@ const Rotaciones = {
     return 'SAB_T';
   },
 
+  /** Posición (0-6) de un empIndex en la rotación 7 para una fecha dada.
+   *  Útil para ordenar visualmente los empleados dentro de un turno:
+   *  quien acaba de llegar al turno (pos par) va antes que quien sale
+   *  la semana siguiente (pos impar).
+   */
+  _getPosRotacion7(empIndex, fi) {
+    return ((fi + empIndex * 6) % 7 + 7) % 7;
+  },
+
+  /** Orden visual de empleados dentro de un turno FdS de GV:
+   *  1) Fijos (ANTONIO en SAB_M, ELI en DOM_M, ALFREDO/ALEX VERA en SAB_T/DOM_T)
+   *  2) Descarga ABC (LETI/DAVID/EDU) en el orden del array
+   *  3) Rotación 7, ordenados por su posición del ciclo ASC — así el que
+   *     entra al turno esa semana va arriba y el que sale va abajo.
+   *  Devuelve un array de aliases ordenado.
+   */
+  ordenarEmpleadosFdsGV(aliases, fecha) {
+    if (!Array.isArray(aliases) || aliases.length <= 1) return aliases.slice();
+    const cfgRot7 = CONFIG.ROTACIONES.fds_gv;
+    const cfgDesc = CONFIG.ROTACIONES.descarga_gv;
+    const sheetsFds = Store.get('sheetsFdsGV');
+    const rOrden = (sheetsFds && sheetsFds.rotacion7 && sheetsFds.rotacion7.orden.length)
+      ? sheetsFds.rotacion7.orden : cfgRot7.orden;
+
+    const inicioRot7 = Utils.parseFecha(
+      (sheetsFds && sheetsFds.fecha_inicio) || cfgRot7.fecha_inicio
+    );
+    const fi = Rotaciones._semanasEntre(inicioRot7, fecha);
+
+    const fijosGV = CONFIG.FIJOS_FDS_GV || {};
+    const setDescarga = new Set(cfgDesc.orden);
+
+    const rank = (alias) => {
+      if (fijosGV[alias]) return [0, Object.keys(fijosGV).indexOf(alias)];
+      if (setDescarga.has(alias)) return [1, cfgDesc.orden.indexOf(alias)];
+      const idx = rOrden.indexOf(alias);
+      if (idx >= 0) return [2, Rotaciones._getPosRotacion7(idx, fi)];
+      // Reemplazos: alias no en rot7 original pero efectivo via reemplazo.
+      // Buscar al que reemplaza en el orden original.
+      if (typeof Reemplazos !== 'undefined') {
+        for (let i = 0; i < rOrden.length; i++) {
+          if (Reemplazos.aliasEfectivo(rOrden[i], fecha, 'granvia') === alias) {
+            return [2, Rotaciones._getPosRotacion7(i, fi)];
+          }
+        }
+      }
+      return [3, alias]; // desconocido al final
+    };
+
+    return aliases.slice().sort((a, b) => {
+      const [ra, rb] = [rank(a), rank(b)];
+      if (ra[0] !== rb[0]) return ra[0] - rb[0];
+      if (typeof ra[1] === 'number' && typeof rb[1] === 'number') return ra[1] - rb[1];
+      return String(ra[1]).localeCompare(String(rb[1]));
+    });
+  },
+
   /** Turno en rotación ABC (descarga GV) */
   _getTurnoABC(empIndex, fi) {
     // Ciclo 3: SAB_M(descarga) -> DOM_T -> SAB_T
