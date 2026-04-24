@@ -179,7 +179,7 @@ const Modales = {
               <label>Motivo (opcional)</label>
               <input type="text" id="aus-motivo" placeholder="Motivo o detalle...">
             </div>
-            <div id="aus-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+            <div id="aus-error" style="display:none;background:var(--err-light);color:var(--err);padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
@@ -284,7 +284,7 @@ const Modales = {
               <label>Motivo (opcional)</label>
               <input type="text" id="aus-edit-motivo" value="${Utils.escapeHtml(aus.motivo || '')}" placeholder="Motivo o detalle...">
             </div>
-            <div id="aus-edit-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+            <div id="aus-edit-error" style="display:none;background:var(--err-light);color:var(--err);padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
@@ -364,7 +364,7 @@ const Modales = {
         const nSinGV = sinSolucion.filter(s => s.tienda === 'granvia').length;
         const nSinIS = sinSolucion.filter(s => s.tienda === 'isabel').length;
 
-        html += `<div style="margin-bottom:12px;padding:10px;background:#f5f5f5;border-radius:8px;font-size:12px">`;
+        html += `<div style="margin-bottom:12px;padding:10px;background:var(--border-light);border-radius:8px;font-size:12px">`;
         if (propuestas.length > 0) {
           html += `<strong>${propuestas.length}</strong> sustituciones propuestas`;
         }
@@ -373,9 +373,9 @@ const Modales = {
                   `<span style="color:#c62828"><strong>${sinSolucion.length}</strong> sin soluci\u00f3n</span>`;
         }
         html += `<div style="margin-top:8px;display:flex;gap:6px">
-          <button class="btn-filtro-tienda active" data-filtro="ambas" style="padding:4px 12px;border-radius:4px;border:1px solid #ccc;background:#1a1a2e;color:#fff;cursor:pointer;font-size:11px;font-weight:700">Ambas (${propuestas.length})</button>
-          <button class="btn-filtro-tienda" data-filtro="granvia" style="padding:4px 12px;border-radius:4px;border:1px solid #ccc;background:#fff;color:#1a1a2e;cursor:pointer;font-size:11px;font-weight:700">Gran V\u00eda (${nGV}${nSinGV ? '+' + nSinGV + ' sin sol.' : ''})</button>
-          <button class="btn-filtro-tienda" data-filtro="isabel" style="padding:4px 12px;border-radius:4px;border:1px solid #ccc;background:#fff;color:#4a90d9;cursor:pointer;font-size:11px;font-weight:700">Isabel (${nIS}${nSinIS ? '+' + nSinIS + ' sin sol.' : ''})</button>
+          <button class="btn-filtro-tienda active" data-filtro="ambas" style="padding:4px 12px;border-radius:4px;border:1px solid var(--border);background:var(--text);color:var(--surface);cursor:pointer;font-size:11px;font-weight:700">Ambas (${propuestas.length})</button>
+          <button class="btn-filtro-tienda" data-filtro="granvia" style="padding:4px 12px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:11px;font-weight:700">Gran V\u00eda (${nGV}${nSinGV ? '+' + nSinGV + ' sin sol.' : ''})</button>
+          <button class="btn-filtro-tienda" data-filtro="isabel" style="padding:4px 12px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--badge-is-fg);cursor:pointer;font-size:11px;font-weight:700">Isabel (${nIS}${nSinIS ? '+' + nSinIS + ' sin sol.' : ''})</button>
         </div>`;
         html += `</div>`;
       }
@@ -391,14 +391,14 @@ const Modales = {
 
         for (const fecha in porFecha) {
           const fechaObj = Utils.parseFecha(fecha);
-          html += `<div style="margin-bottom:8px"><div style="font-weight:700;font-size:12px;color:#1a1a2e;margin-bottom:4px">${Utils.DIAS[fechaObj.getDay()]} ${Utils.formatFechaES(fecha)}</div>`;
+          html += `<div style="margin-bottom:8px"><div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:4px">${Utils.DIAS[fechaObj.getDay()]} ${Utils.formatFechaES(fecha)}</div>`;
 
           for (const item of porFecha[fecha]) {
             const p = item.prop;
             const tiendaId = p.tienda;
             const tiendaLabel = p.tienda === 'granvia' ? 'GV' : 'IS';
             const turnoLabel = p.turnoFds || p.franja;
-            const tiendaColor = p.tienda === 'granvia' ? '#1a1a2e' : '#4a90d9';
+            const tiendaColor = p.tienda === 'granvia' ? 'var(--badge-gv-fg)' : 'var(--badge-is-fg)';
 
             const esReorg = p.accion === 'reorganizar';
             const tagAccion = esReorg
@@ -418,19 +418,19 @@ const Modales = {
 
             const nAlts = (p.alternativas || []).length;
             const btnCambiar = nAlts > 0
-              ? `<button class="btn-cambiar-sust" data-idx="${item.idx}" style="padding:2px 8px;border-radius:3px;border:1px solid #1565c0;background:#fff;color:#1565c0;cursor:pointer;font-size:10px;white-space:nowrap">Cambiar (${nAlts})</button>`
+              ? `<button class="btn-cambiar-sust" data-idx="${item.idx}" style="padding:2px 8px;border-radius:3px;border:1px solid var(--badge-gv-fg);background:var(--badge-gv-bg);color:var(--badge-gv-fg);cursor:pointer;font-size:10px;white-space:nowrap">Cambiar (${nAlts})</button>`
               : '';
 
             html += `
               <div class="prop-row" data-tienda="${tiendaId}" data-idx="${item.idx}" style="margin-bottom:3px">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#fff;border-radius:6px;border:1px solid #e0e0e0;font-size:11px">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--surface);border-radius:6px;border:1px solid var(--border);font-size:11px">
                   <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                     <input type="checkbox" id="prop-check-${item.idx}" checked>
                     <span style="background:${tiendaColor};color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">${tiendaLabel}</span>
                     ${tagAccion}
                     <span style="color:#c62828;text-decoration:line-through">${Utils.escapeHtml(p.ausente)}</span>
                     → <strong id="prop-sust-${item.idx}" style="color:#2e7d32">${Utils.escapeHtml(p.sustituto)}</strong>
-                    <span id="prop-hora-${item.idx}" style="color:#888">(${turnoLabel} · ${Utils.formatHora(p.entrada)}-${Utils.formatHora(p.salida)})</span>
+                    <span id="prop-hora-${item.idx}" style="color:var(--text-muted)">(${turnoLabel} · ${Utils.formatHora(p.entrada)}-${Utils.formatHora(p.salida)})</span>
                     ${detalleReorg}
                   </div>
                   <div style="display:flex;align-items:center;gap:6px">
@@ -438,7 +438,7 @@ const Modales = {
                     ${labelExtra}
                   </div>
                 </div>
-                <div id="prop-alts-${item.idx}" style="display:none;padding:4px 8px 8px 28px;background:#f8f9fa;border-radius:0 0 6px 6px;border:1px solid #e0e0e0;border-top:0"></div>
+                <div id="prop-alts-${item.idx}" style="display:none;padding:4px 8px 8px 28px;background:var(--border-light);border-radius:0 0 6px 6px;border:1px solid var(--border);border-top:0"></div>
               </div>
             `;
           }
@@ -448,7 +448,7 @@ const Modales = {
 
       // Sin solución
       if (sinSolucion.length > 0) {
-        html += `<div style="margin-top:12px;padding:10px;background:#ffebee;border-radius:8px">`;
+        html += `<div style="margin-top:12px;padding:10px;background:var(--err-light);border-radius:8px">`;
         html += `<div style="font-weight:700;font-size:12px;color:#c62828;margin-bottom:6px">\u26a0 Sin sustituto disponible — necesitas contratar eventual</div>`;
         for (const s of sinSolucion) {
           const fechaStr = typeof s.fecha === 'string' ? s.fecha : Utils.formatFecha(s.fecha);
@@ -481,13 +481,16 @@ const Modales = {
       overlay.querySelectorAll('.btn-filtro-tienda').forEach(btn => {
         btn.onclick = () => {
           const filtro = btn.dataset.filtro;
+          const surface = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#fff';
+          const text = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#222';
+          const isabelFg = getComputedStyle(document.documentElement).getPropertyValue('--badge-is-fg').trim() || '#6a1b9a';
           overlay.querySelectorAll('.btn-filtro-tienda').forEach(b => {
-            b.style.background = '#fff';
-            b.style.color = b.dataset.filtro === 'isabel' ? '#4a90d9' : '#1a1a2e';
+            b.style.background = surface;
+            b.style.color = b.dataset.filtro === 'isabel' ? isabelFg : text;
             b.classList.remove('active');
           });
-          btn.style.background = btn.dataset.filtro === 'isabel' ? '#4a90d9' : '#1a1a2e';
-          btn.style.color = '#fff';
+          btn.style.background = btn.dataset.filtro === 'isabel' ? isabelFg : text;
+          btn.style.color = surface;
           btn.classList.add('active');
 
           overlay.querySelectorAll('.prop-row').forEach(row => {
@@ -516,7 +519,7 @@ const Modales = {
 
           // Construir lista de alternativas
           const alts = p.alternativas || [];
-          let altHtml = '<div style="font-size:10px;color:#666;margin-bottom:4px;font-weight:700">Elige otro candidato:</div>';
+          let altHtml = '<div style="font-size:10px;color:var(--text-secondary);margin-bottom:4px;font-weight:700">Elige otro candidato:</div>';
           for (let a = 0; a < alts.length; a++) {
             const alt = alts[a];
             const avisosStr = alt.avisos && alt.avisos.length > 0
@@ -526,8 +529,8 @@ const Modales = {
               'class="alt-option" data-prop-idx="' + idx + '" data-alt-idx="' + a + '" ' +
               'onmouseover="this.style.background=\'#e3f2fd\'" onmouseout="this.style.background=\'transparent\'">' +
               '<strong>' + Utils.escapeHtml(alt.alias) + '</strong>' +
-              ' <span style="color:#888">' + Utils.formatHora(alt.entrada) + '-' + Utils.formatHora(alt.salida) + '</span>' +
-              ' <span style="color:#666;font-size:9px">' + (alt.excedenteOrigen >= 99 ? 'disponible' : 'excedente:' + alt.excedenteOrigen) + '</span>' +
+              ' <span style="color:var(--text-muted)">' + Utils.formatHora(alt.entrada) + '-' + Utils.formatHora(alt.salida) + '</span>' +
+              ' <span style="color:var(--text-secondary);font-size:9px">' + (alt.excedenteOrigen >= 99 ? 'disponible' : 'excedente:' + alt.excedenteOrigen) + '</span>' +
               (alt.preferenciaScore ? ' <span style="color:#1565c0;font-size:9px;font-weight:700" title="Preferencia aprendida">\u2605' + alt.preferenciaScore + '</span>' : '') +
               avisosStr +
               '</div>';
@@ -673,12 +676,12 @@ const Modales = {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
               <div>
                 <label style="font-size:11px;font-weight:700">Fecha</label>
-                <input type="date" id="ref-fecha" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px"
+                <input type="date" id="ref-fecha" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px"
                   value="${año}-${String(mes+1).padStart(2,'0')}-01">
               </div>
               <div>
                 <label style="font-size:11px;font-weight:700">Tienda</label>
-                <select id="ref-tienda" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px">
+                <select id="ref-tienda" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px">
                   <option value="granvia" ${tienda==='granvia'?'selected':''}>Gran V\u00eda</option>
                   <option value="isabel" ${tienda==='isabel'?'selected':''}>Isabel</option>
                 </select>
@@ -686,7 +689,7 @@ const Modales = {
             </div>
             <div style="margin-bottom:12px">
               <label style="font-size:11px;font-weight:700">Empleado</label>
-              <select id="ref-empleado" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px">
+              <select id="ref-empleado" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px">
                 <option value="">— Selecciona —</option>
                 ${optsEmp}
               </select>
@@ -694,16 +697,16 @@ const Modales = {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
               <div>
                 <label style="font-size:11px;font-weight:700">Entrada</label>
-                <input type="time" id="ref-entrada" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px" value="07:00">
+                <input type="time" id="ref-entrada" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px" value="07:00">
               </div>
               <div>
                 <label style="font-size:11px;font-weight:700">Salida</label>
-                <input type="time" id="ref-salida" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px" value="11:00">
+                <input type="time" id="ref-salida" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px" value="11:00">
               </div>
             </div>
             <div id="ref-turno-fds" style="display:none;margin-bottom:12px">
               <label style="font-size:11px;font-weight:700">Turno FdS</label>
-              <select id="ref-turno" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px">
+              <select id="ref-turno" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px">
                 <option value="SAB_M">S\u00e1bado Ma\u00f1ana</option>
                 <option value="SAB_T">S\u00e1bado Tarde</option>
                 <option value="DOM_M">Domingo Ma\u00f1ana</option>
@@ -1111,7 +1114,7 @@ const Modales = {
               <label>Motivo (opcional)</label>
               <input type="text" id="mod-motivo" placeholder="Motivo del cambio...">
             </div>
-            <div id="mod-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px"></div>
+            <div id="mod-error" style="display:none;background:var(--err-light);color:var(--err);padding:10px;border-radius:4px;font-size:12px"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-danger" data-action="quitar" style="margin-right:auto">Quitar modificación</button>
@@ -1249,7 +1252,7 @@ const Modales = {
               <p id="emp-unlock-status" class="sub" style="margin-top:6px;font-size:11px">Bloqueado. Pulsa "Desbloquear edición" para modificar estos campos.</p>
             </div>
 
-            <div id="emp-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+            <div id="emp-error" style="display:none;background:var(--err-light);color:var(--err);padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
@@ -1377,7 +1380,7 @@ const Modales = {
               <div class="form-group"><label>DNI</label><input type="text" id="nemp-dni"></div>
               <div class="form-group"><label>Teléfono</label><input type="text" id="nemp-telefono"></div>
             </div>
-            <div id="nemp-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+            <div id="nemp-error" style="display:none;background:var(--err-light);color:var(--err);padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
@@ -1762,7 +1765,7 @@ const Modales = {
               <input type="text" id="rmp-motivo" placeholder="Ej: Baja médica, fin de contrato, excedencia...">
             </div>
             <p class="sub" style="margin-top:8px">Si el sustituto todavía no existe, cierra este modal, crea el empleado con <b>+ Empleado</b> y vuelve aquí.</p>
-            <div id="rmp-error" style="display:none;background:#ffebee;color:#c62828;padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
+            <div id="rmp-error" style="display:none;background:var(--err-light);color:var(--err);padding:10px;border-radius:4px;font-size:12px;margin-top:10px"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" data-action="cancel">Cancelar</button>

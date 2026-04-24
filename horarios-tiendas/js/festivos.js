@@ -418,11 +418,11 @@ const FestivosUI = {
       '<button class="modal-close" onclick="document.getElementById(\'modal-nuevo-festivo\').remove()">\u00d7</button></div>' +
       '<div class="modal-body">' +
       '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700">Fecha</label>' +
-      '<input type="date" id="nf-fecha" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px" value="' + año + '-01-01"></div>' +
+      '<input type="date" id="nf-fecha" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px" value="' + año + '-01-01"></div>' +
       '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700">Nombre</label>' +
-      '<input type="text" id="nf-nombre" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px" placeholder="Ej: San Juan"></div>' +
+      '<input type="text" id="nf-nombre" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px" placeholder="Ej: San Juan"></div>' +
       '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700">\u00c1mbito</label>' +
-      '<select id="nf-ambito" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px">' +
+      '<select id="nf-ambito" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px">' +
       '<option value="local">Local</option><option value="autonomico">Auton\u00f3mico</option><option value="nacional">Nacional</option></select></div>' +
       '<div id="nf-error" style="color:#c62828;font-size:11px;display:none"></div>' +
       '</div>' +

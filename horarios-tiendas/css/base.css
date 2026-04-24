@@ -312,6 +312,19 @@ body {
 .form-group input:disabled,
 .form-group select:disabled,
 .form-group textarea:disabled { background: var(--bg); color: var(--text-muted); }
+
+/* Cualquier input/select/textarea dentro de un modal respeta el tema,
+   aunque esté fuera de .form-group con estilos inline. */
+.modal input:not([type="checkbox"]):not([type="radio"]),
+.modal select,
+.modal textarea {
+  background: var(--surface);
+  color: var(--text);
+}
+.modal input::placeholder,
+.modal textarea::placeholder { color: var(--text-muted); }
+[data-theme="dark"] .modal input[type="date"],
+[data-theme="dark"] .modal input[type="time"] { color-scheme: dark; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 

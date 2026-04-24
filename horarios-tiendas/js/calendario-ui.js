@@ -92,7 +92,7 @@ const CalendarioUI = {
               }
               html += '</div>';
             } else {
-              html += '<div style="text-align:center;font-size:9px;color:#888;flex:1;display:flex;align-items:center;justify-content:center">Sin asignaciones</div>';
+              html += '<div style="text-align:center;font-size:9px;color:var(--text-muted);flex:1;display:flex;align-items:center;justify-content:center">Sin asignaciones</div>';
             }
           }
         } else {
