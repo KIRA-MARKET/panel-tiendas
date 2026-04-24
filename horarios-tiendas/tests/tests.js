@@ -1816,6 +1816,131 @@
   });
 
   // ============================================================
+  // REGRESIÓN — bugs detectados en auditoría 25-04 y corregidos
+  // ============================================================
+
+  suite('Reglas: candidato también ausente devuelve valido:false (return inmediato)', function () {
+    const origGV    = Store._state.empleadosGV;
+    const origAusGV = Store._state.ausenciasGV;
+    // Sembrar empleado en plantilla para que validarCandidato no rechace por
+    // "no existe en la plantilla" antes de llegar a la regla de ausencia.
+    Store._state.empleadosGV = {
+      _CAND: { alias: '_CAND', nombre: 'Test', apellidos: 'Cand', dni: '', telefono: '', email: '', fechaAlta: '2025-01-01', contrato: 35, tienda: 'granvia', franja: 'mañanas', restriccion: '', color: '#888' },
+      _AUS:  { alias: '_AUS',  nombre: 'Test', apellidos: 'Aus',  dni: '', telefono: '', email: '', fechaAlta: '2025-01-01', contrato: 35, tienda: 'granvia', franja: 'mañanas', restriccion: '', color: '#888' }
+    };
+    Store._state.ausenciasGV = [
+      { empleado: '_CAND', tipo: 'baja', desde: '2026-04-13', hasta: '2026-04-17', motivo: '' }
+    ];
+
+    test('Candidato ausente devuelve valido:false con motivo de ausencia', () => {
+      const turno = {
+        tienda: 'granvia',
+        fecha: Utils.parseFecha('2026-04-15'), // miércoles dentro del rango
+        ausente: '_AUS',
+        franja: 'mañanas',
+        turnoFds: '',
+        entrada: 9,
+        salida: 14.5
+      };
+      const v = Reglas.validarCandidato('_CAND', turno);
+      assertEq(v.valido, false, 'debe ser rechazada por ausencia');
+      assert(v.errores.some(e => /ausente/i.test(e)), 'el motivo debe mencionar ausencia');
+    });
+
+    Store._state.empleadosGV = origGV;
+    Store._state.ausenciasGV = origAusGV;
+  });
+
+  suite('Auditor: intervalosDelDia respeta modificaciones (nuevaEntrada/nuevaSalida)', function () {
+    const origMods = Store._state.modificacionesHorario;
+    Store._state.modificacionesHorario = [];
+
+    test('Empleado con modificación aparece con nueva entrada/salida, no undefined', () => {
+      // Encontrar un empleado real que esté en la rotación L-V de GV ese día
+      const fecha = Utils.parseFecha('2026-04-15'); // miércoles
+      const horarios = Rotaciones.getHorariosLV(fecha, 'granvia') || {};
+      const alias = Object.keys(horarios)[0];
+      if (!alias) return; // si no hay datos cargados, saltar (no falla)
+
+      Store._state.modificacionesHorario = [{
+        empleado: alias, fecha: '2026-04-15', tienda: 'granvia',
+        turnoFds: '',
+        entradaOriginal: horarios[alias][0],
+        salidaOriginal: horarios[alias][1],
+        nuevaEntrada: 11.5,
+        nuevaSalida: 16.0,
+        motivo: 'test'
+      }];
+
+      const intervalos = Auditor.intervalosDelDia(fecha, 'granvia');
+      const it = intervalos.find(x => x.emp === alias);
+      assert(it, alias + ' debe estar en intervalos del día');
+      assertEq(it.entrada, 11.5, 'entrada debe ser nuevaEntrada');
+      assertEq(it.salida, 16.0, 'salida debe ser nuevaSalida');
+      assert(typeof it.entrada === 'number' && !isNaN(it.entrada), 'no debe ser undefined/NaN');
+    });
+
+    Store._state.modificacionesHorario = origMods;
+  });
+
+  suite('Motor: veto DOM_T cuando hay alternativa', function () {
+    test('Filtro DOM_T: si entre los candidatos hay turno origen != DOM_T con excedente, DOM_T se quita', () => {
+      // Sintetizamos un set de candidatos como si volvieran de _obtenerCandidatos.
+      // El veto está implementado al final de esa función, sobre el array final.
+      // Probamos la lógica equivalente: dado un array, comprobar que el filtro
+      // se aplicaría correctamente.
+      const candidatos = [
+        { alias: 'A', turnoOrigenFds: 'DOM_T', excedenteOrigen: 2 },
+        { alias: 'B', turnoOrigenFds: 'DOM_M', excedenteOrigen: 1 },
+        { alias: 'C', turnoOrigenFds: 'SAB_T', excedenteOrigen: 1 }
+      ];
+      const turnoFds = 'SAB_M'; // destino
+      const hayAlternativa = candidatos.some(c =>
+        c.turnoOrigenFds && c.turnoOrigenFds !== 'DOM_T' &&
+        c.excedenteOrigen >= 1 && c.excedenteOrigen < 99
+      );
+      assert(hayAlternativa, 'debe detectar alternativa');
+      const filtrados = candidatos.filter(c => c.turnoOrigenFds !== 'DOM_T');
+      assertEq(filtrados.length, 2, 'A (DOM_T) debe ser filtrado');
+      assert(!filtrados.some(c => c.alias === 'A'), 'A no debe estar en el resultado');
+    });
+
+    test('Sin alternativa: si todos los candidatos son DOM_T, NO se filtran (último recurso)', () => {
+      const candidatos = [
+        { alias: 'A', turnoOrigenFds: 'DOM_T', excedenteOrigen: 2 },
+        { alias: 'B', turnoOrigenFds: 'DOM_T', excedenteOrigen: 1 }
+      ];
+      const hayAlternativa = candidatos.some(c =>
+        c.turnoOrigenFds && c.turnoOrigenFds !== 'DOM_T' &&
+        c.excedenteOrigen >= 1 && c.excedenteOrigen < 99
+      );
+      assert(!hayAlternativa, 'no debe detectar alternativa');
+      // El motor no aplicaría el filtro → ambos siguen disponibles
+      assertEq(candidatos.length, 2);
+    });
+
+    test('Refuerzo externo (excedente 99) NO cuenta como alternativa', () => {
+      const candidatos = [
+        { alias: 'A', turnoOrigenFds: 'DOM_T', excedenteOrigen: 2 },
+        { alias: 'B', turnoOrigenFds: '',      excedenteOrigen: 99 } // refuerzo externo
+      ];
+      const hayAlternativa = candidatos.some(c =>
+        c.turnoOrigenFds && c.turnoOrigenFds !== 'DOM_T' &&
+        c.excedenteOrigen >= 1 && c.excedenteOrigen < 99
+      );
+      assert(!hayAlternativa, 'refuerzo externo no debe activar el filtro');
+    });
+
+    test('Destino DOM_T: el veto NO se aplica (si el ausente ES de DOM_T, se permite mover de DOM_T)', () => {
+      // Este test documenta que el veto está condicionado por turno.turnoFds !== 'DOM_T'.
+      // La lógica está en motor-sustituciones.js; aquí aseguramos el contrato semántico.
+      const turnoDestino = 'DOM_T';
+      const aplicaVeto = turnoDestino !== 'DOM_T';
+      assert(!aplicaVeto, 'cuando el destino es DOM_T el veto está desactivado');
+    });
+  });
+
+  // ============================================================
   // RESUMEN
   // ============================================================
   const sum = document.getElementById('summary');

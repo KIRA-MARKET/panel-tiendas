@@ -158,7 +158,7 @@ const Motor = {
   // ── Obtener candidatos válidos ordenados por prioridad ─────
 
   _obtenerCandidatos(turno, sustSimuladas, outRechazados) {
-    const candidatos = [];
+    let candidatos = [];
     const tienda = turno.tienda;
     const trackRechazos = Array.isArray(outRechazados);
     const pushRechazo = (alias, motivo) => {
@@ -425,6 +425,27 @@ const Motor = {
       if (a.excedenteOrigen !== b.excedenteOrigen) return b.excedenteOrigen - a.excedenteOrigen;
       return b.margen - a.margen;
     });
+
+    // ── Veto DOM_T: nunca sacar de domingo tarde si hay alternativa ──
+    // Spec: DOM_T es el turno de mayor venta. Si entre los candidatos
+    // válidos hay alguno cuyo turno origen NO es DOM_T (con excedente
+    // real ≥1, no refuerzos externos con excedente 99), se filtran fuera
+    // los candidatos de DOM_T. Si todos los candidatos vienen de DOM_T,
+    // se aceptan como último recurso (mejor cubrir que no cubrir).
+    if (turno.turnoFds && turno.turnoFds !== 'DOM_T') {
+      const hayAlternativa = candidatos.some(c =>
+        c.turnoOrigenFds && c.turnoOrigenFds !== 'DOM_T' &&
+        c.excedenteOrigen >= 1 && c.excedenteOrigen < 99
+      );
+      if (hayAlternativa) {
+        for (const c of candidatos) {
+          if (c.turnoOrigenFds === 'DOM_T') {
+            pushRechazo(c.alias, 'DOM_T protegido — hay alternativa con más venta');
+          }
+        }
+        candidatos = candidatos.filter(c => c.turnoOrigenFds !== 'DOM_T');
+      }
+    }
 
     return candidatos;
   },

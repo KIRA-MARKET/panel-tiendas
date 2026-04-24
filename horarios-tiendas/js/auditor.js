@@ -21,11 +21,14 @@ const Auditor = {
 
     const out = [];
 
-    // 1. Empleados base no ausentes (con posible modificación)
+    // 1. Empleados base no ausentes (con posible modificación).
+    // Las claves de Store.getModificacion son nuevaEntrada / nuevaSalida
+    // (no "entrada/salida"); ese era un bug que dejaba undefined cuando
+    // había una reorganización aplicada y rompía detectarHuecos.
     for (const emp in horarios) {
       if (Store.estaAusente(emp, fs, tienda)) continue;
       const mod = Store.getModificacion(emp, fs, tienda);
-      const h = mod ? [mod.entrada, mod.salida] : horarios[emp];
+      const h = mod ? [mod.nuevaEntrada, mod.nuevaSalida] : horarios[emp];
       out.push({ emp, entrada: h[0], salida: h[1] });
     }
 

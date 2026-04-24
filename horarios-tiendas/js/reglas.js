@@ -55,8 +55,12 @@ const Reglas = {
     }
 
     // ── REGLA: ausente en este día ─────────────────────────
+    // Return inmediato: si el candidato tambi\u00e9n est\u00e1 ausente, no tiene
+    // sentido evaluar el resto. Antes solo se hac\u00eda push sin return, lo
+    // que era inconsistente con otros checks tempranos y propenso a bug.
     if (Store.estaAusente(candidato, fs, turno.tienda)) {
       errores.push('Tambi\u00e9n est\u00e1 ausente');
+      return { valido: false, errores, avisos };
     }
 
     // ── REGLA 16: EVA no FdS ───────────────────────────────
