@@ -39,6 +39,21 @@ const Reglas = {
       return { valido: false, errores, avisos };
     }
 
+    // ── REGLA: candidato no activo (fecha de baja) o reemplazado ──
+    // Si el empleado tiene fechaBaja pasada o figura como aliasOriginal en
+    // un reemplazo activo, ya no está en la empresa — no puede sustituir.
+    if (typeof Reemplazos !== 'undefined') {
+      if (!Reemplazos.estaActivo(candidato, turno.fecha, turno.tienda)) {
+        errores.push('No está activo en esa fecha (dado de baja)');
+        return { valido: false, errores, avisos };
+      }
+      const remp = Reemplazos.getActivoEn(candidato, turno.fecha, turno.tienda);
+      if (remp) {
+        errores.push('Reemplazado por ' + remp.aliasNuevo + ' desde ' + remp.desde);
+        return { valido: false, errores, avisos };
+      }
+    }
+
     // ── REGLA: ausente en este día ─────────────────────────
     if (Store.estaAusente(candidato, fs, turno.tienda)) {
       errores.push('Tambi\u00e9n est\u00e1 ausente');

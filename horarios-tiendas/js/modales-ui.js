@@ -944,12 +944,15 @@ const Modales = {
             ? 'disponible'
             : 'excedente:' + c.excedenteOrigen + (c.turnoOrigenFds ? ' (' + c.turnoOrigenFds + ')' : '');
           const esActual = sustActual && sustActual.sustituto === c.alias;
+          const bgNormal = esActual ? 'rgba(46,125,50,0.15)' : 'var(--surface)';
+          const bgHover = 'var(--surface-hover, rgba(128,128,128,0.15))';
+          const borderCol = esActual ? '#2e7d32' : 'var(--border)';
           listaHtml += `
-            <div class="cand-option" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;border:1px solid ${esActual ? '#2e7d32' : '#e0e0e0'};background:${esActual ? '#e8f5e9' : '#fff'};margin-bottom:4px"
-              onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background='${esActual ? '#e8f5e9' : '#fff'}'">
+            <div class="cand-option" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;border:1px solid ${borderCol};background:${bgNormal};color:var(--text);margin-bottom:4px"
+              onmouseover="this.style.background='${bgHover}'" onmouseout="this.style.background='${bgNormal}'">
               <strong style="flex:1">${Utils.escapeHtml(c.alias)}${esActual ? ' <span style="color:#2e7d32;font-size:10px">(actual)</span>' : ''}</strong>
-              <span style="color:#666;font-size:11px">${Utils.formatHora(c.entrada)}–${Utils.formatHora(c.salida)}</span>
-              <span style="color:#888;font-size:10px">${excedenteTxt}</span>${avisosHtml}
+              <span style="color:var(--text-muted);font-size:11px">${Utils.formatHora(c.entrada)}–${Utils.formatHora(c.salida)}</span>
+              <span style="color:var(--text-muted);font-size:10px;opacity:0.85">${excedenteTxt}</span>${avisosHtml}
             </div>`;
         }
       }

@@ -1640,6 +1640,76 @@
   });
 
   // ============================================================
+  // REGLAS — candidato reemplazado / dado de baja
+  // ============================================================
+  suite('Reglas: rechaza candidato reemplazado o dado de baja', function () {
+    const origRemp = Store._state.reemplazos;
+    const origEmpsGV = JSON.parse(JSON.stringify(Store._state.empleadosGV || {}));
+    Store._state.reemplazos = [];
+
+    // Garantizar empleados mínimos
+    Store._state.empleadosGV = Store._state.empleadosGV || {};
+    Store._state.empleadosGV['X_BAJA'] = {
+      alias: 'X_BAJA', nombre: 'X', apellidos: '', dni: '', telefono: '', email: '',
+      fechaAlta: '2020-01-01', fechaBaja: '2026-03-01', contrato: 30,
+      tienda: 'granvia', franja: 'tardes', restriccion: '', color: '#000'
+    };
+    Store._state.empleadosGV['X_REEMPLAZADO'] = {
+      alias: 'X_REEMPLAZADO', nombre: 'X', apellidos: '', dni: '', telefono: '', email: '',
+      fechaAlta: '2020-01-01', contrato: 30,
+      tienda: 'granvia', franja: 'tardes', restriccion: '', color: '#000'
+    };
+
+    test('Empleado con fechaBaja anterior → rechazado', () => {
+      const turno = {
+        tienda: 'granvia', fecha: new Date(2026, 4, 10), // 10 mayo 2026
+        ausente: 'OTRO', franja: 'tardes', turnoFds: 'DOM_T',
+        entrada: 14.75, salida: 22.25
+      };
+      const r = Reglas.validarCandidato('X_BAJA', turno);
+      assert(!r.valido);
+      assert(r.errores.some(e => e.indexOf('dado de baja') >= 0 || e.indexOf('No está activo') >= 0),
+        'debe rechazar por baja: ' + r.errores.join(', '));
+    });
+
+    test('Empleado con reemplazo activo → rechazado', () => {
+      Store._state.reemplazos = [{
+        aliasOriginal: 'X_REEMPLAZADO', aliasNuevo: 'NUEVO',
+        tienda: 'granvia', desde: '2026-04-01', hasta: ''
+      }];
+      const turno = {
+        tienda: 'granvia', fecha: new Date(2026, 4, 10),
+        ausente: 'OTRO', franja: 'tardes', turnoFds: 'DOM_T',
+        entrada: 14.75, salida: 22.25
+      };
+      const r = Reglas.validarCandidato('X_REEMPLAZADO', turno);
+      assert(!r.valido);
+      assert(r.errores.some(e => e.indexOf('Reemplazado') >= 0),
+        'debe rechazar por reemplazo: ' + r.errores.join(', '));
+    });
+
+    test('Reemplazo fuera de rango (fecha posterior a hasta) → acepta', () => {
+      Store._state.reemplazos = [{
+        aliasOriginal: 'X_REEMPLAZADO', aliasNuevo: 'NUEVO',
+        tienda: 'granvia', desde: '2026-04-01', hasta: '2026-04-30'
+      }];
+      const turno = {
+        tienda: 'granvia', fecha: new Date(2026, 4, 10), // 10 mayo, fuera del rango
+        ausente: 'OTRO', franja: 'tardes', turnoFds: 'DOM_T',
+        entrada: 14.75, salida: 22.25
+      };
+      const r = Reglas.validarCandidato('X_REEMPLAZADO', turno);
+      // No debe fallar por reemplazo (puede fallar por otras razones, pero no por esta)
+      assert(!r.errores.some(e => e.indexOf('Reemplazado') >= 0),
+        'no debe marcar como reemplazado fuera de rango: ' + r.errores.join(', '));
+    });
+
+    // Cleanup
+    Store._state.reemplazos = origRemp;
+    Store._state.empleadosGV = origEmpsGV;
+  });
+
+  // ============================================================
   // RESUMEN
   // ============================================================
   const sum = document.getElementById('summary');
