@@ -41,50 +41,19 @@ function writeData(ss, sheetName, headers, rows) {
   return sheet;
 }
 
+// Bootstrap de hojas: solo crea encabezados. Los datos de empleados los
+// gestiona Nacho desde la app (UI → Sheets vía syncEmpleados). Antes había
+// aquí filas hardcoded con DNIs/telefonos/emails reales; se eliminaron tras
+// la auditoría 2026-04-25 por LOPD. Si necesitas re-sembrar la hoja desde
+// cero, ejecuta inicializarTodo() y luego mete los empleados desde la UI.
 function crearEmpleadosGV(ss) {
   var h = ['alias','nombre','apellidos','dni','telefono','email','fechaAlta','contrato','tienda','franja','restriccion','color','horasLV','horasFDS'];
-  var r = [
-    ['EVA','Eva','Martinez','12345678A','612001001','eva@kira.com','2018-03-15',40,'granvia','mananas','max-15','#2e7d32','',''],
-    ['SARA','Sara','Lopez','23456789B','612002002','sara@kira.com','2019-06-01',35,'granvia','mananas','solo-mananas','#2e7d32','',''],
-    ['ELI','Elisabeth','Fernandez','34567890C','612003003','eli@kira.com','2019-09-15',35,'granvia','mananas','solo-mananas','#2e7d32','',''],
-    ['FRANCIS','Francisco','Perez','45678901D','612004004','francis@kira.com','2020-01-10',35,'granvia','cierre','solo-cierre','#6a1b9a','',''],
-    ['EDU','Eduardo','Gonzalez','56789012E','612005005','edu@kira.com','2020-04-20',30,'ambas','mananas','max-15','#2e7d32','',''],
-    ['DAVID','David','Rodriguez','67890123F','612006006','david@kira.com','2020-07-01',30,'ambas','rotativo','','#2c5aa0','',''],
-    ['LETI','Leticia','Jimenez','78901234G','612007007','leti@kira.com','2020-07-01',30,'ambas','rotativo','','#2c5aa0','',''],
-    ['SILVIA','Silvia','Hernandez','89012345H','612008008','silvia@kira.com','2021-02-15',30,'ambas','tardes','','#e65100','',''],
-    ['ALEX','Alejandro','Munoz','90123456I','612009009','alex@kira.com','2021-05-01',30,'ambas','cierre','','#6a1b9a','',''],
-    ['ABDEL','Abdel','Benali','01234567J','612010010','abdel@kira.com','2021-09-01',30,'ambas','cierre','','#6a1b9a','',''],
-    ['ANTONIO','Antonio','Serrano','11223344K','612011011','antonio@kira.com','2019-01-15',25,'ambas','descarga','solo-descarga','#2c5aa0','',''],
-    ['VANESA','Vanesa','Ortega','22334455L','612012012','vanesa@kira.com','2022-03-01',25,'ambas','mananas','','#2e7d32','',''],
-    ['MORILLA','Jose','Morilla','33445566M','612013013','morilla@kira.com','2022-06-15',25,'ambas','tardes','','#e65100','',''],
-    ['ALFREDO','Alfredo','Garcia','44556677N','612014014','alfredo@kira.com','2023-01-10',15,'granvia','tardes','','#e65100','',''],
-    ['ALEX VERA','Alejandro','Vera','55667788O','612015015','alexvera@kira.com','2023-03-01',15,'granvia','tardes','','#e65100','','']
-  ];
-  writeData(ss, 'EmpleadosGV', h, r);
+  writeData(ss, 'EmpleadosGV', h, []);
 }
 
 function crearEmpleadosIS(ss) {
   var h = ['alias','nombre','apellidos','dni','telefono','email','fechaAlta','contrato','tienda','franja','restriccion','color','horasLV','horasFDS'];
-  var r = [
-    ['EDU','Eduardo','Gonzalez','56789012E','612005005','edu@kira.com','',12,'ambas','mananas','','#2e7d32','',''],
-    ['DAVID','David','Rodriguez','67890123F','612006006','david@kira.com','',12,'ambas','rotativo','','#2c5aa0','',''],
-    ['LETI','Leticia','Jimenez','78901234G','612007007','leti@kira.com','',12,'ambas','rotativo','','#2c5aa0','',''],
-    ['SILVIA','Silvia','Hernandez','89012345H','612008008','silvia@kira.com','',15,'ambas','tardes','','#e65100','',''],
-    ['ALEX','Alejandro','Munoz','90123456I','612009009','alex@kira.com','',15,'ambas','cierre','','#6a1b9a','',''],
-    ['ABDEL','Abdel','Benali','01234567J','612010010','abdel@kira.com','',15,'ambas','cierre','','#6a1b9a','',''],
-    ['ANTONIO','Antonio','Serrano','11223344K','612011011','antonio@kira.com','',15,'ambas','descarga','solo-descarga','#2c5aa0','',''],
-    ['VANESA','Vanesa','Ortega','22334455L','612012012','vanesa@kira.com','',18,'ambas','mananas','','#2e7d32','',''],
-    ['MORILLA','Jose','Morilla','33445566M','612013013','morilla@kira.com','',18,'ambas','tardes','','#e65100','',''],
-    ['CAROLINA','Carolina','Ruiz','66778899P','612020001','carolina@reypik.com','2021-01-15',30,'isabel','mananas','','#2e7d32','',''],
-    ['ALVARO','Alvaro','Sanchez','77889900Q','612020002','alvaro@reypik.com','2021-03-01',30,'isabel','tardes','','#e65100','',''],
-    ['CECI','Cecilia','Martin','88990011R','612020003','ceci@reypik.com','2021-06-01',30,'isabel','cierre','','#6a1b9a','',''],
-    ['ANDREA','Andrea','Lopez','99001122S','612020004','andrea@reypik.com','2022-02-15',23.5,'isabel','cierre','','#6a1b9a','',''],
-    ['ABEL','Abel','Vera','00112233T','612020005','abel@reypik.com','2022-05-01',19,'isabel','cierre','','#6a1b9a','',''],
-    ['M. CARMEN','Maria Carmen','Ortiz','11223344U','612020006','maricarmen@reypik.com','2022-09-01',15,'isabel','mananas','','#2e7d32','',''],
-    ['RUBEN','Ruben','Garcia','22334455V','612020007','ruben@reypik.com','2023-01-15',15,'isabel','tardes','','#e65100','',''],
-    ['GONZALO','Gonzalo','Fernandez','33445566W','612020008','gonzalo@reypik.com','2023-04-01',15,'isabel','tardes','','#e65100','','']
-  ];
-  writeData(ss, 'EmpleadosIS', h, r);
+  writeData(ss, 'EmpleadosIS', h, []);
 }
 
 function crearHorariosGV(ss) {
