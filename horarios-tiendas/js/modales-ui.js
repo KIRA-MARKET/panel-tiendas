@@ -1033,7 +1033,15 @@ const Modales = {
             <button class="modal-close" data-action="cancel">×</button>
           </div>
           <div class="modal-body" style="max-height:60vh;overflow-y:auto">
-            <p class="sub" style="font-size:12px;margin-bottom:12px">${Utils.escapeHtml(fechaES)} · ${Utils.escapeHtml(tiendaTxt)} · ${Utils.escapeHtml(turnoLabel)}</p>
+            <p class="sub" style="font-size:12px;margin-bottom:8px">${Utils.escapeHtml(fechaES)} · ${Utils.escapeHtml(tiendaTxt)} · ${Utils.escapeHtml(turnoLabel)}</p>
+            <div style="display:flex;gap:12px;font-size:11px;margin-bottom:12px;padding:8px 10px;background:var(--bg-2,#f5f5f5);border-radius:6px">
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+                <input type="radio" name="sust-tipo" value="movimiento" checked> <span><strong>Movimiento</strong> (no suma horas)</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+                <input type="radio" name="sust-tipo" value="extra"> <span><strong>Extra</strong> (horas adicionales)</span>
+              </label>
+            </div>
             ${listaHtml}
           </div>
           <div class="modal-footer">
@@ -1050,12 +1058,18 @@ const Modales = {
       overlay.querySelectorAll('[data-action="cancel"]').forEach(b => b.onclick = () => close(null));
       overlay.onclick = (e) => { if (e.target === overlay) close(null); };
 
+      const leerTipo = () => {
+        const r = overlay.querySelector('input[name="sust-tipo"]:checked');
+        return r && r.value === 'extra' ? 'extra' : 'movimiento';
+      };
+
       // Click en candidato → crear/reemplazar sustitución
       overlay.querySelectorAll('.cand-option').forEach(el => {
         el.onclick = () => {
           const i = parseInt(el.dataset.idx);
           const c = candidatos[i];
           const fs = typeof fecha === 'string' ? fecha : Utils.formatFecha(fecha);
+          const tipo = leerTipo();
 
           // Si ya había sustituto distinto, quitarlo primero
           if (sustActual && sustActual.sustituto !== c.alias) {
@@ -1075,10 +1089,11 @@ const Modales = {
               franja: ctx.turnoFds ? '' : Utils.getFranja(c.entrada, c.salida, tienda),
               turnoFds: ctx.turnoFds || '',
               tienda,
-              tipo: 'movimiento'
+              tipo
             });
             if (Sync && Sync.syncSustituciones) Sync.syncSustituciones();
-            CalendarioUI.toast && CalendarioUI.toast('Sustituto asignado: ' + c.alias, 'success');
+            const msg = 'Sustituto asignado: ' + c.alias + (tipo === 'extra' ? ' (extra)' : '');
+            CalendarioUI.toast && CalendarioUI.toast(msg, 'success');
           }
           close('asignado');
         };
