@@ -1941,6 +1941,108 @@
   });
 
   // ============================================================
+  // ROTACIONES — DST en los bordes exactos del cambio de hora
+  // ============================================================
+  suite('Rotaciones: DST exacto en spring forward y fall back', function () {
+    test('Spring forward 2026 (29-mar): semanas iguales en sábado 28 y domingo 29', () => {
+      const ini = Utils.parseFecha('2026-02-28');
+      const sab = Utils.parseFecha('2026-03-28'); // sábado antes de DST
+      const dom = Utils.parseFecha('2026-03-29'); // domingo, día del cambio
+      const wSab = Rotaciones._semanasEntre(ini, sab);
+      const wDom = Rotaciones._semanasEntre(ini, dom);
+      assertEq(wSab, wDom, 'sábado 28 y domingo 29 deben ser la misma semana');
+    });
+
+    test('Fall back 2026 (25-oct): semanas iguales en sábado 24 y domingo 25', () => {
+      const ini = Utils.parseFecha('2026-02-28');
+      const sab = Utils.parseFecha('2026-10-24'); // sábado antes del cambio
+      const dom = Utils.parseFecha('2026-10-25'); // domingo, día del cambio
+      const wSab = Rotaciones._semanasEntre(ini, sab);
+      const wDom = Rotaciones._semanasEntre(ini, dom);
+      assertEq(wSab, wDom, 'sábado 24 y domingo 25 deben ser la misma semana');
+    });
+
+    test('Cruce de año (31-dic-2026 → 03-ene-2027): la diff aumenta exactamente lo esperado', () => {
+      const ini = Utils.parseFecha('2026-12-26'); // sábado
+      const sabSig = Utils.parseFecha('2027-01-02'); // sábado siguiente
+      const w = Rotaciones._semanasEntre(ini, sabSig);
+      assertEq(w, 1, 'una semana exacta a través del cambio de año');
+    });
+  });
+
+  // ============================================================
+  // REEMPLAZOS — encadenamiento (A→B→C) y anti-ciclo (A→B→A)
+  // ============================================================
+  suite('Reemplazos: cadena y anti-ciclo', function () {
+    const origReemp = Store._state.reemplazos;
+
+    test('Cadena A→B→C: aliasEfectivo(A) devuelve C', () => {
+      Store._state.reemplazos = [
+        { tienda: 'granvia', aliasOriginal: 'A', aliasNuevo: 'B', desde: '2026-01-01', hasta: '', motivo: '' },
+        { tienda: 'granvia', aliasOriginal: 'B', aliasNuevo: 'C', desde: '2026-01-01', hasta: '', motivo: '' }
+      ];
+      const efectivo = Reemplazos.aliasEfectivo('A', Utils.parseFecha('2026-06-15'), 'granvia');
+      assertEq(efectivo, 'C', 'la cadena debe resolverse hasta el último');
+    });
+
+    test('Anti-ciclo A→B→A: corta sin colgar el navegador', () => {
+      Store._state.reemplazos = [
+        { tienda: 'granvia', aliasOriginal: 'A', aliasNuevo: 'B', desde: '2026-01-01', hasta: '', motivo: '' },
+        { tienda: 'granvia', aliasOriginal: 'B', aliasNuevo: 'A', desde: '2026-01-01', hasta: '', motivo: '' }
+      ];
+      // Que no entre en bucle infinito ni lance excepción
+      const efectivo = Reemplazos.aliasEfectivo('A', Utils.parseFecha('2026-06-15'), 'granvia');
+      // Debe terminar — el alias resuelto puede ser A o B, lo importante
+      // es que el anti-ciclo (visitados Set) corte la cadena.
+      assert(efectivo === 'A' || efectivo === 'B', 'debe terminar en A o B sin colgar');
+    });
+
+    test('Reemplazo expirado por fecha hasta no se aplica', () => {
+      Store._state.reemplazos = [
+        { tienda: 'granvia', aliasOriginal: 'X', aliasNuevo: 'Y', desde: '2026-01-01', hasta: '2026-03-31', motivo: '' }
+      ];
+      const dentroDeRango = Reemplazos.aliasEfectivo('X', Utils.parseFecha('2026-02-15'), 'granvia');
+      const fueraDeRango  = Reemplazos.aliasEfectivo('X', Utils.parseFecha('2026-05-15'), 'granvia');
+      assertEq(dentroDeRango, 'Y');
+      assertEq(fueraDeRango,  'X', 'fuera del rango el reemplazo no aplica');
+    });
+
+    Store._state.reemplazos = origReemp;
+  });
+
+  // ============================================================
+  // SYNC — comportamiento ante error de red (fetch falla)
+  // ============================================================
+  suite('Sync: error de red marca syncStatus=error sin corromper estado', function () {
+    const origFetch = window.fetch;
+    const origStatus = Store._state.syncStatus;
+    const origSusts = Store._state.sustituciones;
+
+    test('cargar() con fetch que falla: syncStatus pasa a error y devuelve false', async () => {
+      window.fetch = function () { return Promise.reject(new Error('ECONNRESET')); };
+      const ok = await Sync.cargar();
+      assertEq(ok, false, 'cargar debe devolver false ante error de red');
+      assertEq(Store.get('syncStatus'), 'error');
+    });
+
+    test('Estado del Store (sustituciones) no se corrompe ante error en cargar', async () => {
+      // Pre-cargar algo para verificar que NO se sobreescribe a vacío
+      Store._state.sustituciones = [{
+        fecha: '2026-06-01', ausente: 'X', sustituto: 'Y',
+        entrada: 9, salida: 14, franja: '', turnoFds: '', tienda: 'granvia', tipo: 'movimiento'
+      }];
+      window.fetch = function () { return Promise.reject(new Error('ETIMEDOUT')); };
+      await Sync.cargar();
+      assertEq(Store._state.sustituciones.length, 1, 'no debe vaciar el estado previo');
+    });
+
+    // Cleanup
+    window.fetch = origFetch;
+    Store._state.syncStatus = origStatus;
+    Store._state.sustituciones = origSusts;
+  });
+
+  // ============================================================
   // RESUMEN
   // ============================================================
   const sum = document.getElementById('summary');
