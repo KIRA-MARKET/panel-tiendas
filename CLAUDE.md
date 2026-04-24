@@ -116,9 +116,26 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 1. ~~**EVA debe contar en descarga + mañanas.**~~ ✓ Resuelto. Cobertura ahora es multi-franja: un empleado cuenta en cada franja cuya ventana cubre íntegramente. Ventanas en `CONFIG.FRANJAS_GV/IS`.
 2. **Estrategia "reorganizar plantilla":** cuando falta alguien, sugerir alargar el horario base de otro en vez de mover sustituto. Aplazado (8 abril 2026): requiere alinear con Nacho cuándo prefiere reorganizar vs sustituir, límite de horas de extensión, qué empleados pueden ser "alargados" y cómo se visualiza en calendario. Cuando se retome, las preguntas concretas están en el chat de esa fecha.
 3. ~~**DAVID/LETI exclusión mutua viernes Isabel.**~~ ✓ Resuelto en `reglas.js` + tests (commit `ef2a845`).
-4. **Capa 2 del motor:** aprender de las decisiones históricas de Nacho.
+4. **Capa 2 del motor:** aprender de las decisiones históricas de Nacho. Backend cableado en `motor-sustituciones.js` (`preferenciaScore`) y `Store.getDecisiones`; falta UI para que Nacho registre la elección final cuando difiere de la sugerencia.
 5. **Tema oscuro:** intento inicial revertido (7 abril 2026). El calendario tiene muchos colores hardcodeados (cabeceras, celdas vacías, líneas de ausencia rojas que sobre fondo oscuro casi no se ven). Requiere repaso completo de `calendario.css` antes de reintentarlo. Pendiente de Fase 4 cuando haya tiempo.
-6. **Sustituciones tipo movimiento vs extra:** la pestaña Horas ya distingue entre los dos tipos (`tipo: 'movimiento'` por defecto = no suma horas; `tipo: 'extra'` = suma como horas adicionales). Falta añadir el toggle en el modal de sustituciones para que Nacho lo marque al crear cada una. Mientras tanto, todas las sustituciones se asumen como movimiento.
+6. ~~**Sustituciones tipo movimiento vs extra:** falta el toggle en el modal.~~ ✓ Resuelto (commit `bd6a0d1`). Toggle añadido en el modal de asignación de sustituto. Default `movimiento`, opcional `extra`.
+
+### Bugs nuevos detectados en la auditoría 25-04-2026 (todos cerrados)
+
+7. ~~**Auditor leía modificaciones con claves equivocadas** (`mod.entrada` en vez de `mod.nuevaEntrada`)~~ ✓ Resuelto en `auditor.js:28` + test (commit `7ae325b`).
+8. ~~**Veto duro DOM_T:** spec dice "nunca quitar de DOM_T si hay alternativa" pero el motor solo lo prefería.~~ ✓ Resuelto en `motor-sustituciones.js`: tras el sort, si hay candidatos válidos con turno origen ≠ DOM_T y excedente real ≥1, los DOM_T se filtran.
+9. ~~**Regla "también ausente" sin return inmediato.**~~ ✓ Resuelto en `reglas.js`.
+10. ~~**Ausencia de empleado compartido no se propagaba entre tiendas.**~~ ✓ Resuelto: `Ausencias.crear` acepta `opciones.aplicarEnAmbas`; el modal pregunta cuando `empData.tienda === 'ambas'` (commit `7a5e65b`).
+11. ~~**Datos LOPD (DNI/tel/email) hardcodeados en `js/empleados.js` y `apps-script/Sin título.js`.**~~ ✓ Eliminados (commit `b54cd84`). Sheets es ahora fuente única de verdad; el código solo inicializa estructuras vacías.
+12. ~~**Apps Script `writeSheet` no transaccional**: clearContents+setValues podía dejar la hoja vacía si fallaba a mitad.~~ ✓ Resuelto en `apps-script/Sin título.js` (commit `a758e3d`): un solo setValues + cleanup posterior.
+
+### Pendientes de la auditoría 25-04-2026
+
+13. **API Sheets pública anónima** (`access: ANYONE_ANONYMOUS`). Sigue abierto. Opciones: Cloudflare Worker proxy con token o cambiar a `MYSELF`/`DOMAIN` + OAuth. Decisión pendiente.
+14. **Race condition inter-cliente.** La cola en `sync.js` solo serializa intra-cliente; dos pestañas pueden seguir pisándose. Pendiente.
+15. **Service Worker + IndexedDB para offline.** Pendiente (Fase 4).
+16. **Partir `modales-ui.js`** (~1.900 líneas). Refactor mayor — sesión dedicada.
+17. **JSDoc estricto + `tsc --checkJs`** sobre todos los `.js`. Pendiente.
 
 ---
 
