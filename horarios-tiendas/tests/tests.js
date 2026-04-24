@@ -1737,6 +1737,85 @@
   });
 
   // ============================================================
+  // AUSENCIAS — empleados con tienda 'ambas' (replicación entre tiendas)
+  // ============================================================
+  suite('Ausencias: empleado con tienda ambas', function () {
+    const origGV    = Store._state.empleadosGV;
+    const origIS    = Store._state.empleadosIS;
+    const origAusGV = Store._state.ausenciasGV;
+    const origAusIS = Store._state.ausenciasIS;
+    const origSync  = Sync.syncAusencias;
+
+    // Seed: un empleado ficticio compartido (tienda:'ambas' en las dos plantillas)
+    // y otro solo GV para el test negativo. Aliases con guión bajo para no colisionar.
+    Store._state.empleadosGV = {
+      _SHARED:  { alias: '_SHARED',  nombre: 'Test', apellidos: 'Compartido', dni: '', telefono: '', email: '', fechaAlta: '2025-01-01', contrato: 25, tienda: 'ambas',   franja: 'tardes', restriccion: '', color: '#888' },
+      _SOLO_GV: { alias: '_SOLO_GV', nombre: 'Test', apellidos: 'SoloGV',     dni: '', telefono: '', email: '', fechaAlta: '2025-01-01', contrato: 25, tienda: 'granvia', franja: 'tardes', restriccion: '', color: '#888' }
+    };
+    Store._state.empleadosIS = {
+      _SHARED:  { alias: '_SHARED',  nombre: 'Test', apellidos: 'Compartido', dni: '', telefono: '', email: '', fechaAlta: '2025-01-01', contrato: 18, tienda: 'ambas',   franja: 'tardes', restriccion: '', color: '#888' }
+    };
+    Store._state.ausenciasGV = [];
+    Store._state.ausenciasIS = [];
+    Sync.syncAusencias = function () {}; // stub para evitar fetch
+
+    test('aplicarEnAmbas:true bloquea turnos en GV y en Isabel simultáneamente', () => {
+      Store._state.ausenciasGV = [];
+      Store._state.ausenciasIS = [];
+      const r = Ausencias.crear('granvia', '_SHARED', 'vacaciones',
+        '2030-06-01', '2030-06-07', '', { aplicarEnAmbas: true });
+      assert(r.ok, r.error);
+      assertEq(r.replicada, true);
+      // Día dentro del rango: ausente en ambas tiendas
+      assert(Store.estaAusente('_SHARED', '2030-06-03', 'granvia'), 'debe estar ausente en GV');
+      assert(Store.estaAusente('_SHARED', '2030-06-03', 'isabel'),  'debe estar ausente en Isabel');
+      // Día fuera del rango: no ausente en ninguna
+      assert(!Store.estaAusente('_SHARED', '2030-05-31', 'granvia'));
+      assert(!Store.estaAusente('_SHARED', '2030-05-31', 'isabel'));
+    });
+
+    test('Por defecto (sin opciones) solo se registra en la tienda activa', () => {
+      Store._state.ausenciasGV = [];
+      Store._state.ausenciasIS = [];
+      const r = Ausencias.crear('granvia', '_SHARED', 'vacaciones',
+        '2030-07-01', '2030-07-05', '');
+      assert(r.ok, r.error);
+      assert(!r.replicada, 'no debe replicar sin la opción');
+      assert(Store.estaAusente('_SHARED', '2030-07-03', 'granvia'));
+      assert(!Store.estaAusente('_SHARED', '2030-07-03', 'isabel'));
+    });
+
+    test('aplicarEnAmbas:true con empleado que NO es ambas → error y no crea nada', () => {
+      Store._state.ausenciasGV = [];
+      Store._state.ausenciasIS = [];
+      const r = Ausencias.crear('granvia', '_SOLO_GV', 'permiso',
+        '2030-08-01', '2030-08-02', '', { aplicarEnAmbas: true });
+      assert(!r.ok, 'debe rechazar replicación si no es ambas');
+      assertEq(Store.getAusencias('granvia').length, 0);
+      assertEq(Store.getAusencias('isabel').length, 0);
+    });
+
+    test('Atomicidad: si solapa en la otra tienda, no se crea en NINGUNA', () => {
+      Store._state.ausenciasGV = [];
+      Store._state.ausenciasIS = [
+        { empleado: '_SHARED', tipo: 'baja', desde: '2030-09-10', hasta: '2030-09-12', motivo: '' }
+      ];
+      const r = Ausencias.crear('granvia', '_SHARED', 'permiso',
+        '2030-09-11', '2030-09-15', '', { aplicarEnAmbas: true });
+      assert(!r.ok, 'debe detectar solapamiento en Isabel y abortar');
+      assertEq(Store.getAusencias('granvia').length, 0, 'GV no debe recibir un insert parcial');
+      assertEq(Store.getAusencias('isabel').length, 1, 'Isabel sigue con la pre-existente');
+    });
+
+    // Cleanup
+    Store._state.empleadosGV = origGV;
+    Store._state.empleadosIS = origIS;
+    Store._state.ausenciasGV = origAusGV;
+    Store._state.ausenciasIS = origAusIS;
+    Sync.syncAusencias = origSync;
+  });
+
+  // ============================================================
   // RESUMEN
   // ============================================================
   const sum = document.getElementById('summary');

@@ -9,19 +9,23 @@ const Ausencias = {
 
   // ── Tipos de ausencia ──────────────────────────────────────
   TIPOS: [
-    { value: 'vacaciones', label: 'Vacaciones', icon: '\ud83c\udfd6\ufe0f' },
-    { value: 'baja', label: 'Baja', icon: '\ud83c\udfe5' },
-    { value: 'permiso', label: 'Permiso', icon: '\ud83d\udcc5' },
-    { value: 'asuntos', label: 'Asuntos propios', icon: '\ud83d\udccb' }
+    { value: 'vacaciones', label: 'Vacaciones', icon: '🏖️' },
+    { value: 'baja', label: 'Baja', icon: '🏥' },
+    { value: 'permiso', label: 'Permiso', icon: '📅' },
+    { value: 'asuntos', label: 'Asuntos propios', icon: '📋' }
   ],
 
   // ── Crear ausencia ─────────────────────────────────────────
 
   /**
    * Crea una ausencia validando solapamientos con otras del mismo empleado.
-   * Devuelve { ok, error, ausencia? }
+   * Devuelve { ok, error, ausencia?, replicada? }
+   *
+   * opciones.aplicarEnAmbas — si el empleado tiene tienda:'ambas', registra
+   * la ausencia también en la otra tienda. Si alguna validación falla
+   * en cualquiera de las dos, no se crea ninguna (operación atómica).
    */
-  crear(tienda, empleado, tipo, desde, hasta, motivo = '') {
+  crear(tienda, empleado, tipo, desde, hasta, motivo = '', opciones = {}) {
     // Validar fechas
     if (!desde || !hasta) {
       return { ok: false, error: 'Faltan fechas' };
@@ -36,7 +40,25 @@ const Ausencias = {
       return { ok: false, error: 'Empleado no encontrado en ' + tienda };
     }
 
-    // ── REGLA: Bloquear solapamientos ──
+    // ── Determinar si la ausencia se replica a la otra tienda ──
+    // Solo si el empleado es genuinamente compartido (tienda:'ambas') Y
+    // existe ficha en la otra tienda (Sheets podría tener una sola).
+    let otraTienda = null;
+    if (opciones.aplicarEnAmbas) {
+      if (emp.tienda !== 'ambas') {
+        return { ok: false, error: 'El empleado no trabaja en ambas tiendas' };
+      }
+      otraTienda = tienda === 'granvia' ? 'isabel' : 'granvia';
+      const empOtra = Store.getEmpleado(empleado, otraTienda);
+      if (!empOtra) {
+        return {
+          ok: false,
+          error: 'Empleado no encontrado en ' + (otraTienda === 'granvia' ? 'Gran Vía' : 'Isabel')
+        };
+      }
+    }
+
+    // ── REGLA: Bloquear solapamientos (en ambas tiendas si aplica) ──
     const solapada = Store.ausenciaSolapada(tienda, empleado, desde, hasta);
     if (solapada) {
       return {
@@ -46,8 +68,25 @@ const Ausencias = {
                Utils.formatFechaES(solapada.hasta) + ' (' + solapada.tipo + ')'
       };
     }
+    if (otraTienda) {
+      const solapadaOtra = Store.ausenciaSolapada(otraTienda, empleado, desde, hasta);
+      if (solapadaOtra) {
+        return {
+          ok: false,
+          error: 'Ya existe una ausencia de ' + empleado + ' en ' +
+                 (otraTienda === 'granvia' ? 'Gran Vía' : 'Isabel') +
+                 ' del ' + Utils.formatFechaES(solapadaOtra.desde) +
+                 ' al ' + Utils.formatFechaES(solapadaOtra.hasta) +
+                 ' (' + solapadaOtra.tipo + ')'
+        };
+      }
+    }
 
-    // Validar días de vacaciones disponibles (solo para tipos que restan días)
+    // Validar días de vacaciones disponibles (solo para tipos que restan días).
+    // Validamos UNA vez en la tienda activa: el cupo es del empleado, no de la
+    // tienda. Si aplicarEnAmbas crea dos registros con las mismas fechas, en
+    // Control aparecerán contados en ambas filas — limitación pre-existente
+    // del modelo de datos por tienda, no introducida aquí.
     if (CONFIG.TIPOS_RESTAN_DIAS.includes(tipo)) {
       const año = parseInt(desde.substring(0, 4));
       const dias = Utils.contarDiasNaturales(desde, hasta);
@@ -56,17 +95,20 @@ const Ausencias = {
         return {
           ok: false,
           error: empleado + ' solo tiene ' + vac.restantes +
-                 ' d\u00edas disponibles en ' + año + ' y est\u00e1s pidiendo ' + dias
+                 ' días disponibles en ' + año + ' y estás pidiendo ' + dias
         };
       }
     }
 
-    // Crear
+    // Crear (en una o dos tiendas según opciones)
     const ausencia = { empleado, tipo, desde, hasta, motivo };
     Store.addAusencia(tienda, ausencia);
+    if (otraTienda) {
+      Store.addAusencia(otraTienda, { empleado, tipo, desde, hasta, motivo });
+    }
     Sync.syncAusencias();
 
-    return { ok: true, ausencia };
+    return { ok: true, ausencia, replicada: !!otraTienda };
   },
 
   // ── Editar ausencia ────────────────────────────────────────

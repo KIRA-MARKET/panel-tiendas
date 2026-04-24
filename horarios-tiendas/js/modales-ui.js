@@ -219,15 +219,35 @@ const Modales = {
         if (!desde || !hasta) return showError('Selecciona las fechas');
 
         hideError();
-        const result = Ausencias.crear(tienda, empleado, tipo, desde, hasta, motivo);
-        if (!result.ok) return showError(result.error);
 
-        Modales._cerrarOverlay(overlay);
-        CalendarioUI.toast('Ausencia registrada para ' + empleado, 'success');
+        // Si el empleado trabaja en ambas tiendas, preguntar si replicar la
+        // ausencia a la otra. Si cancela el diálogo, se registra solo en la
+        // tienda activa (comportamiento por defecto, menos invasivo).
+        const empData = Store.getEmpleado(empleado, tienda);
+        const decidir = (empData && empData.tienda === 'ambas')
+          ? Modales.confirmar(
+              'Este empleado trabaja en ambas tiendas. ¿Aplico la ausencia también en la otra tienda?',
+              empleado + ' está en ambas tiendas'
+            )
+          : Promise.resolve(false);
 
-        // Preguntar si quiere asignar sustitutos
-        Modales._preguntarAsignarSustitutos(tienda, result.ausencia).then(() => {
-          resolve(result.ausencia);
+        decidir.then((aplicarEnAmbas) => {
+          const result = Ausencias.crear(
+            tienda, empleado, tipo, desde, hasta, motivo,
+            { aplicarEnAmbas: !!aplicarEnAmbas }
+          );
+          if (!result.ok) return showError(result.error);
+
+          Modales._cerrarOverlay(overlay);
+          const msg = result.replicada
+            ? 'Ausencia registrada para ' + empleado + ' en ambas tiendas'
+            : 'Ausencia registrada para ' + empleado;
+          CalendarioUI.toast(msg, 'success');
+
+          // Preguntar si quiere asignar sustitutos
+          Modales._preguntarAsignarSustitutos(tienda, result.ausencia).then(() => {
+            resolve(result.ausencia);
+          });
         });
       };
     });
