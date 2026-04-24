@@ -7,6 +7,9 @@
   'use strict';
 
   let pasados = 0, fallados = 0;
+  // Promesas pendientes de tests async; el resumen final espera a que
+  // todas resuelvan antes de pintar el total para no contar en falso.
+  const pendientes = [];
   const resultsEl = document.getElementById('results');
   let suiteActual = null;
 
@@ -29,17 +32,30 @@
   function test(nombre, fn) {
     const p = document.createElement('div');
     p.className = 'test';
-    try {
-      fn();
+    suiteActual.appendChild(p);
+    const marcarOk = () => {
       p.className += ' ok';
       p.textContent = '✓ ' + nombre;
       pasados++;
-    } catch (e) {
+    };
+    const marcarKo = (e) => {
       p.className += ' ko';
-      p.textContent = '✗ ' + nombre + ' — ' + e.message;
+      p.textContent = '✗ ' + nombre + ' — ' + (e && e.message ? e.message : e);
       fallados++;
+    };
+    try {
+      const r = fn();
+      // Soporte de tests async: si fn devuelve un thenable, esperar a la
+      // resolución antes de marcar y registrar la promesa para que el
+      // resumen final no se imprima antes de tiempo.
+      if (r && typeof r.then === 'function') {
+        pendientes.push(r.then(marcarOk).catch(marcarKo));
+      } else {
+        marcarOk();
+      }
+    } catch (e) {
+      marcarKo(e);
     }
-    suiteActual.appendChild(p);
   }
 
   function assert(cond, msg) {
@@ -2012,46 +2028,55 @@
 
   // ============================================================
   // SYNC — comportamiento ante error de red (fetch falla)
+  // Importante: el setup/cleanup va DENTRO de cada test (no a nivel de
+  // suite) porque los tests son async — el cleanup a nivel de suite
+  // corre antes de que los awaits resuelvan.
   // ============================================================
   suite('Sync: error de red marca syncStatus=error sin corromper estado', function () {
-    const origFetch = window.fetch;
-    const origStatus = Store._state.syncStatus;
-    const origSusts = Store._state.sustituciones;
-
     test('cargar() con fetch que falla: syncStatus pasa a error y devuelve false', async () => {
-      window.fetch = function () { return Promise.reject(new Error('ECONNRESET')); };
-      const ok = await Sync.cargar();
-      assertEq(ok, false, 'cargar debe devolver false ante error de red');
-      assertEq(Store.get('syncStatus'), 'error');
+      const origFetch = window.fetch;
+      try {
+        window.fetch = function () { return Promise.reject(new Error('ECONNRESET')); };
+        const ok = await Sync.cargar();
+        assertEq(ok, false, 'cargar debe devolver false ante error de red');
+        assertEq(Store.get('syncStatus'), 'error');
+      } finally {
+        window.fetch = origFetch;
+      }
     });
 
     test('Estado del Store (sustituciones) no se corrompe ante error en cargar', async () => {
-      // Pre-cargar algo para verificar que NO se sobreescribe a vacío
-      Store._state.sustituciones = [{
-        fecha: '2026-06-01', ausente: 'X', sustituto: 'Y',
-        entrada: 9, salida: 14, franja: '', turnoFds: '', tienda: 'granvia', tipo: 'movimiento'
-      }];
-      window.fetch = function () { return Promise.reject(new Error('ETIMEDOUT')); };
-      await Sync.cargar();
-      assertEq(Store._state.sustituciones.length, 1, 'no debe vaciar el estado previo');
+      const origFetch = window.fetch;
+      const origSusts = Store._state.sustituciones;
+      try {
+        Store._state.sustituciones = [{
+          fecha: '2026-06-01', ausente: 'X', sustituto: 'Y',
+          entrada: 9, salida: 14, franja: '', turnoFds: '', tienda: 'granvia', tipo: 'movimiento'
+        }];
+        window.fetch = function () { return Promise.reject(new Error('ETIMEDOUT')); };
+        await Sync.cargar();
+        assertEq(Store._state.sustituciones.length, 1, 'no debe vaciar el estado previo');
+      } finally {
+        window.fetch = origFetch;
+        Store._state.sustituciones = origSusts;
+      }
     });
-
-    // Cleanup
-    window.fetch = origFetch;
-    Store._state.syncStatus = origStatus;
-    Store._state.sustituciones = origSusts;
   });
 
   // ============================================================
-  // RESUMEN
+  // RESUMEN — espera a que terminen los tests async antes de pintar
   // ============================================================
   const sum = document.getElementById('summary');
-  const total = pasados + fallados;
-  if (fallados === 0) {
-    sum.className = 'ok';
-    sum.textContent = '✓ ' + pasados + '/' + total + ' tests pasados';
-  } else {
-    sum.className = 'ko';
-    sum.textContent = '✗ ' + fallados + ' fallaron · ' + pasados + ' pasaron · ' + total + ' totales';
-  }
+  sum.className = '';
+  sum.textContent = 'Ejecutando…';
+  Promise.all(pendientes).finally(function () {
+    const total = pasados + fallados;
+    if (fallados === 0) {
+      sum.className = 'ok';
+      sum.textContent = '✓ ' + pasados + '/' + total + ' tests pasados';
+    } else {
+      sum.className = 'ko';
+      sum.textContent = '✗ ' + fallados + ' fallaron · ' + pasados + ' pasaron · ' + total + ' totales';
+    }
+  });
 })();
