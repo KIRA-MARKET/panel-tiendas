@@ -117,7 +117,7 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 2. **Estrategia "reorganizar plantilla":** cuando falta alguien, sugerir alargar el horario base de otro en vez de mover sustituto. Aplazado (8 abril 2026): requiere alinear con Nacho cuándo prefiere reorganizar vs sustituir, límite de horas de extensión, qué empleados pueden ser "alargados" y cómo se visualiza en calendario. Cuando se retome, las preguntas concretas están en el chat de esa fecha.
 3. ~~**DAVID/LETI exclusión mutua viernes Isabel.**~~ ✓ Resuelto en `reglas.js` + tests (commit `ef2a845`).
 4. **Capa 2 del motor:** aprender de las decisiones históricas de Nacho. Backend cableado en `motor-sustituciones.js` (`preferenciaScore`) y `Store.getDecisiones`; falta UI para que Nacho registre la elección final cuando difiere de la sugerencia.
-5. **Tema oscuro:** intento inicial revertido (7 abril 2026). El calendario tiene muchos colores hardcodeados (cabeceras, celdas vacías, líneas de ausencia rojas que sobre fondo oscuro casi no se ven). Requiere repaso completo de `calendario.css` antes de reintentarlo. Pendiente de Fase 4 cuando haya tiempo.
+5. ~~**Tema oscuro:** intento inicial revertido (7 abril 2026). El calendario tiene muchos colores hardcodeados.~~ ✓ Resuelto (commit `3955bfb`, 25-04). Sweep automatizado en headless con tema oscuro reportó 0 issues en calendario y modales tras añadir `color: var(--text)` al `.modal-close`. Las variables CSS y el override de `[data-theme="dark"] .turno.ausente` que ya estaban hechos cubren el resto.
 6. ~~**Sustituciones tipo movimiento vs extra:** falta el toggle en el modal.~~ ✓ Resuelto (commit `bd6a0d1`). Toggle añadido en el modal de asignación de sustituto. Default `movimiento`, opcional `extra`.
 
 ### Bugs nuevos detectados en la auditoría 25-04-2026 (todos cerrados)
@@ -250,7 +250,7 @@ Esta auditoría dio origen a HORARIOS KIRA & REYPIK. Es la lista canónica de ra
 **Errores y bugs**
 - 🔴 `prompt()`/`alert()` para interacciones críticas → ✓ Modales propios.
 - 🟡 Tooltip de horas solo en hover → ⏳.
-- 🟡 Calendario no responsive → ⏳ Fase 4.
+- 🟡 Calendario no responsive → ✓ Verificado 25-04. Media queries en `calendario.css` (1200/900/640/480) y en `base.css` (1024/768/480) cubren header, modales, festivos, control y nav-tabs. Sweep headless en 375px reporta 0 overflow horizontal.
 - 🟡 Animación de alertas agresiva → ⏳ Fase 4.
 
 **Mejoras técnicas**
@@ -270,7 +270,7 @@ Esta auditoría dio origen a HORARIOS KIRA & REYPIK. Es la lista canónica de ra
 **Innovaciones**
 - 🟡 Drag & drop para reasignar turnos → ⏳ Fase 5.
 - 🟡 Vista timeline (Gantt) por día → ⏳ Fase 5.
-- 🟡 Tema oscuro → ⏳ Fase 4.
+- 🟡 Tema oscuro → ✓ Sweep verificado 25-04 (commit `3955bfb`). Toggle 🌙/☀️ + variables completas + 0 issues en headless.
 - 🟢 Atajos de teclado → ⏳.
 - 🟢 Onboarding / ayuda contextual → **descartado** (solo Nacho).
 
