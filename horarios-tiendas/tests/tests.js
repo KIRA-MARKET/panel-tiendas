@@ -1587,6 +1587,96 @@
       assertEq(res.intercambio.empleadoA, 'DAVID');
     });
 
+    test('getActivoPara: caso L-V encuentra el intercambio del día exacto', () => {
+      Store._state.intercambios = [{
+        fecha: '2026-04-22', tienda: 'isabel',
+        empleadoA: 'CECI', turnoA: 'LV', empleadoB: 'ANDREA', turnoB: 'LV', motivo: 'cita'
+      }];
+      const res = Intercambios.getActivoPara('CECI', '2026-04-22', 'isabel', 'LV');
+      assert(res !== null);
+      assertEq(res.intercambio.motivo, 'cita');
+      assertEq(res.idx, 0);
+    });
+
+    test('getActivoPara: devuelve null si nadie está implicado o si la fecha no coincide', () => {
+      Store._state.intercambios = [{
+        fecha: '2026-04-22', tienda: 'isabel',
+        empleadoA: 'CECI', turnoA: 'LV', empleadoB: 'ANDREA', turnoB: 'LV', motivo: ''
+      }];
+      assertEq(Intercambios.getActivoPara('OTRO', '2026-04-22', 'isabel', 'LV'), null);
+      assertEq(Intercambios.getActivoPara('CECI', '2026-04-23', 'isabel', 'LV'), null);
+      assertEq(Intercambios.getActivoPara('CECI', '2026-04-22', 'granvia', 'LV'), null);
+    });
+
+    test('add + remove: emite eventos y actualiza el store', () => {
+      Store._state.intercambios = [];
+      let emisiones = 0;
+      const off = Store.on('intercambios', () => { emisiones++; });
+      Intercambios.add({
+        fecha: '2026-04-22', tienda: 'granvia',
+        empleadoA: 'A', turnoA: 'LV', empleadoB: 'B', turnoB: 'LV', motivo: ''
+      });
+      assertEq(Store._state.intercambios.length, 1);
+      Intercambios.remove(0);
+      assertEq(Store._state.intercambios.length, 0);
+      assertEq(emisiones, 2); // un emit por add y otro por remove
+      if (off) off();
+    });
+
+    test('candidatosLV: excluye al propio empleado y a los ausentes; ordena por entrada', () => {
+      // Aislamos el test mockeando Rotaciones.getHorariosLV (sin tocar la rotación real)
+      const origGet = Rotaciones.getHorariosLV;
+      const origAus = Store._state.ausenciasGV;
+      try {
+        Rotaciones.getHorariosLV = () => ({
+          ANA:    [7, 15],
+          BEA:    [14, 22],
+          CARLOS: [10, 14],
+          DIANA:  [9, 13]   // estará ausente
+        });
+        Store._state.ausenciasGV = [{
+          empleado: 'DIANA', tipo: 'vacaciones',
+          desde: '2026-04-22', hasta: '2026-04-22', motivo: ''
+        }];
+
+        const cands = Intercambios.candidatosLV('ANA', '2026-04-22', 'granvia');
+        // Sin ANA (propio) y sin DIANA (ausente). Ordenados por entrada asc.
+        assertEq(cands.length, 2);
+        assertEq(cands[0].alias, 'CARLOS'); // 10 < 14
+        assertEq(cands[1].alias, 'BEA');
+      } finally {
+        Rotaciones.getHorariosLV = origGet;
+        Store._state.ausenciasGV = origAus;
+      }
+    });
+
+    test('candidatosFds: recorre los 4 turnos y respeta ausencias por día específico', () => {
+      const origGet = Rotaciones.getFds;
+      const origAus = Store._state.ausenciasIS;
+      try {
+        Rotaciones.getFds = () => ({
+          SAB_M: { X: [7, 14], Y: [7, 14] },
+          SAB_T: { Z: [15, 22] },
+          DOM_M: { Y: [7, 14] }, // Y aparece sábado y domingo
+          DOM_T: { W: [15, 22] }
+        });
+        // Y ausente solo el domingo: debe seguir como candidato del sábado
+        Store._state.ausenciasIS = [{
+          empleado: 'Y', tipo: 'vacaciones',
+          desde: '2026-04-26', hasta: '2026-04-26', motivo: ''
+        }];
+
+        // Pedimos candidatos para X (en SAB_M); X queda fuera por ser el propio.
+        const cands = Intercambios.candidatosFds('X', '2026-04-25', 'isabel');
+        const aliases = cands.map(c => c.alias + ':' + c.turno).sort();
+        // Esperamos: Y:SAB_M (sábado, presente), Z:SAB_T, W:DOM_T. NO Y:DOM_M (ausente ese día).
+        assertDeep(aliases, ['W:DOM_T', 'Y:SAB_M', 'Z:SAB_T']);
+      } finally {
+        Rotaciones.getFds = origGet;
+        Store._state.ausenciasIS = origAus;
+      }
+    });
+
     // Cleanup
     Store._state.intercambios = origInter;
   });
