@@ -106,16 +106,16 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 - **Fase 1** ✓ Cimientos (store, rotaciones, calendario, sync)
 - **Fase 2** ✓ Motor sustituciones, ausencias, modales propios, cadena de mínimos
 - **Fase 3** ✓ Auditor, festivos, control vacaciones/faltas/festivos trabajados
-- **Fase 4** ⏳ Sistema de temas (incl. modo oscuro), PDF para WhatsApp, responsive
+- **Fase 4** ⏳ Sistema de temas (incl. modo oscuro ✓), PDF para WhatsApp, responsive ✓, offline (SW + IndexedDB + cola) ✓
 - **Fase 5** ⏳ Capa 2 motor (aprendizaje), simulador verano, vista Gantt, drag & drop
 
 ---
 
 ## 📌 Estado al cierre de la sesión 25-04-2026
 
-**Sesión muy productiva.** Cerrados 7 puntos de la auditoría 25-04 + 1 bug histórico (tema oscuro). Todos pusheados a `main` y los cambios de Apps Script desplegados en producción (deploy @11).
+**Sesión muy productiva.** Cerrado el **informe de auditoría 25-04 entero** (8 puntos + 1 bug histórico). Pusheado a `main`, Apps Script en deploy @11, app desplegada en GitHub Pages con offline completo.
 
-### Cerrados hoy
+### Cerrados hoy (mañana — auditoría base)
 | # | Sprint | Cambio | Commit |
 |---|---|---|---|
 | 16 | 3.9 | Partir `modales-ui.js` en 7 archivos por dominio | `05454c5` |
@@ -126,30 +126,42 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 | — | 5.19 | Responsive móvil verificado en headless 375px | `bc426e6` |
 | 14 | 1.14 | Race condition inter-cliente (versionado optimista) | `396b63e` (deploy @11) |
 
+### Cerrados hoy (tarde — incidente post-deploy + #15 offline)
+| # | Cambio | Commit |
+|---|---|---|
+| — | Fix `_initialized`: 409 falso al arrancar sin festivos en localStorage | `abb348a` |
+| — | Salvaguarda festivos localStorage→Sheet (cierre incidente 25-04 tarde) | `85d4e06` |
+| 15A | Service Worker — app abre y funciona sin red | `39c065c` |
+| 15B | IndexedDB snapshot — arranque instantáneo desde caché local | `d0c591a` |
+| 15C | Cola offline + opción simple en 409 | `0f13908` |
+| — | Tests serializados para CI headless (Puppeteer) | `c0b8db5` |
+| — | Fix Safari `navigator.onLine` mentiroso — siempre persistir en cola si fetch falla | `84026c1` |
+| — | Indicador basado solo en cola, no en `navigator.onLine` | `04db3dc` |
+
+**Validación offline real (Safari)**: ausencia creada con Wi-Fi off → persiste en IndexedDB → al volver online se sube sola al Sheet. Camino feliz funcionando. Tests headless en CI: 187/187.
+
 ### Tags de respaldo creados (ambos en remoto)
 - `pre-split-modales-2026-04-25` sobre `b84314e`
 - `pre-auth-token-2026-04-25` sobre `05454c5`
 
-### Pendiente único del informe (siguiente sesión, en orden de prioridad)
-1. **#15 · Service Worker + IndexedDB para offline** (~1.5–2h). Fase A: SW cachea HTML/CSS/JS. Fase B: IndexedDB persiste snapshot del Store para arranque inmediato sin red. Fase C: cola de escrituras offline + drenaje al volver online (compleja por el versionado optimista).
-
-### Otros pendientes no del informe (por prioridad)
-2. **Salvaguarda contra desfase localStorage↔Sheet** (NUEVO, post-incidente 25-04 tarde): si `Sync.cargar()` recibe `festivos: []` pero hay datos en `localStorage.yolanda_festivos`, llamar automáticamente a `syncFestivos()` para subirlos. Evita que cambios hechos durante una ventana de fallo silencioso de auth queden solo en local. ~5 líneas + 1 test.
-3. **Capa 2 motor** (#4): UI para que Nacho registre la elección final cuando difiere de la sugerencia. Backend ya cableado en `motor-sustituciones.js` y `Store.getDecisiones`.
-4. **Bug #2 reorganizar plantilla**: alinear con Nacho cuándo prefiere reorganizar vs sustituir. Aplazado el 8-abr esperando decisiones de negocio.
-5. `noImplicitAny: true` en tsconfig (934 errores actuales — sesión dedicada de JSDoc fino).
+### Pendientes (todos NO del informe — el informe está cerrado)
+1. **Capa 2 motor** (#4): UI para que Nacho registre la elección final cuando difiere de la sugerencia. Backend ya cableado en `motor-sustituciones.js` y `Store.getDecisiones`.
+2. **Bug #2 reorganizar plantilla**: alinear con Nacho cuándo prefiere reorganizar vs sustituir. Aplazado el 8-abr esperando decisiones de negocio.
+3. `noImplicitAny: true` en tsconfig (934 errores actuales — sesión dedicada de JSDoc fino).
+4. **Workflow Actions: actualizar `actions/checkout@v4` y `actions/setup-node@v4` a v5** antes de junio 2026 (Node.js 20 deprecation aviso de GitHub).
 
 ### 🚨 Lección operativa registrada hoy (25-04 tarde)
-**Tras cualquier deploy de Apps Script que cambie el protocolo** (auth, versionado, sync diferencial…) **hacer Cmd+Shift+R en TODOS los dispositivos antes de operar normalmente.** Si el JS viejo del cliente llama al server nuevo, el cliente puede no entender los nuevos errores (401, 409) y fallar silenciosamente — los datos parecen guardarse pero solo viven en localStorage local del dispositivo "atrasado". Pasó hoy con 2 bugs (festivos del 02/03-abr y modificación SARA 15-abr) que se "perdieron" en el Mac entre el deploy `57f7080` (auth) y la recarga.
+**Tras cualquier deploy de Apps Script que cambie el protocolo** (auth, versionado, sync diferencial…) **hacer recarga dura en TODOS los dispositivos antes de operar normalmente.** Si el JS viejo del cliente llama al server nuevo, el cliente puede no entender los nuevos errores (401, 409) y fallar silenciosamente — los datos parecen guardarse pero solo viven en localStorage local del dispositivo "atrasado". Pasó hoy con 2 bugs (festivos del 02/03-abr y modificación SARA 15-abr) que se "perdieron" en el Mac entre el deploy `57f7080` (auth) y la recarga. Con la salvaguarda `85d4e06` ahora cualquier dato en localStorage que no esté en Sheet se sube automáticamente al cargar.
+
+### 🍎 Lección sobre Safari en macOS (25-04)
+`navigator.onLine` no es fiable en Safari de macOS: devuelve `true` aunque el Wi-Fi esté apagado. Solo flipea a `false` tras un fetch fallido, y vuelve a `true` con retraso al reconectar. **Conclusión**: NO usarlo para detección offline. Detectar offline por errores reales de fetch + reflejar el estado en UI vía contador de cola pendiente, no vía flag de `onLine`.
 
 ### ⚠️ Acciones manuales pendientes (tú, antes de la próxima sesión)
-1. **Activar la auth (1 minuto)** — meter el token en Apps Script Properties si no lo hiciste ya. Editor web → Project Settings → Script Properties → `API_TOKEN` = `1b3646165b5b7d8de6675ce9c812f39dff5f2cb9fbd35a66`.
-2. **Recargar la app en cada dispositivo** (Cmd+Shift+R / Ctrl+F5). Recoge el JS nuevo de auth + versionado.
-3. **Meter el token en cada navegador**: aparecerá modal "Autenticación requerida" automáticamente al recargar; pega el mismo token. Una vez por dispositivo (escritorio, móvil, iPad de Eva si lo usa).
-4. **Verificar** (opcional, 30 s): abre DevTools en incógnito y haz `fetch('https://script.google.com/.../exec?action=readAll')` SIN token → debe responder `{"error":"Unauthorized","code":401}`.
-5. **Probar dark mode** en el toggle 🌙 — debería verse limpio en todos los modales.
-6. **Probar el responsive en tu iPhone real** (la app ya está pusheada a GitHub Pages).
-7. **Probar el versionado anti-race** (opcional): abre la app en 2 pestañas, modifica algo en la primera y guarda, luego intenta modificar y guardar en la segunda → debe aparecer modal "Datos desactualizados, recarga".
+1. **Activar la auth si no lo hiciste ya** — Editor web Apps Script → Project Settings → Script Properties → `API_TOKEN` = `1b3646165b5b7d8de6675ce9c812f39dff5f2cb9fbd35a66`. (Verificado funcionando con curl: sin token → 401, con token → datos.)
+2. **Recargar 2 veces en cada dispositivo** (Mac, iPhone, iPad de Eva). La 1ª activa el SW v3 con offline-queue.js, la 2ª usa el shell nuevo. En Safari no hay `Cmd+Shift+R` fiable: usar DevTools → click derecho en ↻ → "Vaciar caché y volver a cargar", o `caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))).then(() => location.reload())` en consola.
+3. **Meter el token en cada navegador** (modal "Autenticación requerida" aparece solo).
+4. **Probar dark mode + responsive iPhone real** (no críticos, sweep ya verificado en headless).
+5. **(Opcional) Probar offline real** — Wi-Fi off → crear ausencia → ver "⏳ 1 pendiente" → Wi-Fi on → ver que sube sola al Sheet.
 
 ---
 
@@ -175,7 +187,10 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 
 13. ~~**API Sheets pública anónima** (`access: ANYONE_ANONYMOUS`).~~ ✓ Resuelto (commit `57f7080`, deploy @9, 25-04). Auth por token compartido: `_verificarToken` en Apps Script lee `API_TOKEN` de PropertiesService; cliente envía `&token=...` desde `Sync._fetch` leyendo `localStorage.apiToken`. Si el server devuelve 401, abre `Modales.input` para reintroducir. El token NUNCA se commitea: vive solo en Properties (server) y localStorage (cliente).
 14. ~~**Race condition inter-cliente.**~~ ✓ Resuelto (deploy @11, 25-04). Versionado optimista por hoja en `DocumentProperties` (`v_<sheetKey>`). `readAll` devuelve `_versions`; cada `save` envía `expectedVersion`. Si el server detecta `current !== expected` → `{error:'Conflict', code:409}`. El cliente vacía la cola, marca error y abre `Modales.aviso` para forzar recarga. Compatible hacia atrás: clientes legacy sin el campo siguen funcionando hasta su próxima recarga.
-15. **Service Worker + IndexedDB para offline.** Pendiente (Fase 4).
+15. ~~**Service Worker + IndexedDB para offline.**~~ ✓ Resuelto en 3 fases (25-04 tarde):
+    - **A** (`39c065c`): `sw.js` precachea HTML/CSS/JS con stale-while-revalidate. App abre sin red.
+    - **B** (`d0c591a`): `js/snapshot.js` persiste el Store en IndexedDB. Arranque instantáneo desde caché local en `App.init` antes del primer render.
+    - **C** (`0f13908`): `js/offline-queue.js` + `Sync.drenarOfflineQueue`. Saves fallidos por red se persisten en cola IDB y se drenan automáticamente al volver online (listener `online`). Si choca 409 al drenar → mensaje específico "cambios offline descartados". Indicador del header muestra "⏳ N pendientes" / "Sincronizado" basándose solo en la cola (no en `navigator.onLine` por inestabilidad en Safari, ver `84026c1` + `04db3dc`).
 16. ~~**Partir `modales-ui.js`** (~1.900 líneas).~~ ✓ Resuelto (commit `05454c5`): partido en 7 archivos en `js/modales/` por dominio (base, ausencia, sustitucion, refuerzo, empleado, intercambio, reemplazo). API pública intacta vía `Object.assign(Modales, {...})`.
 17. ~~**JSDoc estricto + `tsc --checkJs`** sobre todos los `.js`.~~ ✓ Resuelto (commit `92e574c`, 25-04). 21 archivos `.js` cubiertos por tsc (antes: 14). `noImplicitThis: true` activado. `noImplicitAny` deja 934 errores → pendiente sesión dedicada (la base estricta de `checkJs` y `noImplicitThis` ya cubre el riesgo principal de regresión por renombrados/typos).
 
