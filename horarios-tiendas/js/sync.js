@@ -17,6 +17,13 @@ const Sync = {
   // sobrescribiera el Sheet con los defaults vacíos (bug 2026-04-21).
   _loading: false,
 
+  // ── Versionado optimista (anti race-condition inter-cliente) ─
+  // Mapa { sheetKey: number } poblado en cargar() desde data._versions.
+  // Cada save envía la version esperada y el server rechaza con 409 si
+  // otra pestaña ya escribió por medio.
+  /** @type {Record<string, number>} */
+  _versions: {},
+
   // ── Auth: token compartido en localStorage ─────────────────
   // El token se introduce una vez por dispositivo. Vive solo en
   // localStorage (clave 'apiToken'); jamás en el repo. Si el server
@@ -91,6 +98,11 @@ const Sync = {
         console.error('Error Sheets:', data.error);
         return false;
       }
+
+      // Versiones por hoja para detección de races inter-cliente.
+      // Cada save irá con expectedVersion = Sync._versions[hoja]; el
+      // server compara y rechaza con 409 si otra pestaña ya escribió.
+      Sync._versions = data._versions || {};
 
       // Empleados GV
       if (data.empleadosGV && data.empleadosGV.length > 0) {
@@ -350,14 +362,31 @@ const Sync = {
       const { hoja, headers, rows } = Sync._writeQueue.shift();
       Store.setSyncStatus('loading');
       try {
+        const expectedVersion = Sync._versions[hoja] || 0;
         const data = await Sync._fetch('save', {
           method: 'POST',
-          body: JSON.stringify({ sheet: hoja, headers, rows })
+          body: JSON.stringify({ sheet: hoja, headers, rows, expectedVersion })
         });
+        if (data.code === 409 || data.error === 'Conflict') {
+          // Otra pestaña / cliente escribió antes que nosotros.
+          // Vaciar la cola para no encadenar más escrituras stale y
+          // avisar al usuario para que recargue.
+          console.warn('Conflict en', hoja, '— esperaba v' + expectedVersion + ', actual v' + data.currentVersion);
+          Sync._writeQueue.length = 0;
+          Store.setSyncStatus('error');
+          if (typeof Modales !== 'undefined' && Modales.aviso) {
+            Modales.aviso(
+              'Otra pestaña o dispositivo modificó "' + hoja + '" justo antes que tú. Para evitar pisar esos cambios, recarga la página y vuelve a hacer la modificación.',
+              'Datos desactualizados'
+            );
+          }
+          break;
+        }
         if (data.error) {
           console.error('Error guardando', hoja, data.error);
           Store.setSyncStatus('error');
         } else {
+          if (typeof data.newVersion === 'number') Sync._versions[hoja] = data.newVersion;
           Store.setSyncStatus('ok');
         }
       } catch (err) {

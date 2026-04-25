@@ -268,21 +268,41 @@ function handleRequest(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var action = e.parameter.action;
     if (action === 'readAll') {
-      return jsonResp(readAll(ss));
+      var contenido = readAll(ss);
+      contenido._versions = _getAllVersions();
+      return jsonResp(contenido);
     }
     if (action === 'save') {
       var data = JSON.parse(e.postData.contents);
+      // Optimistic concurrency: el cliente nos dice qué versión esperaba
+      // (la que tenía cuando hizo el cambio). Si la actual ya es mayor,
+      // alguien guardó por medio → conflicto, no escribimos.
+      // expectedVersion === undefined/null = cliente legacy (anterior
+      // al deploy de versionado): aceptamos por compatibilidad. En
+      // cuanto recargue verá _versions y empezará a validar.
+      if (data.expectedVersion != null) {
+        var current = _getVersion(data.sheet);
+        if (current !== data.expectedVersion) {
+          return jsonResp({
+            error: 'Conflict', code: 409, sheet: data.sheet,
+            expectedVersion: data.expectedVersion, currentVersion: current
+          });
+        }
+      }
       writeSheet(ss, HOJAS[data.sheet], data.headers, data.rows);
-      return jsonResp({ok: true, sheet: data.sheet, rows: data.rows.length});
+      var newVersion = _bumpVersion(data.sheet);
+      return jsonResp({ok: true, sheet: data.sheet, rows: data.rows.length, newVersion: newVersion});
     }
     if (action === 'saveAll') {
       var data = JSON.parse(e.postData.contents);
+      var newVersions = {};
       for (var key in data) {
         if (HOJAS[key] && data[key].headers && data[key].rows) {
           writeSheet(ss, HOJAS[key], data[key].headers, data[key].rows);
+          newVersions[key] = _bumpVersion(key);
         }
       }
-      return jsonResp({ok: true});
+      return jsonResp({ok: true, newVersions: newVersions});
     }
     return jsonResp({error: 'Accion no reconocida: ' + action});
   } catch(err) {
@@ -368,4 +388,27 @@ function jsonResp(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Versionado optimista por hoja para detectar race conditions
+// inter-cliente (dos pestañas guardando en paralelo). La versión se
+// guarda en DocumentProperties como entero monotónico por sheet key.
+function _getVersion(sheetKey) {
+  var v = PropertiesService.getDocumentProperties().getProperty('v_' + sheetKey);
+  return v ? parseInt(v, 10) : 0;
+}
+
+function _bumpVersion(sheetKey) {
+  var nv = _getVersion(sheetKey) + 1;
+  PropertiesService.getDocumentProperties().setProperty('v_' + sheetKey, String(nv));
+  return nv;
+}
+
+function _getAllVersions() {
+  var props = PropertiesService.getDocumentProperties().getProperties();
+  var out = {};
+  for (var k in props) {
+    if (k.indexOf('v_') === 0) out[k.substring(2)] = parseInt(props[k], 10);
+  }
+  return out;
 }
