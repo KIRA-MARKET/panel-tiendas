@@ -24,6 +24,13 @@ const Sync = {
   /** @type {Record<string, number>} */
   _versions: {},
 
+  // Flag activo tras la primera cargar() con éxito. Los listeners que
+  // hacen autosync (festivos, reemplazos) deben esperarlo: si no, un
+  // emit emitido por el primer render (p.ej. Festivos.asegurarAño desde
+  // CalendarioUI.render) dispara un save con expectedVersion=0 antes
+  // de que cargar() haya poblado _versions → 409 falso.
+  _initialized: false,
+
   // ── Auth: token compartido en localStorage ─────────────────
   // El token se introduce una vez por dispositivo. Vive solo en
   // localStorage (clave 'apiToken'); jamás en el repo. Si el server
@@ -267,6 +274,7 @@ const Sync = {
         }));
       }
 
+      Sync._initialized = true;
       Store.setSyncStatus('ok');
       Store._emit('datosCompletos');
       return true;

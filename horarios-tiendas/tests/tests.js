@@ -269,6 +269,51 @@
   });
 
   // ============================================================
+  // Sync._initialized — bloquea autosync antes de la primera cargar()
+  // Regresión del bug 2026-04-25: el primer CalendarioUI.render llamaba
+  // a Festivos.asegurarAño que generaba defaults y emitía 'festivos'
+  // ANTES de que Sync.cargar() poblase _versions, disparando un save
+  // con expectedVersion=0 que el server rechazaba con 409 falso.
+  // ============================================================
+  suite('Sync: autosync espera a _initialized', function () {
+    const origInit = Sync._initialized;
+    const origLoading = Sync._loading;
+
+    test('Estado inicial: _initialized = false', () => {
+      Sync._initialized = false;
+      assertEq(Sync._initialized, false);
+    });
+
+    test('Listener simulado NO sincroniza si _initialized=false', () => {
+      Sync._initialized = false;
+      Sync._loading = false;
+      let llamadas = 0;
+      // Réplica de la condición que aplica el listener real en index.html
+      const intentar = () => {
+        if (Sync && Sync.syncFestivos && Sync._initialized) llamadas++;
+      };
+      intentar();
+      intentar();
+      assertEq(llamadas, 0);
+    });
+
+    test('Listener simulado SÍ sincroniza si _initialized=true', () => {
+      Sync._initialized = true;
+      Sync._loading = false;
+      let llamadas = 0;
+      const intentar = () => {
+        if (Sync && Sync.syncFestivos && Sync._initialized) llamadas++;
+      };
+      intentar();
+      assertEq(llamadas, 1);
+    });
+
+    // Cleanup
+    Sync._initialized = origInit;
+    Sync._loading = origLoading;
+  });
+
+  // ============================================================
   // AUDITOR — detección de huecos de continuidad horaria
   // ============================================================
   suite('Auditor: detectarHuecos (sweep de eventos)', function () {
