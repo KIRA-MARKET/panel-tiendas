@@ -20,6 +20,7 @@
     "js/config.js",
     "js/datos.js",
     "js/snapshot.js",
+    "js/offline-queue.js",
     "js/empleados.js",
     "js/rotaciones.js",
     "js/cobertura.js",

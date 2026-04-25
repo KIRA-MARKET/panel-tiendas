@@ -383,6 +383,59 @@
   });
 
   // ============================================================
+  // OfflineQueue (Fase C offline) — cola persistente de saves
+  // ============================================================
+  suite('OfflineQueue: round-trip IndexedDB', function () {
+    const origDB = OfflineQueue.DB_NAME;
+    OfflineQueue.DB_NAME = 'kira-reypik-queue-test';
+
+    test('count() = 0 al inicio (cola limpia)', () => {
+      return OfflineQueue.clear()
+        .then(() => OfflineQueue.count())
+        .then((n) => assertEq(n, 0));
+    });
+
+    test('push() añade item y count() lo refleja', () => {
+      return OfflineQueue.push({
+        hoja: 'ausencias', headers: ['empleado'], rows: [{ empleado: 'EVA' }]
+      }).then((ok) => {
+        assertEq(ok, true);
+        return OfflineQueue.count();
+      }).then((n) => assertEq(n, 1));
+    });
+
+    test('list() devuelve el item con sus campos + ts', () => {
+      return OfflineQueue.list().then((items) => {
+        assertEq(items.length, 1);
+        assertEq(items[0].hoja, 'ausencias');
+        assertEq(items[0].rows[0].empleado, 'EVA');
+        assert(typeof items[0].ts === 'number', 'ts debe ser timestamp');
+      });
+    });
+
+    test('Múltiples push() preservan orden de inserción', () => {
+      return OfflineQueue.clear()
+        .then(() => OfflineQueue.push({ hoja: 'A', headers: [], rows: [{ n: 1 }] }))
+        .then(() => OfflineQueue.push({ hoja: 'B', headers: [], rows: [{ n: 2 }] }))
+        .then(() => OfflineQueue.push({ hoja: 'C', headers: [], rows: [{ n: 3 }] }))
+        .then(() => OfflineQueue.list())
+        .then((items) => {
+          assertEq(items.length, 3);
+          assertDeep(items.map((i) => i.hoja), ['A', 'B', 'C']);
+        });
+    });
+
+    test('clear() vacía y count() vuelve a 0', () => {
+      return OfflineQueue.clear()
+        .then(() => OfflineQueue.count())
+        .then((n) => assertEq(n, 0));
+    });
+
+    // Cleanup: borrar la DB de test
+    OfflineQueue.clear().then(() => { OfflineQueue.DB_NAME = origDB; });
+  });
+
+  // ============================================================
   // Sync._necesitaSubirFestivosLocales — salvaguarda contra desfase
   // localStorage↔Sheet (si Sheet vino vacío pero hay cambios reales
   // sólo en local, los subimos para no perderlos).

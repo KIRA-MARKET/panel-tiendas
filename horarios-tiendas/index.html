@@ -122,7 +122,7 @@ if ('serviceWorker' in navigator) {
 (function () {
   const v = '?v=' + window.__APP_VERSION__;
   const files = [
-    'utilidades.js', 'config.js', 'datos.js', 'snapshot.js', 'empleados.js',
+    'utilidades.js', 'config.js', 'datos.js', 'snapshot.js', 'offline-queue.js', 'empleados.js',
     'reemplazos.js', 'intercambios.js', 'rotaciones.js', 'sync.js',
     'cobertura.js', 'reglas.js', 'ausencias.js', 'motor-sustituciones.js',
     'festivos.js', 'control.js', 'horas.js', 'empleados-ui.js',
@@ -193,7 +193,26 @@ const App = {
       Sync.cargar().then(() => {
         CalendarioUI.render();
         if (typeof Snapshot !== 'undefined') Snapshot.guardar();
+        // Tras la carga inicial, drenamos la cola offline si quedó algo
+        // pendiente (p.ej. la app se cerró antes de que recuperara red).
+        if (Sync.drenarOfflineQueue) Sync.drenarOfflineQueue();
       });
+    });
+
+    // Fase C — listeners online/offline. Al volver la red, primero
+    // refrescamos versiones (Sync.cargar) y luego drenamos la cola
+    // para que los expectedVersion sean los correctos.
+    window.addEventListener('online', () => {
+      console.log('[Net] online — drenando cola offline');
+      if (Sync && Sync.cargar) {
+        Sync.cargar().then(() => {
+          if (Sync.drenarOfflineQueue) Sync.drenarOfflineQueue();
+        });
+      }
+    });
+    window.addEventListener('offline', () => {
+      console.log('[Net] offline');
+      if (Sync && Sync._actualizarStatusOffline) Sync._actualizarStatusOffline();
     });
 
     // Cerrar dropdowns al click fuera
@@ -294,13 +313,27 @@ const App = {
   _updateSyncUI(status) {
     const el = document.getElementById('sync-status');
     if (!el) return;
-    el.className = 'sync-status ' + status;
+    // Estados de la cola offline (Fase C) llevan ":N" para el contador.
+    const baseStatus = String(status).split(':')[0];
+    const pendientes = parseInt(String(status).split(':')[1] || '0', 10);
+    el.className = 'sync-status ' + baseStatus;
     el.style.cursor = '';
     el.title = '';
     el.onclick = null;
     if (status === 'ok') {
       el.textContent = 'Sincronizado';
       el.title = 'Datos al d\u00eda con Google Sheets';
+    } else if (baseStatus === 'offline-pending') {
+      el.textContent = '\u23f3 Sin conexi\u00f3n \u00b7 ' + pendientes + ' pendiente' + (pendientes === 1 ? '' : 's');
+      el.title = 'Tus cambios se guardar\u00e1n autom\u00e1ticamente al volver la conexi\u00f3n.';
+    } else if (baseStatus === 'offline') {
+      el.textContent = 'Sin conexi\u00f3n';
+      el.title = 'Trabajando offline. La app sigue funcionando con datos cacheados.';
+    } else if (baseStatus === 'pending') {
+      el.textContent = '\u23f3 ' + pendientes + ' pendiente' + (pendientes === 1 ? '' : 's');
+      el.title = 'Subiendo cambios offline al Sheet\u2026';
+      el.style.cursor = 'pointer';
+      el.onclick = () => { if (Sync && Sync.drenarOfflineQueue) Sync.drenarOfflineQueue(); };
     } else if (status === 'error') {
       el.textContent = 'Sin conexi\u00f3n \u00b7 reintentar';
       el.title = 'No se pudo conectar con Google Sheets. Click para reintentar.';

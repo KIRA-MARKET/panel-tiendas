@@ -389,6 +389,9 @@ const Sync = {
 
   // ── Guardar con cola (evita race conditions) ───────────────
 
+  // Marcador para distinguir mensajes 409: drenando offline vs save en vivo.
+  _drenando: false,
+
   guardar(hoja, headers, rows) {
     Sync._writeQueue.push({ hoja, headers, rows });
     Sync._processQueue();
@@ -397,6 +400,17 @@ const Sync = {
   async _processQueue() {
     if (Sync._writing || Sync._writeQueue.length === 0) return;
     Sync._writing = true;
+
+    // Sin red: trasvasar la cola en memoria a OfflineQueue (IndexedDB)
+    // y notificar al usuario. Se drenará automáticamente al volver online.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false &&
+        typeof OfflineQueue !== 'undefined') {
+      const items = Sync._writeQueue.splice(0, Sync._writeQueue.length);
+      for (const it of items) await OfflineQueue.push(it);
+      Sync._writing = false;
+      Sync._actualizarStatusOffline();
+      return;
+    }
 
     while (Sync._writeQueue.length > 0) {
       const { hoja, headers, rows } = Sync._writeQueue.shift();
@@ -413,12 +427,22 @@ const Sync = {
           // avisar al usuario para que recargue.
           console.warn('Conflict en', hoja, '— esperaba v' + expectedVersion + ', actual v' + data.currentVersion);
           Sync._writeQueue.length = 0;
+          // Si estábamos drenando la cola offline, también la vaciamos:
+          // los cambios offline chocan con cambios remotos posteriores
+          // y la opción simple es descartarlos (no hay merge automático).
+          if (Sync._drenando && typeof OfflineQueue !== 'undefined') {
+            await OfflineQueue.clear();
+          }
           Store.setSyncStatus('error');
           if (typeof Modales !== 'undefined' && Modales.aviso) {
-            Modales.aviso(
-              'Otra pestaña o dispositivo modificó "' + hoja + '" justo antes que tú. Para evitar pisar esos cambios, recarga la página y vuelve a hacer la modificación.',
-              'Datos desactualizados'
-            );
+            const msg = Sync._drenando
+              ? 'Tus cambios hechos sin conexión chocan con cambios que ' +
+                'otra pestaña o dispositivo guardó después en "' + hoja + '". ' +
+                'Se han descartado los cambios offline para no pisar los nuevos. ' +
+                'Recarga la página y vuelve a hacer las modificaciones que falten.'
+              : 'Otra pestaña o dispositivo modificó "' + hoja + '" justo antes que tú. ' +
+                'Para evitar pisar esos cambios, recarga la página y vuelve a hacer la modificación.';
+            Modales.aviso(msg, 'Datos desactualizados');
           }
           break;
         }
@@ -432,6 +456,15 @@ const Sync = {
       } catch (err) {
         console.error('Error guardando', hoja, err);
         Store.setSyncStatus('error');
+        // Fallo de red en mitad del proceso: persistir lo restante en
+        // OfflineQueue para no perderlo y dejar que el listener online
+        // lo retome cuando vuelva la conexión.
+        if (typeof OfflineQueue !== 'undefined' && navigator.onLine === false) {
+          const restantes = Sync._writeQueue.splice(0, Sync._writeQueue.length);
+          for (const it of restantes) await OfflineQueue.push(it);
+          Sync._actualizarStatusOffline();
+          break;
+        }
       }
     }
 
@@ -440,6 +473,44 @@ const Sync = {
     // estado actual del Store en IndexedDB. Próximo arranque carga
     // este snapshot al instante. Si Snapshot no está cargado, no-op.
     if (typeof Snapshot !== 'undefined') Snapshot.guardar();
+  },
+
+  // ── Drenado de la cola offline ─────────────────────────────
+  // Se llama: (a) al arrancar si online y hay items en cola,
+  // (b) al recibir el evento 'online'. Re-empuja a _writeQueue
+  // y procesa. Marca _drenando para que el modal de 409 use el
+  // mensaje específico de cambios offline descartados.
+  async drenarOfflineQueue() {
+    if (typeof OfflineQueue === 'undefined') return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    const items = await OfflineQueue.list();
+    if (items.length === 0) return;
+    console.log('[Sync] drenando ' + items.length + ' items offline');
+    Sync._drenando = true;
+    try {
+      for (const it of items) {
+        Sync._writeQueue.push({ hoja: it.hoja, headers: it.headers, rows: it.rows });
+      }
+      // Vaciamos la cola persistente de entrada: si el drenaje falla por red,
+      // _processQueue volverá a empujarlos en el catch. Si falla por 409, el
+      // handler ya llama a OfflineQueue.clear() arriba.
+      await OfflineQueue.clear();
+      await Sync._processQueue();
+    } finally {
+      Sync._drenando = false;
+      Sync._actualizarStatusOffline();
+    }
+  },
+
+  // Refresca el indicador del header con el estado offline + cola pendiente.
+  async _actualizarStatusOffline() {
+    if (typeof OfflineQueue === 'undefined' || typeof Store === 'undefined') return;
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const pendientes = await OfflineQueue.count();
+    if (offline && pendientes > 0) Store.setSyncStatus('offline-pending:' + pendientes);
+    else if (offline) Store.setSyncStatus('offline');
+    else if (pendientes > 0) Store.setSyncStatus('pending:' + pendientes);
+    else Store.setSyncStatus('ok');
   },
 
   // ── Funciones de sync específicas ──────────────────────────
