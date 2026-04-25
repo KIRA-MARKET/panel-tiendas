@@ -455,16 +455,19 @@ const Sync = {
         }
       } catch (err) {
         console.error('Error guardando', hoja, err);
-        Store.setSyncStatus('error');
-        // Fallo de red en mitad del proceso: persistir lo restante en
-        // OfflineQueue para no perderlo y dejar que el listener online
-        // lo retome cuando vuelva la conexión.
-        if (typeof OfflineQueue !== 'undefined' && navigator.onLine === false) {
+        // Cualquier error lanzado por fetch indica fallo de red real.
+        // No nos fiamos de navigator.onLine (Safari lo deja en true
+        // aunque el Wi-Fi esté apagado). Persistimos el item actual
+        // — que ya hicimos shift de _writeQueue y se perdería si no —
+        // más los restantes en OfflineQueue.
+        if (typeof OfflineQueue !== 'undefined') {
+          await OfflineQueue.push({ hoja, headers, rows });
           const restantes = Sync._writeQueue.splice(0, Sync._writeQueue.length);
           for (const it of restantes) await OfflineQueue.push(it);
           Sync._actualizarStatusOffline();
           break;
         }
+        Store.setSyncStatus('error');
       }
     }
 
