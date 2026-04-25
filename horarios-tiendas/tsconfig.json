@@ -19,6 +19,7 @@
     "js/utilidades.js",
     "js/config.js",
     "js/datos.js",
+    "js/snapshot.js",
     "js/empleados.js",
     "js/rotaciones.js",
     "js/cobertura.js",

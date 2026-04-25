@@ -122,7 +122,7 @@ if ('serviceWorker' in navigator) {
 (function () {
   const v = '?v=' + window.__APP_VERSION__;
   const files = [
-    'utilidades.js', 'config.js', 'datos.js', 'empleados.js',
+    'utilidades.js', 'config.js', 'datos.js', 'snapshot.js', 'empleados.js',
     'reemplazos.js', 'intercambios.js', 'rotaciones.js', 'sync.js',
     'cobertura.js', 'reglas.js', 'ausencias.js', 'motor-sustituciones.js',
     'festivos.js', 'control.js', 'horas.js', 'empleados-ui.js',
@@ -179,12 +179,21 @@ const App = {
       if (Sync && Sync.syncReemplazos && Sync._initialized) Sync.syncReemplazos();
     });
 
-    // Renderizar calendario inicial
-    CalendarioUI.render();
+    // Snapshot offline (Fase B): si hay datos cacheados en IndexedDB,
+    // los volcamos al Store ANTES del primer render → arranque
+    // instantáneo con calendario lleno aunque no haya red. Sync.cargar()
+    // sobrescribe luego con datos frescos de Sheet.
+    const arranque = (typeof Snapshot !== 'undefined')
+      ? Snapshot.cargar().catch(() => false)
+      : Promise.resolve(false);
 
-    // Cargar datos de Sheets (async)
-    Sync.cargar().then(() => {
+    arranque.then((ts) => {
+      if (ts) console.log('[Snapshot] cargado, edad:', Math.round((Date.now() - ts) / 1000) + 's');
       CalendarioUI.render();
+      Sync.cargar().then(() => {
+        CalendarioUI.render();
+        if (typeof Snapshot !== 'undefined') Snapshot.guardar();
+      });
     });
 
     // Cerrar dropdowns al click fuera

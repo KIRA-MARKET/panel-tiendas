@@ -314,6 +314,75 @@
   });
 
   // ============================================================
+  // Snapshot (Fase B offline) — round-trip Store ↔ IndexedDB
+  // Usa una DB de test aparte para no pisar la de producción.
+  // ============================================================
+  suite('Snapshot: round-trip IndexedDB', function () {
+    const origDB = Snapshot.DB_NAME;
+    const origFestivos = Store._state.festivos;
+    const origAusGV = Store._state.ausenciasGV;
+    Snapshot.DB_NAME = 'kira-reypik-test';
+
+    test('cargar() devuelve false si no hay snapshot', () => {
+      return Snapshot.borrar().then(() => Snapshot.cargar()).then((r) => {
+        assertEq(r, false);
+      });
+    });
+
+    test('guardar() + cargar() restaura los datos', () => {
+      Store._state.festivos = [{
+        id: 'def-2026-01-01', fecha: '2026-01-01', nombre: 'Año Nuevo',
+        ambito: 'nacional',
+        inscritos: { granvia: ['EVA'], isabel: [] },
+        asignados: { granvia: [], isabel: [] }
+      }];
+      Store._state.ausenciasGV = [
+        { empleado: 'SARA', tipo: 'vacaciones', desde: '2026-04-15', hasta: '2026-04-20', motivo: '' }
+      ];
+      return Snapshot.guardar().then((ok) => {
+        assertEq(ok, true);
+        // Vaciar el Store para simular un arranque
+        Store._state.festivos = [];
+        Store._state.ausenciasGV = [];
+        return Snapshot.cargar();
+      }).then((ts) => {
+        assert(typeof ts === 'number' && ts > 0, 'ts debe ser timestamp');
+        assertEq(Store._state.festivos.length, 1);
+        assertEq(Store._state.festivos[0].inscritos.granvia[0], 'EVA');
+        assertEq(Store._state.ausenciasGV.length, 1);
+        assertEq(Store._state.ausenciasGV[0].empleado, 'SARA');
+      });
+    });
+
+    test('cargar() NO toca claves de UI (tienda/mes/año)', () => {
+      Store._state.tiendaActual = 'isabel';
+      Store._state.mesActual = 7;
+      return Snapshot.guardar().then(() => {
+        // Cambiamos UI state, cargamos snapshot, debe seguir el cambio
+        Store._state.tiendaActual = 'granvia';
+        Store._state.mesActual = 0;
+        return Snapshot.cargar();
+      }).then(() => {
+        assertEq(Store._state.tiendaActual, 'granvia');
+        assertEq(Store._state.mesActual, 0);
+      });
+    });
+
+    test('borrar() limpia el snapshot', () => {
+      return Snapshot.borrar().then(() => Snapshot.cargar()).then((r) => {
+        assertEq(r, false);
+      });
+    });
+
+    // Cleanup
+    Snapshot.borrar().then(() => {
+      Snapshot.DB_NAME = origDB;
+      Store._state.festivos = origFestivos;
+      Store._state.ausenciasGV = origAusGV;
+    });
+  });
+
+  // ============================================================
   // Sync._necesitaSubirFestivosLocales — salvaguarda contra desfase
   // localStorage↔Sheet (si Sheet vino vacío pero hay cambios reales
   // sólo en local, los subimos para no perderlos).

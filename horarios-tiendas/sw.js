@@ -15,7 +15,7 @@
 
 'use strict';
 
-const CACHE_VERSION = 'v1-2026-04-25';
+const CACHE_VERSION = 'v2-2026-04-25';
 const CACHE_NAME = 'kira-reypik-' + CACHE_VERSION;
 
 // Shell de la app: se precachea al instalar el SW.
@@ -27,6 +27,7 @@ const SHELL = [
   './js/utilidades.js',
   './js/config.js',
   './js/datos.js',
+  './js/snapshot.js',
   './js/empleados.js',
   './js/reemplazos.js',
   './js/intercambios.js',

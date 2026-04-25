@@ -436,6 +436,10 @@ const Sync = {
     }
 
     Sync._writing = false;
+    // Snapshot offline (Fase B): tras vaciar la cola, capturamos el
+    // estado actual del Store en IndexedDB. Próximo arranque carga
+    // este snapshot al instante. Si Snapshot no está cargado, no-op.
+    if (typeof Snapshot !== 'undefined') Snapshot.guardar();
   },
 
   // ── Funciones de sync específicas ──────────────────────────
