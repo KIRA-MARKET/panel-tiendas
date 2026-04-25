@@ -114,7 +114,16 @@ window.__APP_VERSION__ = Date.now();
     'cobertura.js', 'reglas.js', 'ausencias.js', 'motor-sustituciones.js',
     'festivos.js', 'control.js', 'horas.js', 'empleados-ui.js',
     'ausencias-ui.js', 'auditor.js', 'hoy-ui.js', 'calendario-ui.js',
-    'modales-ui.js', 'pdf.js'
+    // Modales partidos por dominio (modales-base.js DEBE ir primero,
+    // declara `const Modales = {...}`; los demás añaden con Object.assign)
+    'modales/modales-base.js',
+    'modales/modales-ausencia.js',
+    'modales/modales-sustitucion.js',
+    'modales/modales-refuerzo.js',
+    'modales/modales-empleado.js',
+    'modales/modales-intercambio.js',
+    'modales/modales-reemplazo.js',
+    'pdf.js'
   ];
   for (const f of files) {
     document.write('<script src="js/' + f + v + '"><\/script>');

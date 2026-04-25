@@ -33,3 +33,7 @@ analisis-personal/documentos/
 # Claude Code settings local
 .claude/settings.local.json
 __pycache__/
+
+# Dependencias instaladas en local para correr tests/CI (puppeteer, tsc)
+node_modules/
+package-lock.json
