@@ -9,7 +9,7 @@
     "noEmit": true,
     "strict": false,
     "noImplicitAny": false,
-    "noImplicitThis": false,
+    "noImplicitThis": true,
     "alwaysStrict": false,
     "skipLibCheck": true,
     "resolveJsonModule": false
@@ -28,6 +28,21 @@
     "js/intercambios.js",
     "js/reemplazos.js",
     "js/horas.js",
-    "js/auditor.js"
+    "js/auditor.js",
+    "js/sync.js",
+    "js/festivos.js",
+    "js/control.js",
+    "js/hoy-ui.js",
+    "js/calendario-ui.js",
+    "js/ausencias-ui.js",
+    "js/empleados-ui.js",
+    "js/pdf.js",
+    "js/modales/modales-base.js",
+    "js/modales/modales-ausencia.js",
+    "js/modales/modales-sustitucion.js",
+    "js/modales/modales-refuerzo.js",
+    "js/modales/modales-empleado.js",
+    "js/modales/modales-intercambio.js",
+    "js/modales/modales-reemplazo.js"
   ]
 }

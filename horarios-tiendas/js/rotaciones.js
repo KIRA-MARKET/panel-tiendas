@@ -260,7 +260,12 @@ const Rotaciones = {
     return result;
   },
 
-  /** Obtener FdS según tienda (aplica reemplazos de slot e intercambios). */
+  /**
+   * Obtener FdS según tienda (aplica reemplazos de slot e intercambios).
+   * @param {Date|string} fecha
+   * @param {string} [tienda]
+   * @returns {{SAB_M: Record<string, [number, number]>, SAB_T: Record<string, [number, number]>, DOM_M: Record<string, [number, number]>, DOM_T: Record<string, [number, number]>}}
+   */
   getFds(fecha, tienda) {
     tienda = tienda || Store.getTienda();
     const crudo = tienda === 'granvia'

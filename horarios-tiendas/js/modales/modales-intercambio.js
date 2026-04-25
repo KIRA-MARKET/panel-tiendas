@@ -82,6 +82,7 @@ Object.assign(Modales, {
       const e = Utils.escapeHtml;
 
       // Candidatos + fecha ancla para el intercambio
+      /** @type {Array<{alias: string, entrada: number, salida: number, turno?: string}>} */
       let candidatos = [];
       let fechaAncla;
       if (esFds) {

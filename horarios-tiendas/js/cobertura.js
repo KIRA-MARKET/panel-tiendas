@@ -271,6 +271,7 @@ const Cobertura = {
 
     const intervalos = Cobertura._intervalosLV(fecha, tienda);
 
+    /** @type {Array<{franja: string, actual: number, minimo: number, falta: number, detalle?: string}>} */
     const alertas = [];
     const franjas = ['descarga', 'mañanas', 'tardes', 'cierre'];
 
@@ -350,6 +351,7 @@ const Cobertura = {
     if (dow !== 0 && dow !== 6) return [];
 
     const turnos = dow === 6 ? ['SAB_M', 'SAB_T'] : ['DOM_M', 'DOM_T'];
+    /** @type {Array<{franja: string, actual: number, minimo: number, falta: number, detalle?: string}>} */
     const alertas = [];
 
     for (const turno of turnos) {

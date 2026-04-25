@@ -135,7 +135,7 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 14. **Race condition inter-cliente.** La cola en `sync.js` solo serializa intra-cliente; dos pestañas pueden seguir pisándose. Pendiente.
 15. **Service Worker + IndexedDB para offline.** Pendiente (Fase 4).
 16. ~~**Partir `modales-ui.js`** (~1.900 líneas).~~ ✓ Resuelto (commit `05454c5`): partido en 7 archivos en `js/modales/` por dominio (base, ausencia, sustitucion, refuerzo, empleado, intercambio, reemplazo). API pública intacta vía `Object.assign(Modales, {...})`.
-17. **JSDoc estricto + `tsc --checkJs`** sobre todos los `.js`. Pendiente.
+17. ~~**JSDoc estricto + `tsc --checkJs`** sobre todos los `.js`.~~ ✓ Resuelto (commit en curso). 21 archivos `.js` cubiertos por tsc (antes: 14). `noImplicitThis: true` activado. `noImplicitAny` deja 934 errores → pendiente sesión dedicada (la base estricta de `checkJs` y `noImplicitThis` ya cubre el riesgo principal de regresión por renombrados/typos).
 
 ---
 

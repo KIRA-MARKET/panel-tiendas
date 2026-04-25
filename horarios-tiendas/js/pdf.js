@@ -111,7 +111,7 @@ const PDFExport = {
 
       if (!esDelMes) { fecha.setDate(fecha.getDate() + 7); continue; }
 
-      const fdsData = Rotaciones.getFds(sab, tienda) || {};
+      const fdsData = Rotaciones.getFds(sab, tienda);
 
       html += '<div class="fds-card">';
       html += '<div class="fds-card-header">Semana ' + Utils.getNumSemana(sab) + '</div>';
@@ -360,7 +360,12 @@ const PDFExport = {
     const dom = new Date(lunes); dom.setDate(dom.getDate() + 6);
     const fdsData = Rotaciones.getFds(sab, tienda);
 
-    for (const [dia, turnos, label] of [[sab, ['SAB_M','SAB_T'], 'Sábado'], [dom, ['DOM_M','DOM_T'], 'Domingo']]) {
+    /** @type {Array<{dia: Date, turnos: string[], label: string}>} */
+    const diasFds = [
+      { dia: sab, turnos: ['SAB_M', 'SAB_T'], label: 'Sábado' },
+      { dia: dom, turnos: ['DOM_M', 'DOM_T'], label: 'Domingo' }
+    ];
+    for (const { dia, turnos, label } of diasFds) {
       html += '<div style="background:#fff;border-radius:8px;margin-bottom:8px;border:1px solid #ddd;overflow:hidden">';
       html += '<div style="background:#1a1a2e;color:#fff;padding:6px 10px;font-weight:700;font-size:12px">' + label + ' ' + dia.getDate() + '/' + (dia.getMonth()+1) + '</div>';
 
