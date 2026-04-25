@@ -131,10 +131,10 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 
 ### Pendientes de la auditoría 25-04-2026
 
-13. **API Sheets pública anónima** (`access: ANYONE_ANONYMOUS`). Sigue abierto. Opciones: Cloudflare Worker proxy con token o cambiar a `MYSELF`/`DOMAIN` + OAuth. Decisión pendiente.
+13. ~~**API Sheets pública anónima** (`access: ANYONE_ANONYMOUS`).~~ ✓ Resuelto (commit `57f7080`, deploy @9, 25-04). Auth por token compartido: `_verificarToken` en Apps Script lee `API_TOKEN` de PropertiesService; cliente envía `&token=...` desde `Sync._fetch` leyendo `localStorage.apiToken`. Si el server devuelve 401, abre `Modales.input` para reintroducir. El token NUNCA se commitea: vive solo en Properties (server) y localStorage (cliente).
 14. **Race condition inter-cliente.** La cola en `sync.js` solo serializa intra-cliente; dos pestañas pueden seguir pisándose. Pendiente.
 15. **Service Worker + IndexedDB para offline.** Pendiente (Fase 4).
-16. **Partir `modales-ui.js`** (~1.900 líneas). Refactor mayor — sesión dedicada.
+16. ~~**Partir `modales-ui.js`** (~1.900 líneas).~~ ✓ Resuelto (commit `05454c5`): partido en 7 archivos en `js/modales/` por dominio (base, ausencia, sustitucion, refuerzo, empleado, intercambio, reemplazo). API pública intacta vía `Object.assign(Modales, {...})`.
 17. **JSDoc estricto + `tsc --checkJs`** sobre todos los `.js`. Pendiente.
 
 ---
@@ -151,7 +151,7 @@ Esta auditoría dio origen a HORARIOS KIRA & REYPIK. Es la lista canónica de ra
 | 2 | CRÍTICO | Cancelar ausencia borra sustituciones de otros | Pérdida de datos | ✓ Arreglado en `Store.removeAusencia` |
 | 3 | CRÍTICO | Sin gestión de festivos | Alertas falsas | ✓ Módulo Festivos (Fase 3) |
 | 4 | CRÍTICO | No hay validación de ausencias solapadas | Corrupción de datos | ✓ `Store.ausenciaSolapada` |
-| 5 | CRÍTICO | API de Google Sheets expuesta sin autenticación | Seguridad | ⏳ Pendiente capa de proxy |
+| 5 | CRÍTICO | API de Google Sheets expuesta sin autenticación | Seguridad | ✓ Auth por token compartido (Sprint 1.1, 25-04) |
 | 6 | CRÍTICO | Sin persistencia local (offline) | Pérdida de trabajo | ⏳ Pendiente Service Worker / IndexedDB |
 | 7 | CRÍTICO | `prompt()` del navegador para edición | UX inaceptable | ✓ Modales propios |
 | 8 | IMPORTANTE | Race conditions en sync con Sheets | Datos inconsistentes | ✓ Cola en `sync.js` |
