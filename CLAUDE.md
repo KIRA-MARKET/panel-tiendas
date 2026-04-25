@@ -111,6 +111,44 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 
 ---
 
+## 📌 Estado al cierre de la sesión 25-04-2026
+
+**Sesión muy productiva.** Cerrados 7 puntos de la auditoría 25-04 + 1 bug histórico (tema oscuro). Todos pusheados a `main` y los cambios de Apps Script desplegados en producción (deploy @11).
+
+### Cerrados hoy
+| # | Sprint | Cambio | Commit |
+|---|---|---|---|
+| 16 | 3.9 | Partir `modales-ui.js` en 7 archivos por dominio | `05454c5` |
+| 13 | 1.1 | Auth API por token compartido | `57f7080` (deploy @9) |
+| — | 3.11 | +6 tests de Intercambios | `1d9eb8b` |
+| 5 | 5.20 | Dark mode sweep (`.modal-close` + verificación) | `3955bfb` |
+| 17 | 3.17 | tsc estricto + 7 UI files al check | `92e574c` |
+| — | 5.19 | Responsive móvil verificado en headless 375px | `bc426e6` |
+| 14 | 1.14 | Race condition inter-cliente (versionado optimista) | `396b63e` (deploy @11) |
+
+### Tags de respaldo creados (ambos en remoto)
+- `pre-split-modales-2026-04-25` sobre `b84314e`
+- `pre-auth-token-2026-04-25` sobre `05454c5`
+
+### Pendiente único del informe (siguiente sesión, en orden de prioridad)
+1. **#15 · Service Worker + IndexedDB para offline** (~1.5–2h). Fase A: SW cachea HTML/CSS/JS. Fase B: IndexedDB persiste snapshot del Store para arranque inmediato sin red. Fase C: cola de escrituras offline + drenaje al volver online (compleja por el versionado optimista).
+
+### Otros pendientes no del informe (por prioridad)
+2. **Capa 2 motor** (#4): UI para que Nacho registre la elección final cuando difiere de la sugerencia. Backend ya cableado en `motor-sustituciones.js` y `Store.getDecisiones`.
+3. **Bug #2 reorganizar plantilla**: alinear con Nacho cuándo prefiere reorganizar vs sustituir. Aplazado el 8-abr esperando decisiones de negocio.
+4. `noImplicitAny: true` en tsconfig (934 errores actuales — sesión dedicada de JSDoc fino).
+
+### ⚠️ Acciones manuales pendientes (tú, antes de la próxima sesión)
+1. **Activar la auth (1 minuto)** — meter el token en Apps Script Properties si no lo hiciste ya. Editor web → Project Settings → Script Properties → `API_TOKEN` = `1b3646165b5b7d8de6675ce9c812f39dff5f2cb9fbd35a66`.
+2. **Recargar la app en cada dispositivo** (Cmd+Shift+R / Ctrl+F5). Recoge el JS nuevo de auth + versionado.
+3. **Meter el token en cada navegador**: aparecerá modal "Autenticación requerida" automáticamente al recargar; pega el mismo token. Una vez por dispositivo (escritorio, móvil, iPad de Eva si lo usa).
+4. **Verificar** (opcional, 30 s): abre DevTools en incógnito y haz `fetch('https://script.google.com/.../exec?action=readAll')` SIN token → debe responder `{"error":"Unauthorized","code":401}`.
+5. **Probar dark mode** en el toggle 🌙 — debería verse limpio en todos los modales.
+6. **Probar el responsive en tu iPhone real** (la app ya está pusheada a GitHub Pages).
+7. **Probar el versionado anti-race** (opcional): abre la app en 2 pestañas, modifica algo en la primera y guarda, luego intenta modificar y guardar en la segunda → debe aparecer modal "Datos desactualizados, recarga".
+
+---
+
 ## Bugs pendientes conocidos (próximas sesiones)
 
 1. ~~**EVA debe contar en descarga + mañanas.**~~ ✓ Resuelto. Cobertura ahora es multi-franja: un empleado cuenta en cada franja cuya ventana cubre íntegramente. Ventanas en `CONFIG.FRANJAS_GV/IS`.
@@ -135,7 +173,7 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 14. ~~**Race condition inter-cliente.**~~ ✓ Resuelto (deploy @11, 25-04). Versionado optimista por hoja en `DocumentProperties` (`v_<sheetKey>`). `readAll` devuelve `_versions`; cada `save` envía `expectedVersion`. Si el server detecta `current !== expected` → `{error:'Conflict', code:409}`. El cliente vacía la cola, marca error y abre `Modales.aviso` para forzar recarga. Compatible hacia atrás: clientes legacy sin el campo siguen funcionando hasta su próxima recarga.
 15. **Service Worker + IndexedDB para offline.** Pendiente (Fase 4).
 16. ~~**Partir `modales-ui.js`** (~1.900 líneas).~~ ✓ Resuelto (commit `05454c5`): partido en 7 archivos en `js/modales/` por dominio (base, ausencia, sustitucion, refuerzo, empleado, intercambio, reemplazo). API pública intacta vía `Object.assign(Modales, {...})`.
-17. ~~**JSDoc estricto + `tsc --checkJs`** sobre todos los `.js`.~~ ✓ Resuelto (commit en curso). 21 archivos `.js` cubiertos por tsc (antes: 14). `noImplicitThis: true` activado. `noImplicitAny` deja 934 errores → pendiente sesión dedicada (la base estricta de `checkJs` y `noImplicitThis` ya cubre el riesgo principal de regresión por renombrados/typos).
+17. ~~**JSDoc estricto + `tsc --checkJs`** sobre todos los `.js`.~~ ✓ Resuelto (commit `92e574c`, 25-04). 21 archivos `.js` cubiertos por tsc (antes: 14). `noImplicitThis: true` activado. `noImplicitAny` deja 934 errores → pendiente sesión dedicada (la base estricta de `checkJs` y `noImplicitThis` ya cubre el riesgo principal de regresión por renombrados/typos).
 
 ---
 
