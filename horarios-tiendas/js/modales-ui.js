@@ -1091,6 +1091,27 @@ const Modales = {
               tienda,
               tipo
             });
+
+            // Capa 2: registrar la decisión también en asignación manual.
+            // Los candidatos vienen ya ordenados por prioridad del motor →
+            // candidatos[0] es la sugerencia. Si Nacho clicka otro (i>0)
+            // queda como discrepancia útil para aprender preferencias.
+            if (candidatos.length > 0) {
+              const motorSugirio = candidatos[0].alias;
+              Store.addDecision({
+                timestamp: new Date().toISOString(),
+                fecha: fs,
+                tienda,
+                turnoFds: ctx.turnoFds || '',
+                franja: ctx.turnoFds ? '' : Utils.getFranja(c.entrada, c.salida, tienda),
+                ausente,
+                motorSugirio,
+                nachoEligio: c.alias,
+                accion: 'sustituir'
+              });
+              if (Sync && Sync.syncDecisiones) Sync.syncDecisiones();
+            }
+
             if (Sync && Sync.syncSustituciones) Sync.syncSustituciones();
             const msg = 'Sustituto asignado: ' + c.alias + (tipo === 'extra' ? ' (extra)' : '');
             CalendarioUI.toast && CalendarioUI.toast(msg, 'success');
