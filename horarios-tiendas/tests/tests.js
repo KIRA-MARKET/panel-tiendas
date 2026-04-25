@@ -323,13 +323,21 @@
     const origAusGV = Store._state.ausenciasGV;
     Snapshot.DB_NAME = 'kira-reypik-test';
 
-    test('cargar() devuelve false si no hay snapshot', () => {
-      return Snapshot.borrar().then(() => Snapshot.cargar()).then((r) => {
-        assertEq(r, false);
-      });
-    });
+    // Serialización: los tests async se ejecutan en paralelo por defecto;
+    // las operaciones de IndexedDB se pisarían unas a otras. Cada test
+    // espera al final del anterior vía esta cadena.
+    let chain = Promise.resolve();
+    const seq = (fn) => {
+      const p = chain.then(() => fn());
+      chain = p.catch(() => {});
+      return p;
+    };
 
-    test('guardar() + cargar() restaura los datos', () => {
+    test('cargar() devuelve false si no hay snapshot', () => seq(() =>
+      Snapshot.borrar().then(() => Snapshot.cargar()).then((r) => assertEq(r, false))
+    ));
+
+    test('guardar() + cargar() restaura los datos', () => seq(() => {
       Store._state.festivos = [{
         id: 'def-2026-01-01', fecha: '2026-01-01', nombre: 'Año Nuevo',
         ambito: 'nacional',
@@ -341,7 +349,6 @@
       ];
       return Snapshot.guardar().then((ok) => {
         assertEq(ok, true);
-        // Vaciar el Store para simular un arranque
         Store._state.festivos = [];
         Store._state.ausenciasGV = [];
         return Snapshot.cargar();
@@ -352,13 +359,12 @@
         assertEq(Store._state.ausenciasGV.length, 1);
         assertEq(Store._state.ausenciasGV[0].empleado, 'SARA');
       });
-    });
+    }));
 
-    test('cargar() NO toca claves de UI (tienda/mes/año)', () => {
+    test('cargar() NO toca claves de UI (tienda/mes/año)', () => seq(() => {
       Store._state.tiendaActual = 'isabel';
       Store._state.mesActual = 7;
       return Snapshot.guardar().then(() => {
-        // Cambiamos UI state, cargamos snapshot, debe seguir el cambio
         Store._state.tiendaActual = 'granvia';
         Store._state.mesActual = 0;
         return Snapshot.cargar();
@@ -366,16 +372,14 @@
         assertEq(Store._state.tiendaActual, 'granvia');
         assertEq(Store._state.mesActual, 0);
       });
-    });
+    }));
 
-    test('borrar() limpia el snapshot', () => {
-      return Snapshot.borrar().then(() => Snapshot.cargar()).then((r) => {
-        assertEq(r, false);
-      });
-    });
+    test('borrar() limpia el snapshot', () => seq(() =>
+      Snapshot.borrar().then(() => Snapshot.cargar()).then((r) => assertEq(r, false))
+    ));
 
-    // Cleanup
-    Snapshot.borrar().then(() => {
+    // Cleanup tras la cadena completa
+    chain.then(() => Snapshot.borrar()).then(() => {
       Snapshot.DB_NAME = origDB;
       Store._state.festivos = origFestivos;
       Store._state.ausenciasGV = origAusGV;
@@ -389,32 +393,38 @@
     const origDB = OfflineQueue.DB_NAME;
     OfflineQueue.DB_NAME = 'kira-reypik-queue-test';
 
-    test('count() = 0 al inicio (cola limpia)', () => {
-      return OfflineQueue.clear()
-        .then(() => OfflineQueue.count())
-        .then((n) => assertEq(n, 0));
-    });
+    // Misma técnica de serialización que Snapshot — IDB no perdona races.
+    let chain = Promise.resolve();
+    const seq = (fn) => {
+      const p = chain.then(() => fn());
+      chain = p.catch(() => {});
+      return p;
+    };
 
-    test('push() añade item y count() lo refleja', () => {
-      return OfflineQueue.push({
+    test('count() = 0 al inicio (cola limpia)', () => seq(() =>
+      OfflineQueue.clear().then(() => OfflineQueue.count()).then((n) => assertEq(n, 0))
+    ));
+
+    test('push() añade item y count() lo refleja', () => seq(() =>
+      OfflineQueue.push({
         hoja: 'ausencias', headers: ['empleado'], rows: [{ empleado: 'EVA' }]
       }).then((ok) => {
         assertEq(ok, true);
         return OfflineQueue.count();
-      }).then((n) => assertEq(n, 1));
-    });
+      }).then((n) => assertEq(n, 1))
+    ));
 
-    test('list() devuelve el item con sus campos + ts', () => {
-      return OfflineQueue.list().then((items) => {
+    test('list() devuelve el item con sus campos + ts', () => seq(() =>
+      OfflineQueue.list().then((items) => {
         assertEq(items.length, 1);
         assertEq(items[0].hoja, 'ausencias');
         assertEq(items[0].rows[0].empleado, 'EVA');
         assert(typeof items[0].ts === 'number', 'ts debe ser timestamp');
-      });
-    });
+      })
+    ));
 
-    test('Múltiples push() preservan orden de inserción', () => {
-      return OfflineQueue.clear()
+    test('Múltiples push() preservan orden de inserción', () => seq(() =>
+      OfflineQueue.clear()
         .then(() => OfflineQueue.push({ hoja: 'A', headers: [], rows: [{ n: 1 }] }))
         .then(() => OfflineQueue.push({ hoja: 'B', headers: [], rows: [{ n: 2 }] }))
         .then(() => OfflineQueue.push({ hoja: 'C', headers: [], rows: [{ n: 3 }] }))
@@ -422,17 +432,14 @@
         .then((items) => {
           assertEq(items.length, 3);
           assertDeep(items.map((i) => i.hoja), ['A', 'B', 'C']);
-        });
-    });
+        })
+    ));
 
-    test('clear() vacía y count() vuelve a 0', () => {
-      return OfflineQueue.clear()
-        .then(() => OfflineQueue.count())
-        .then((n) => assertEq(n, 0));
-    });
+    test('clear() vacía y count() vuelve a 0', () => seq(() =>
+      OfflineQueue.clear().then(() => OfflineQueue.count()).then((n) => assertEq(n, 0))
+    ));
 
-    // Cleanup: borrar la DB de test
-    OfflineQueue.clear().then(() => { OfflineQueue.DB_NAME = origDB; });
+    chain.then(() => OfflineQueue.clear()).then(() => { OfflineQueue.DB_NAME = origDB; });
   });
 
   // ============================================================
