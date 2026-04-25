@@ -134,9 +134,13 @@ Las **33 reglas validadas con Nacho** viven en tres sitios — mantenerlos sincr
 1. **#15 · Service Worker + IndexedDB para offline** (~1.5–2h). Fase A: SW cachea HTML/CSS/JS. Fase B: IndexedDB persiste snapshot del Store para arranque inmediato sin red. Fase C: cola de escrituras offline + drenaje al volver online (compleja por el versionado optimista).
 
 ### Otros pendientes no del informe (por prioridad)
-2. **Capa 2 motor** (#4): UI para que Nacho registre la elección final cuando difiere de la sugerencia. Backend ya cableado en `motor-sustituciones.js` y `Store.getDecisiones`.
-3. **Bug #2 reorganizar plantilla**: alinear con Nacho cuándo prefiere reorganizar vs sustituir. Aplazado el 8-abr esperando decisiones de negocio.
-4. `noImplicitAny: true` en tsconfig (934 errores actuales — sesión dedicada de JSDoc fino).
+2. **Salvaguarda contra desfase localStorage↔Sheet** (NUEVO, post-incidente 25-04 tarde): si `Sync.cargar()` recibe `festivos: []` pero hay datos en `localStorage.yolanda_festivos`, llamar automáticamente a `syncFestivos()` para subirlos. Evita que cambios hechos durante una ventana de fallo silencioso de auth queden solo en local. ~5 líneas + 1 test.
+3. **Capa 2 motor** (#4): UI para que Nacho registre la elección final cuando difiere de la sugerencia. Backend ya cableado en `motor-sustituciones.js` y `Store.getDecisiones`.
+4. **Bug #2 reorganizar plantilla**: alinear con Nacho cuándo prefiere reorganizar vs sustituir. Aplazado el 8-abr esperando decisiones de negocio.
+5. `noImplicitAny: true` en tsconfig (934 errores actuales — sesión dedicada de JSDoc fino).
+
+### 🚨 Lección operativa registrada hoy (25-04 tarde)
+**Tras cualquier deploy de Apps Script que cambie el protocolo** (auth, versionado, sync diferencial…) **hacer Cmd+Shift+R en TODOS los dispositivos antes de operar normalmente.** Si el JS viejo del cliente llama al server nuevo, el cliente puede no entender los nuevos errores (401, 409) y fallar silenciosamente — los datos parecen guardarse pero solo viven en localStorage local del dispositivo "atrasado". Pasó hoy con 2 bugs (festivos del 02/03-abr y modificación SARA 15-abr) que se "perdieron" en el Mac entre el deploy `57f7080` (auth) y la recarga.
 
 ### ⚠️ Acciones manuales pendientes (tú, antes de la próxima sesión)
 1. **Activar la auth (1 minuto)** — meter el token en Apps Script Properties si no lo hiciste ya. Editor web → Project Settings → Script Properties → `API_TOKEN` = `1b3646165b5b7d8de6675ce9c812f39dff5f2cb9fbd35a66`.
