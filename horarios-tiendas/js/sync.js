@@ -464,7 +464,7 @@ const Sync = {
           await OfflineQueue.push({ hoja, headers, rows });
           const restantes = Sync._writeQueue.splice(0, Sync._writeQueue.length);
           for (const it of restantes) await OfflineQueue.push(it);
-          Sync._actualizarStatusOffline();
+          await Sync._actualizarStatusOffline();
           break;
         }
         Store.setSyncStatus('error');
@@ -505,15 +505,14 @@ const Sync = {
     }
   },
 
-  // Refresca el indicador del header con el estado offline + cola pendiente.
+  // Refresca el indicador del header en función de los items pendientes
+  // en OfflineQueue. NO usamos navigator.onLine porque Safari no es
+  // fiable (devuelve true aunque el Wi-Fi esté apagado). El usuario
+  // infiere que está offline si ve "N pendientes": algún save falló.
   async _actualizarStatusOffline() {
     if (typeof OfflineQueue === 'undefined' || typeof Store === 'undefined') return;
-    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
     const pendientes = await OfflineQueue.count();
-    if (offline && pendientes > 0) Store.setSyncStatus('offline-pending:' + pendientes);
-    else if (offline) Store.setSyncStatus('offline');
-    else if (pendientes > 0) Store.setSyncStatus('pending:' + pendientes);
-    else Store.setSyncStatus('ok');
+    Store.setSyncStatus(pendientes > 0 ? 'pending:' + pendientes : 'ok');
   },
 
   // ── Funciones de sync específicas ──────────────────────────

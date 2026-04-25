@@ -313,7 +313,7 @@ const App = {
   _updateSyncUI(status) {
     const el = document.getElementById('sync-status');
     if (!el) return;
-    // Estados de la cola offline (Fase C) llevan ":N" para el contador.
+    // El estado 'pending' lleva ":N" con el contador de items en cola.
     const baseStatus = String(status).split(':')[0];
     const pendientes = parseInt(String(status).split(':')[1] || '0', 10);
     el.className = 'sync-status ' + baseStatus;
@@ -323,15 +323,9 @@ const App = {
     if (status === 'ok') {
       el.textContent = 'Sincronizado';
       el.title = 'Datos al d\u00eda con Google Sheets';
-    } else if (baseStatus === 'offline-pending') {
-      el.textContent = '\u23f3 Sin conexi\u00f3n \u00b7 ' + pendientes + ' pendiente' + (pendientes === 1 ? '' : 's');
-      el.title = 'Tus cambios se guardar\u00e1n autom\u00e1ticamente al volver la conexi\u00f3n.';
-    } else if (baseStatus === 'offline') {
-      el.textContent = 'Sin conexi\u00f3n';
-      el.title = 'Trabajando offline. La app sigue funcionando con datos cacheados.';
     } else if (baseStatus === 'pending') {
       el.textContent = '\u23f3 ' + pendientes + ' pendiente' + (pendientes === 1 ? '' : 's');
-      el.title = 'Subiendo cambios offline al Sheet\u2026';
+      el.title = 'Cambios sin subir a\u00fan (probablemente sin conexi\u00f3n). Click para reintentar.';
       el.style.cursor = 'pointer';
       el.onclick = () => { if (Sync && Sync.drenarOfflineQueue) Sync.drenarOfflineQueue(); };
     } else if (status === 'error') {
