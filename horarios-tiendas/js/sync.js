@@ -274,9 +274,21 @@ const Sync = {
         }));
       }
 
+      // Salvaguarda contra desfase localStorage↔Sheet (post-incidente
+      // 25-04 tarde): si el Sheet vino vacío de festivos pero el Store
+      // tiene cambios reales (cargados por Festivos._cargarLocal desde
+      // localStorage durante el primer render), subirlos para evitar
+      // que queden huérfanos en este dispositivo.
+      const subirFest = Sync._necesitaSubirFestivosLocales(data.festivos);
+
       Sync._initialized = true;
       Store.setSyncStatus('ok');
       Store._emit('datosCompletos');
+
+      if (subirFest) {
+        console.warn('[Sync] festivos en localStorage no presentes en Sheet → subiendo');
+        Sync.syncFestivos();
+      }
       return true;
 
     } catch (err) {
@@ -286,6 +298,26 @@ const Sync = {
     } finally {
       Sync._loading = false;
     }
+  },
+
+  // ── Salvaguarda localStorage↔Sheet ─────────────────────────
+  // Devuelve true si el Sheet no trajo festivos pero el Store sí
+  // tiene datos "reales" (festivos manuales o con inscritos/asignados).
+  // Los defaults sin inscripciones NO cuentan: no merece la pena
+  // ensuciar el Sheet con filas vacías.
+  _necesitaSubirFestivosLocales(dataFestivos) {
+    if (dataFestivos && dataFestivos.length > 0) return false;
+    if (typeof Store === 'undefined') return false;
+    const locales = Store.getFestivos();
+    if (!locales || locales.length === 0) return false;
+    return locales.some(f => {
+      if (f.id && String(f.id).startsWith('man-')) return true;
+      const ig = (f.inscritos && f.inscritos.granvia) || [];
+      const ii = (f.inscritos && f.inscritos.isabel) || [];
+      const ag = (f.asignados && f.asignados.granvia) || [];
+      const ai = (f.asignados && f.asignados.isabel) || [];
+      return ig.length + ii.length + ag.length + ai.length > 0;
+    });
   },
 
   // ── Merge de festivos desde Sheets ─────────────────────────

@@ -314,6 +314,78 @@
   });
 
   // ============================================================
+  // Sync._necesitaSubirFestivosLocales — salvaguarda contra desfase
+  // localStorage↔Sheet (si Sheet vino vacío pero hay cambios reales
+  // sólo en local, los subimos para no perderlos).
+  // ============================================================
+  suite('Sync: salvaguarda localStorage↔Sheet (festivos)', function () {
+    const origFestivos = Store._state.festivos;
+
+    test('Sheet trae festivos → no dispara salvaguarda', () => {
+      Store._state.festivos = [];
+      const sheet = [{ id: 'def-2026-01-01', fecha: '2026-01-01', tienda: 'granvia' }];
+      assertEq(Sync._necesitaSubirFestivosLocales(sheet), false);
+    });
+
+    test('Sheet vacío + Store vacío → no dispara', () => {
+      Store._state.festivos = [];
+      assertEq(Sync._necesitaSubirFestivosLocales([]), false);
+    });
+
+    test('Sheet vacío + Store con defaults limpios → no dispara', () => {
+      Store._state.festivos = [{
+        id: 'def-2026-01-01', fecha: '2026-01-01', nombre: 'Año Nuevo',
+        ambito: 'nacional',
+        inscritos: { granvia: [], isabel: [] },
+        asignados: { granvia: [], isabel: [] }
+      }];
+      assertEq(Sync._necesitaSubirFestivosLocales([]), false);
+    });
+
+    test('Sheet vacío + festivo con inscrito → SÍ dispara', () => {
+      Store._state.festivos = [{
+        id: 'def-2026-01-01', fecha: '2026-01-01', nombre: 'Año Nuevo',
+        ambito: 'nacional',
+        inscritos: { granvia: ['EVA'], isabel: [] },
+        asignados: { granvia: [], isabel: [] }
+      }];
+      assertEq(Sync._necesitaSubirFestivosLocales([]), true);
+    });
+
+    test('Sheet vacío + festivo con asignado → SÍ dispara', () => {
+      Store._state.festivos = [{
+        id: 'def-2026-04-03', fecha: '2026-04-03', nombre: 'Viernes Santo',
+        ambito: 'nacional',
+        inscritos: { granvia: [], isabel: [] },
+        asignados: { granvia: [], isabel: [{ empleado: 'CAROLINA', turno: 'mañanas', entrada: 7.25, salida: 14.75 }] }
+      }];
+      assertEq(Sync._necesitaSubirFestivosLocales([]), true);
+    });
+
+    test('Sheet vacío + festivo manual sin inscritos → SÍ dispara (no perderlo)', () => {
+      Store._state.festivos = [{
+        id: 'man-feria-local', fecha: '2026-07-15', nombre: 'Feria',
+        ambito: 'local',
+        inscritos: { granvia: [], isabel: [] },
+        asignados: { granvia: [], isabel: [] }
+      }];
+      assertEq(Sync._necesitaSubirFestivosLocales([]), true);
+    });
+
+    test('Sheet undefined (defensivo) + Store con cambios → SÍ dispara', () => {
+      Store._state.festivos = [{
+        id: 'def-2026-01-01', fecha: '2026-01-01',
+        inscritos: { granvia: ['EVA'], isabel: [] },
+        asignados: { granvia: [], isabel: [] }
+      }];
+      assertEq(Sync._necesitaSubirFestivosLocales(undefined), true);
+    });
+
+    // Cleanup
+    Store._state.festivos = origFestivos;
+  });
+
+  // ============================================================
   // AUDITOR — detección de huecos de continuidad horaria
   // ============================================================
   suite('Auditor: detectarHuecos (sweep de eventos)', function () {
