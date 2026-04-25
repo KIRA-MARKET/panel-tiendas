@@ -17,14 +17,74 @@ const Sync = {
   // sobrescribiera el Sheet con los defaults vacíos (bug 2026-04-21).
   _loading: false,
 
+  // ── Auth: token compartido en localStorage ─────────────────
+  // El token se introduce una vez por dispositivo. Vive solo en
+  // localStorage (clave 'apiToken'); jamás en el repo. Si el server
+  // devuelve 'Unauthorized', _fetch abre modal pidiéndolo y reintenta.
+  _TOKEN_KEY: 'apiToken',
+
+  _getToken() {
+    try { return localStorage.getItem(Sync._TOKEN_KEY) || ''; }
+    catch (_) { return ''; }
+  },
+
+  _setToken(t) {
+    try { localStorage.setItem(Sync._TOKEN_KEY, t); } catch (_) {}
+  },
+
+  /**
+   * Pide el token al usuario (modal propio si Modales está disponible,
+   * prompt nativo en su defecto — solo fallback de emergencia para auth).
+   * Devuelve el token o '' si cancela.
+   */
+  async _pedirToken(motivo) {
+    const titulo = 'Autenticación requerida';
+    const msg = (motivo || 'Esta app necesita un token de acceso para conectar con Google Sheets.') +
+      '\n\nIntrodúcelo (lo guardamos solo en este dispositivo).';
+    if (typeof Modales !== 'undefined' && Modales.input) {
+      const t = await Modales.input(msg, '', titulo);
+      return t || '';
+    }
+    // Fallback: la app no debería llegar aquí porque Modales se carga
+    // antes que Sync.cargar(), pero por si acaso.
+    return window.prompt(msg) || '';
+  },
+
+  /**
+   * Wrapper de fetch que añade el token y maneja 401 abriendo el
+   * modal de auth y reintentando una sola vez. Devuelve el `data`
+   * ya parseado (mismo shape que devolvía `await response.json()`).
+   * Lanza si fallo de red real (no 401).
+   */
+  async _fetch(action, opts) {
+    opts = opts || {};
+    let token = Sync._getToken();
+    const _send = async () => {
+      const sep = '?';
+      const url = CONFIG.SHEETS_API + sep + 'action=' + encodeURIComponent(action) +
+        (token ? '&token=' + encodeURIComponent(token) : '');
+      const resp = await fetch(url, opts);
+      return resp.json();
+    };
+
+    let data = await _send();
+    if (data && (data.code === 401 || data.error === 'Unauthorized')) {
+      const nuevo = await Sync._pedirToken('El token guardado no es válido o falta.');
+      if (!nuevo) return data; // usuario canceló: devolvemos el 401 tal cual
+      Sync._setToken(nuevo);
+      token = nuevo;
+      data = await _send();
+    }
+    return data;
+  },
+
   // ── Cargar todos los datos desde Sheets ────────────────────
 
   async cargar() {
     Store.setSyncStatus('loading');
     Sync._loading = true;
     try {
-      const response = await fetch(CONFIG.SHEETS_API + '?action=readAll');
-      const data = await response.json();
+      const data = await Sync._fetch('readAll');
 
       if (data.error) {
         Store.setSyncStatus('error');
@@ -290,11 +350,10 @@ const Sync = {
       const { hoja, headers, rows } = Sync._writeQueue.shift();
       Store.setSyncStatus('loading');
       try {
-        const response = await fetch(CONFIG.SHEETS_API + '?action=save', {
+        const data = await Sync._fetch('save', {
           method: 'POST',
           body: JSON.stringify({ sheet: hoja, headers, rows })
         });
-        const data = await response.json();
         if (data.error) {
           console.error('Error guardando', hoja, data.error);
           Store.setSyncStatus('error');

@@ -243,8 +243,28 @@ var HOJAS = {
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
 
+// Verifica que la request lleve el token compartido. El token vive en
+// PropertiesService.getScriptProperties (clave 'API_TOKEN'); se mete a
+// mano en el editor web (Project Settings → Script properties) y NUNCA
+// se commitea a este archivo. Si la propiedad no está, deja pasar todo
+// (modo "auth desactivada") para no romper despliegues anteriores en
+// transición; en cuanto se mete la propiedad, queda activa.
+function _verificarToken(e) {
+  var expected = PropertiesService.getScriptProperties().getProperty('API_TOKEN');
+  if (!expected) return { ok: true, motivo: 'no-token-configured' };
+  var got = (e && e.parameter) ? e.parameter.token : '';
+  if (got && got === expected) return { ok: true };
+  return { ok: false };
+}
+
 function handleRequest(e) {
   try {
+    var auth = _verificarToken(e);
+    if (!auth.ok) {
+      // Devolvemos error en el JSON (Apps Script no permite status HTTP custom).
+      // El cliente reconoce 'Unauthorized' y abre modal pidiendo el token.
+      return jsonResp({ error: 'Unauthorized', code: 401 });
+    }
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var action = e.parameter.action;
     if (action === 'readAll') {
