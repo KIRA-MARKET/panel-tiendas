@@ -1868,34 +1868,55 @@
   });
 
   suite('Auditor: intervalosDelDia respeta modificaciones (nuevaEntrada/nuevaSalida)', function () {
-    const origMods = Store._state.modificacionesHorario;
+    const origGV    = Store._state.empleadosGV;
+    const origHorGV = Store._state.horariosGV;
+    const origMods  = Store._state.modificacionesHorario;
+
+    // Sembramos plantilla mínima para que getHorariosLV devuelva datos.
+    // Sin esto, post-Sprint B la plantilla por defecto es {} y el test
+    // se saltaba silencioso sin asserts. Bug detectado el 25-04.
+    Store._state.empleadosGV = {
+      _MOD: { alias: '_MOD', nombre: 'Test', apellidos: 'Mod', dni: '', telefono: '', email: '', fechaAlta: '2025-01-01', contrato: 30, tienda: 'granvia', franja: 'mañanas', restriccion: '', color: '#888' }
+    };
+    // Semana A (impar) y B (par) con mismo horario para no depender de la fecha
+    Store._state.horariosGV = {
+      A: { LJ: { _MOD: [9, 14] }, V: { _MOD: [9, 14] } },
+      B: { LJ: { _MOD: [9, 14] }, V: { _MOD: [9, 14] } }
+    };
     Store._state.modificacionesHorario = [];
 
     test('Empleado con modificación aparece con nueva entrada/salida, no undefined', () => {
-      // Encontrar un empleado real que esté en la rotación L-V de GV ese día
       const fecha = Utils.parseFecha('2026-04-15'); // miércoles
-      const horarios = Rotaciones.getHorariosLV(fecha, 'granvia') || {};
-      const alias = Object.keys(horarios)[0];
-      if (!alias) return; // si no hay datos cargados, saltar (no falla)
+      const fs = Utils.formatFecha(fecha);
 
       Store._state.modificacionesHorario = [{
-        empleado: alias, fecha: '2026-04-15', tienda: 'granvia',
+        empleado: '_MOD', fecha: fs, tienda: 'granvia',
         turnoFds: '',
-        entradaOriginal: horarios[alias][0],
-        salidaOriginal: horarios[alias][1],
-        nuevaEntrada: 11.5,
-        nuevaSalida: 16.0,
+        entradaOriginal: 9, salidaOriginal: 14,
+        nuevaEntrada: 11.5, nuevaSalida: 16.0,
         motivo: 'test'
       }];
 
       const intervalos = Auditor.intervalosDelDia(fecha, 'granvia');
-      const it = intervalos.find(x => x.emp === alias);
-      assert(it, alias + ' debe estar en intervalos del día');
+      const it = intervalos.find(x => x.emp === '_MOD');
+      assert(it, '_MOD debe estar en intervalos del día');
       assertEq(it.entrada, 11.5, 'entrada debe ser nuevaEntrada');
-      assertEq(it.salida, 16.0, 'salida debe ser nuevaSalida');
+      assertEq(it.salida, 16.0,  'salida debe ser nuevaSalida');
       assert(typeof it.entrada === 'number' && !isNaN(it.entrada), 'no debe ser undefined/NaN');
     });
 
+    test('Sin modificación, intervalosDelDia usa el horario base', () => {
+      Store._state.modificacionesHorario = [];
+      const fecha = Utils.parseFecha('2026-04-15');
+      const intervalos = Auditor.intervalosDelDia(fecha, 'granvia');
+      const it = intervalos.find(x => x.emp === '_MOD');
+      assert(it, '_MOD debe estar en intervalos del día (base)');
+      assertEq(it.entrada, 9);
+      assertEq(it.salida,  14);
+    });
+
+    Store._state.empleadosGV = origGV;
+    Store._state.horariosGV = origHorGV;
     Store._state.modificacionesHorario = origMods;
   });
 
@@ -2024,6 +2045,68 @@
     });
 
     Store._state.reemplazos = origReemp;
+  });
+
+  // ============================================================
+  // HOY — smoke test del render
+  // ============================================================
+  suite('HoyUI: render genera contenido sin lanzar errores', function () {
+    test('render() pinta secciones con datos sembrados (ausencias + sustituciones)', () => {
+      // Crear el contenedor que la pestaña espera
+      let cont = document.getElementById('tab-hoy');
+      if (!cont) {
+        cont = document.createElement('div');
+        cont.id = 'tab-hoy';
+        document.body.appendChild(cont);
+      }
+      const origAusGV = Store._state.ausenciasGV;
+      const origSusts = Store._state.sustituciones;
+      try {
+        const hoy = Utils.formatFecha(new Date());
+        Store._state.ausenciasGV = [
+          { empleado: 'TEST_AUS', tipo: 'baja', desde: hoy, hasta: hoy, motivo: '' }
+        ];
+        Store._state.sustituciones = [
+          { fecha: hoy, ausente: 'TEST_AUS', sustituto: 'TEST_SUST',
+            entrada: 9, salida: 14, franja: 'mañanas', turnoFds: '',
+            tienda: 'granvia', tipo: 'movimiento' }
+        ];
+        HoyUI.render();
+        const html = cont.innerHTML;
+        assert(html.length > 0, 'render debe pintar contenido');
+        assert(html.indexOf('Hoy') >= 0, 'debe contener el header "Hoy"');
+        assert(html.indexOf('TEST_AUS') >= 0, 'debe mostrar la ausencia sembrada');
+        assert(html.indexOf('TEST_SUST') >= 0, 'debe mostrar el sustituto');
+      } finally {
+        Store._state.ausenciasGV = origAusGV;
+        Store._state.sustituciones = origSusts;
+      }
+    });
+
+    test('render() sin ausencias/sustituciones no falla y muestra estados vacíos', () => {
+      let cont = document.getElementById('tab-hoy');
+      if (!cont) {
+        cont = document.createElement('div');
+        cont.id = 'tab-hoy';
+        document.body.appendChild(cont);
+      }
+      const origAusGV = Store._state.ausenciasGV;
+      const origAusIS = Store._state.ausenciasIS;
+      const origSusts = Store._state.sustituciones;
+      try {
+        Store._state.ausenciasGV = [];
+        Store._state.ausenciasIS = [];
+        Store._state.sustituciones = [];
+        // No debe lanzar
+        HoyUI.render();
+        const html = cont.innerHTML;
+        assert(html.length > 0, 'incluso sin datos debe pintar la cabecera y secciones vacías');
+      } finally {
+        Store._state.ausenciasGV = origAusGV;
+        Store._state.ausenciasIS = origAusIS;
+        Store._state.sustituciones = origSusts;
+      }
+    });
   });
 
   // ============================================================
