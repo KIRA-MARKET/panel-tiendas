@@ -21,6 +21,19 @@ window.__APP_VERSION__ = Date.now();
   document.write('<link rel="stylesheet" href="css/calendario.css' + v + '">');
 })();
 </script>
+<script>
+// ── Service Worker (Fase A del offline) ──────────────────────
+// Registra sw.js para que la app funcione sin red. El SW NO toca
+// las llamadas a Apps Script (sigue gestionándolas Sync). Solo
+// cachea HTML/CSS/JS para arranque instantáneo y modo avión.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.warn('[SW] registro falló:', err);
+    });
+  });
+}
+</script>
 </head>
 <body>
 
