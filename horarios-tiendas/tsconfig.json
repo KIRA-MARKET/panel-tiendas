@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
+    "skipLibCheck": true,
+    "resolveJsonModule": false
+  },
+  "include": [
+    "globals.d.ts",
+    "js/utilidades.js",
+    "js/config.js",
+    "js/datos.js",
+    "js/empleados.js",
+    "js/rotaciones.js",
+    "js/cobertura.js",
+    "js/reglas.js",
+    "js/motor-sustituciones.js",
+    "js/ausencias.js",
+    "js/intercambios.js",
+    "js/reemplazos.js",
+    "js/horas.js",
+    "js/auditor.js"
+  ]
+}

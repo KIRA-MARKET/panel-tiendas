@@ -60,7 +60,7 @@ const Utils = {
     const dn = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dn);
     const ys = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil(((d - ys) / 86400000 + 1) / 7);
+    return Math.ceil(((d.getTime() - ys.getTime()) / 86400000 + 1) / 7);
   },
 
   /** Semana A o B — siempre correlativo (impar=A, par=B) */

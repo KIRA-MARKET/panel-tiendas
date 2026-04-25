@@ -184,7 +184,7 @@ const Rotaciones = {
       : Utils.parseFecha(cfgIS.fecha_inicio);
 
     const fechaNorm = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-    const diffDias = Math.round((fechaNorm - inicioFecha) / (24 * 60 * 60 * 1000));
+    const diffDias = Math.round((fechaNorm.getTime() - inicioFecha.getTime()) / (24 * 60 * 60 * 1000));
 
     if (sheetsFds) {
       const gA = sheetsFds.grupoA;

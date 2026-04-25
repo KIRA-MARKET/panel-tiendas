@@ -17,8 +17,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Puppeteer
-        run: npm install --no-save puppeteer@22
+      - name: Install Puppeteer + TypeScript
+        run: npm install --no-save puppeteer@22 typescript@5
+
+      - name: Type check (tsc --checkJs)
+        run: npx tsc --noEmit -p horarios-tiendas/tsconfig.json
 
       - name: Run tests
         run: node horarios-tiendas/tests/run-headless.js
