@@ -8,6 +8,7 @@ declare const FestivosUI: any;
 declare const ControlUI: any;
 declare const AusenciasUI: any;
 declare const EmpleadosUI: any;
+declare const HoyUI: any;
 declare const CalendarioUI: any;
 declare const Modales: any;
 declare const PDFExport: any;

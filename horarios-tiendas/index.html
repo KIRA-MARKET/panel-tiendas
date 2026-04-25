@@ -35,6 +35,7 @@ window.__APP_VERSION__ = Date.now();
       <button class="store-btn" id="btn-isabel" onclick="App.cambiarTienda('isabel')">Isabel</button>
     </div>
     <nav class="nav-tabs">
+      <button class="nav-tab" id="tab-btn-hoy" onclick="App.mostrarTab('hoy')">Hoy</button>
       <button class="nav-tab active" id="tab-btn-calendario" onclick="App.mostrarTab('calendario')">Calendario</button>
       <button class="nav-tab" id="tab-btn-empleados" onclick="App.mostrarTab('empleados')">Empleados</button>
       <button class="nav-tab" id="tab-btn-ausencias" onclick="App.mostrarTab('ausencias')">Ausencias</button>
@@ -81,6 +82,9 @@ window.__APP_VERSION__ = Date.now();
     <div id="calendar-container"></div>
   </div>
 
+  <!-- Tab: Hoy -->
+  <div id="tab-hoy" class="tab-content"></div>
+
   <!-- Tab: Empleados -->
   <div id="tab-empleados" class="tab-content"></div>
 
@@ -109,8 +113,8 @@ window.__APP_VERSION__ = Date.now();
     'reemplazos.js', 'intercambios.js', 'rotaciones.js', 'sync.js',
     'cobertura.js', 'reglas.js', 'ausencias.js', 'motor-sustituciones.js',
     'festivos.js', 'control.js', 'horas.js', 'empleados-ui.js',
-    'ausencias-ui.js', 'auditor.js', 'calendario-ui.js', 'modales-ui.js',
-    'pdf.js'
+    'ausencias-ui.js', 'auditor.js', 'hoy-ui.js', 'calendario-ui.js',
+    'modales-ui.js', 'pdf.js'
   ];
   for (const f of files) {
     document.write('<script src="js/' + f + v + '"><\/script>');
@@ -198,13 +202,14 @@ const App = {
   },
 
   mostrarTab(tab) {
-    const tabs = ['calendario', 'empleados', 'ausencias', 'festivos', 'control', 'horas'];
+    const tabs = ['hoy', 'calendario', 'empleados', 'ausencias', 'festivos', 'control', 'horas'];
     for (const t of tabs) {
       const btn = document.getElementById('tab-btn-' + t);
       const content = document.getElementById('tab-' + t);
       if (btn) btn.classList.toggle('active', t === tab);
       if (content) content.classList.toggle('active', t === tab);
     }
+    if (tab === 'hoy') HoyUI.render();
     if (tab === 'festivos') FestivosUI.render();
     if (tab === 'control') ControlUI.render();
     if (tab === 'horas') HorasUI.render();
