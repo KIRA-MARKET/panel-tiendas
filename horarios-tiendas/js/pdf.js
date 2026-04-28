@@ -415,7 +415,7 @@ const PDFExport = {
     css += '* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }';
 
     if (modo === 'lv') {
-      css += 'html, body { width: 100%; min-height: 100%; }';
+      css += 'html, body { width: 100%; min-height: 100%; margin: 0; }';
       css += 'body { padding: 10px; background: #f5f5f5; }';
     } else {
       css += 'html { height: 100%; }';
@@ -438,13 +438,16 @@ const PDFExport = {
       css += '.col-sem { width: 30px; padding: 3px 2px; background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%); border-right: 1px solid #dee2e6; display: flex; flex-direction: column; align-items: center; justify-content: center; }';
       css += '.col-sem .num { font-size: 12px; font-weight: 700; color: #e53935; }';
       css += '.col-sem .letra { font-size: 9px; color: #6c757d; font-weight: 600; }';
-      css += '.col-dia { flex: 1; border-right: 1px solid #f0f0f0; padding: 2px 3px; display: flex; flex-direction: column; }';
+      // min-width:0 + overflow:hidden en .col-dia evita que un nombre largo
+      // con white-space:nowrap empuje la columna fuera del A3 (causa típica
+      // del "PDF cortado por la derecha" en Safari).
+      css += '.col-dia { flex: 1 1 0; min-width: 0; overflow: hidden; border-right: 1px solid #f0f0f0; padding: 2px 3px; display: flex; flex-direction: column; }';
       css += '.dia-num { font-size: 9px; font-weight: 800; color: #1a1a2e; margin-bottom: 2px; }';
-      css += '.turnos-wrap { display: flex; flex-direction: column; flex: 1; }';
-      css += '.franja-pdf { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; }';
-      css += '.turno { padding: 2px 5px; margin-bottom: 1px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid transparent; }';
-      css += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
-      css += '.turno-hora { white-space: nowrap; font-size: 7px; font-weight: 600; }';
+      css += '.turnos-wrap { display: flex; flex-direction: column; flex: 1; min-width: 0; }';
+      css += '.franja-pdf { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; min-width: 0; }';
+      css += '.turno { padding: 2px 5px; margin-bottom: 1px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid transparent; min-width: 0; gap: 4px; }';
+      css += '.turno-nombre { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }';
+      css += '.turno-hora { white-space: nowrap; font-size: 7px; font-weight: 600; flex-shrink: 0; }';
     } else {
       css += '.fds-grid { display: grid; gap: 10px; width: 100%; }';
       css += '.fds-card { background: #fff; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; }';
@@ -456,9 +459,9 @@ const PDFExport = {
       css += '.fds-turno.sab-t { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #f57c00; }';
       css += '.fds-turno.dom-t { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border: 2px solid #7b1fa2; }';
       css += '.fds-turno-header { font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,0.1); }';
-      css += '.turno { padding: 3px 6px; margin-bottom: 1px; font-size: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid transparent; }';
-      css += '.turno-nombre { font-weight: 700; white-space: nowrap; }';
-      css += '.turno-hora { white-space: nowrap; font-size: 9px; font-weight: 600; }';
+      css += '.turno { padding: 3px 6px; margin-bottom: 1px; font-size: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid transparent; min-width: 0; gap: 4px; }';
+      css += '.turno-nombre { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }';
+      css += '.turno-hora { white-space: nowrap; font-size: 9px; font-weight: 600; flex-shrink: 0; }';
     }
 
     css += '.turno.descarga { background: #bbcfea; border-left-color: #1a4a8a; color: #0d2b52; }';
@@ -471,11 +474,15 @@ const PDFExport = {
     css += '.turno.sustituto .turno-nombre { color: #bf360c; font-weight: 800; } .turno.sustituto .turno-hora { color: #333; font-weight: 700; }';
 
     if (modo === 'whatsapp') {
-      css += '@media print { @page { size: A4 portrait; margin: 5mm; } body { width: 200mm; padding: 0 !important; } .btn-print-bar { display: none !important; } }';
+      css += '@media print { @page { size: A4 portrait; margin: 5mm; } body { width: 200mm; padding: 0 !important; margin: 0 !important; } .btn-print-bar { display: none !important; } }';
     } else if (modo === 'lv') {
-      css += '@media print { @page { size: A3 portrait; margin: 3mm; } body { width: 291mm; max-height: 414mm; overflow: hidden; padding: 0 !important; } .btn-print-bar { display: none !important; } }';
+      // Safari redondea márgenes con menos precisión que Chrome: dejamos
+      // 5mm de @page + width 285mm (en lugar de 291mm a pelo) para que
+      // siempre quepa dentro del área imprimible aunque la impresora
+      // añada un mm extra de margen físico.
+      css += '@media print { @page { size: A3 portrait; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; } body { width: 285mm; max-width: 285mm; max-height: 410mm; overflow: hidden; } .btn-print-bar { display: none !important; } }';
     } else {
-      css += '@media print { @page { size: A3 landscape; margin: 3mm; } body { width: 414mm; max-height: 291mm; overflow: hidden; padding: 0 !important; } .btn-print-bar { display: none !important; } }';
+      css += '@media print { @page { size: A3 landscape; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; } body { width: 410mm; max-width: 410mm; max-height: 287mm; overflow: hidden; } .btn-print-bar { display: none !important; } }';
     }
 
     css += '.btn-print-bar { position: fixed; top: 0; left: 0; right: 0; background: #1a1a2e; padding: 8px 20px; display: flex; gap: 10px; align-items: center; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }';
