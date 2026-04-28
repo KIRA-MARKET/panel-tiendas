@@ -37,6 +37,22 @@ const Rotaciones = {
       horarios[rot.mañana] = [10, 14.5];
       horarios[rot.tarde] = [15, 19.5];
       horarios[rot.cierre] = [17.75, 22.25];
+
+      // Rotación A/B descarga⇄cierre (FRAN/ANDRÉS):
+      // sem A → FRAN descarga + ANDRÉS cierre. sem B → al revés.
+      // Sem 19 (lunes 4-5-2026) = sem impar = A. Definida en HorariosIS Sheet
+      // con tipo 'rotacion_dc'. Reemplaza al fijo previo de FRAN y al
+      // reemplazo MORILLA→ANDRÉS (cerrado el 03-05-2026).
+      if (sheetsIS.rotacionDC) {
+        const semAB = Utils.getSemanaAB(fecha);
+        const tramos = sheetsIS.rotacionDC[semAB] || [];
+        for (const t of tramos) {
+          if (Utils.matchDia(t.diaPat, dow)) {
+            horarios[t.empleado] = [t.entrada, t.salida];
+          }
+        }
+      }
+
       return horarios;
     }
 
@@ -56,9 +72,15 @@ const Rotaciones = {
     else if (dow === 5) horarios['VANESA'] = [5, 9];
     else horarios['VANESA'] = [7, 10];
 
-    // FRAN: nuevo contrato 18h Isabel. L-X-V 7:30-11:30 (4h). M-J 7:30-10:30 (3h). Total 18h.
-    if (dow === 1 || dow === 3 || dow === 5) horarios['FRAN'] = [7.5, 11.5];
-    else horarios['FRAN'] = [7.5, 10.5];
+    // FRAN/ANDRÉS: rotación A/B descarga⇄cierre (18h cada uno).
+    // Sem A → FRAN descarga + ANDRÉS cierre. Sem B → al revés.
+    const semAB_DC = Utils.getSemanaAB(fecha);
+    const personaDescarga = semAB_DC === 'A' ? 'FRAN' : 'ANDRÉS';
+    const personaCierreDC = semAB_DC === 'A' ? 'ANDRÉS' : 'FRAN';
+    if (dow === 1 || dow === 3 || dow === 5) horarios[personaDescarga] = [7.5, 11.5];
+    else horarios[personaDescarga] = [7.5, 10.5];
+    if (dow === 5) horarios[personaCierreDC] = [18.25, 22.25];
+    else           horarios[personaCierreDC] = [18.75, 22.25];
 
     horarios['SILVIA'] = [7, 10];
     horarios['ANTONIO'] = [10, 13];

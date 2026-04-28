@@ -603,10 +603,13 @@ const Sync = {
   _parseHorariosIS(rows) {
     const fijos = [];
     const rotacion = {};
+    // Rotación quincenal A/B descarga⇄cierre (FRAN/ANDRÉS, abril 2026):
+    // dia = 'A_LXV' | 'A_MJ' | 'A_LJ' | 'A_V' | 'B_*'
+    // notas = 'descarga' | 'cierre' (informativo)
+    const rotacionDC = { A: [], B: [] };
     const overrides = CONFIG.OVERRIDES_DIAS_LV.isabel || {};
     for (const r of rows) {
       if (r.tipo === 'fijo' || r.tipo === 'compartido') {
-        // Aplicar override si existe para este empleado
         let dia = r.dia;
         if (overrides[r.empleado]) {
           dia = overrides[r.empleado];
@@ -617,9 +620,18 @@ const Sync = {
         if (!rotacion[semKey]) rotacion[semKey] = {};
         const rol = r.notas || '';
         rotacion[semKey][rol] = { emp: r.empleado, entrada: r.entrada || 0, salida: r.salida || 0 };
+      } else if (r.tipo === 'rotacion_dc') {
+        const partes = String(r.dia || '').split('_');
+        const sem = partes[0];           // 'A' | 'B'
+        const diaPat = partes[1] || '';  // 'LXV' | 'MJ' | 'LJ' | 'V' (códigos Utils.matchDia)
+        if (sem !== 'A' && sem !== 'B') continue;
+        rotacionDC[sem].push({
+          diaPat, empleado: r.empleado,
+          entrada: r.entrada, salida: r.salida
+        });
       }
     }
-    return { fijos, rotacion };
+    return { fijos, rotacion, rotacionDC };
   },
 
   _parseRotacionesFdS(rows) {

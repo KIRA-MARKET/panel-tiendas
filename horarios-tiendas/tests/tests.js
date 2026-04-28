@@ -2483,33 +2483,33 @@
   });
 
   // ============================================================
-  // ROTACIONES Isabel L-V: FRAN nuevo + EDU/VANESA viernes (28-04-2026)
+  // ROTACIONES Isabel L-V: EDU/VANESA viernes + rotación A/B FRAN/ANDRÉS
+  // (28-04-2026)
   // ============================================================
-  suite('Rotaciones Isabel L-V: alta FRAN + EDU/VANESA viernes', function () {
+  suite('Rotaciones Isabel L-V: EDU/VANESA viernes + rotación FRAN/ANDRÉS', function () {
     // El fallback hardcoded vive en getHorariosIS cuando sheetsHorariosIS es null.
     // Forzamos esa rama para no depender de datos cargados desde Sheets.
     const origGet = Store.get;
     Store.get = function (k) { return k === 'sheetsHorariosIS' ? null : origGet.call(Store, k); };
 
+    // Sem 19 = sem ISO impar = sem A (FRAN descarga + ANDRÉS cierre).
     const lunes     = new Date(2026, 4, 4);  // L 4 mayo 2026
     const martes    = new Date(2026, 4, 5);  // M
     const miercoles = new Date(2026, 4, 6);  // X
     const jueves    = new Date(2026, 4, 7);  // J
     const viernes   = new Date(2026, 4, 8);  // V
 
-    test('FRAN aparece L-X-V con horario 7:30-11:30', () => {
+    test('Sem A: FRAN descarga L-X-V 7:30-11:30, M-J 7:30-10:30', () => {
+      assertEq(Utils.getSemanaAB(lunes), 'A');
       assertDeep(Rotaciones.getHorariosIS(lunes).FRAN, [7.5, 11.5]);
       assertDeep(Rotaciones.getHorariosIS(miercoles).FRAN, [7.5, 11.5]);
       assertDeep(Rotaciones.getHorariosIS(viernes).FRAN, [7.5, 11.5]);
-    });
-    test('FRAN aparece M-J con horario 7:30-10:30', () => {
       assertDeep(Rotaciones.getHorariosIS(martes).FRAN, [7.5, 10.5]);
       assertDeep(Rotaciones.getHorariosIS(jueves).FRAN, [7.5, 10.5]);
     });
-    test('FRAN suma 18h semanales (4+3+4+3+4)', () => {
+    test('Sem A: FRAN suma 18h descarga (4·3 + 3·2)', () => {
       const h = (d) => { const x = Rotaciones.getHorariosIS(d).FRAN; return x[1] - x[0]; };
-      const total = h(lunes) + h(martes) + h(miercoles) + h(jueves) + h(viernes);
-      assertEq(+total.toFixed(2), 18);
+      assertEq(+(h(lunes)+h(martes)+h(miercoles)+h(jueves)+h(viernes)).toFixed(2), 18);
     });
 
     test('EDU L y X siguen 6-10, V cambia a 5-9', () => {
@@ -2528,6 +2528,118 @@
     });
 
     Store.get = origGet;
+  });
+
+  // ============================================================
+  // ROTACIÓN A/B FRAN/ANDRÉS descarga⇄cierre Isabel
+  // ============================================================
+  suite('Rotación A/B FRAN/ANDRÉS descarga⇄cierre Isabel', function () {
+    const origGet = Store.get;
+    Store.get = function (k) { return k === 'sheetsHorariosIS' ? null : origGet.call(Store, k); };
+
+    // Sem A (impar): sem 19 → lunes 4 mayo 2026.
+    // Sem B (par):   sem 20 → lunes 11 mayo 2026.
+    const semA_lunes   = new Date(2026, 4, 4);
+    const semA_jueves  = new Date(2026, 4, 7);
+    const semA_viernes = new Date(2026, 4, 8);
+    const semB_lunes   = new Date(2026, 4, 11);
+    const semB_jueves  = new Date(2026, 4, 14);
+    const semB_viernes = new Date(2026, 4, 15);
+
+    test('Sem A: FRAN descarga, ANDRÉS cierre', () => {
+      const h = Rotaciones.getHorariosIS(semA_lunes);
+      assertDeep(h.FRAN, [7.5, 11.5]);
+      assertDeep(h['ANDRÉS'], [18.75, 22.25]);
+    });
+    test('Sem A viernes: FRAN 7:30-11:30, ANDRÉS 18:15-22:15', () => {
+      const h = Rotaciones.getHorariosIS(semA_viernes);
+      assertDeep(h.FRAN, [7.5, 11.5]);
+      assertDeep(h['ANDRÉS'], [18.25, 22.25]);
+    });
+
+    test('Sem B: ANDRÉS descarga, FRAN cierre (al revés)', () => {
+      assertEq(Utils.getSemanaAB(semB_lunes), 'B');
+      const h = Rotaciones.getHorariosIS(semB_lunes);
+      assertDeep(h['ANDRÉS'], [7.5, 11.5]);
+      assertDeep(h.FRAN, [18.75, 22.25]);
+    });
+    test('Sem B viernes: ANDRÉS 7:30-11:30, FRAN 18:15-22:15', () => {
+      const h = Rotaciones.getHorariosIS(semB_viernes);
+      assertDeep(h['ANDRÉS'], [7.5, 11.5]);
+      assertDeep(h.FRAN, [18.25, 22.25]);
+    });
+    test('Sem B M-J: ANDRÉS 7:30-10:30, FRAN 18:45-22:15', () => {
+      const h = Rotaciones.getHorariosIS(semB_jueves);
+      assertDeep(h['ANDRÉS'], [7.5, 10.5]);
+      assertDeep(h.FRAN, [18.75, 22.25]);
+    });
+
+    test('Cada uno hace exactamente 1 turno por día (no aparece en descarga Y cierre)', () => {
+      for (const d of [semA_lunes, semA_jueves, semA_viernes, semB_lunes, semB_jueves, semB_viernes]) {
+        const h = Rotaciones.getHorariosIS(d);
+        // Cada alias aparece UNA vez (objeto: clave única). Sanity check:
+        // verificar que su horario es o de descarga (mañana) o de cierre (tarde),
+        // no ambos.
+        const fran = h.FRAN, andres = h['ANDRÉS'];
+        assert(fran && andres, 'FRAN y ANDRÉS deben aparecer ' + Utils.formatFecha(d));
+        const esManana = (x) => x[0] < 12;
+        const esTarde  = (x) => x[0] > 12;
+        // FRAN y ANDRÉS están en turnos opuestos.
+        assert(esManana(fran) !== esManana(andres),
+          'FRAN y ANDRÉS deben estar en turnos opuestos ' + Utils.formatFecha(d) +
+          ' FRAN=' + JSON.stringify(fran) + ' ANDRÉS=' + JSON.stringify(andres));
+        assert(esManana(fran) || esTarde(fran));
+      }
+    });
+
+    test('FRAN suma 18h en sem A (descarga) y 18h en sem B (cierre)', () => {
+      const horas = (d, alias) => {
+        const x = Rotaciones.getHorariosIS(d)[alias];
+        return x ? x[1] - x[0] : 0;
+      };
+      const semaA = [semA_lunes, new Date(2026,4,5), new Date(2026,4,6), semA_jueves, semA_viernes];
+      const semaB = [semB_lunes, new Date(2026,4,12), new Date(2026,4,13), semB_jueves, semB_viernes];
+      const totalA_FRAN   = semaA.reduce((s,d) => s + horas(d, 'FRAN'), 0);
+      const totalA_ANDRES = semaA.reduce((s,d) => s + horas(d, 'ANDRÉS'), 0);
+      const totalB_FRAN   = semaB.reduce((s,d) => s + horas(d, 'FRAN'), 0);
+      const totalB_ANDRES = semaB.reduce((s,d) => s + horas(d, 'ANDRÉS'), 0);
+      assertEq(+totalA_FRAN.toFixed(2),   18);
+      assertEq(+totalA_ANDRES.toFixed(2), 18);
+      assertEq(+totalB_FRAN.toFixed(2),   18);
+      assertEq(+totalB_ANDRES.toFixed(2), 18);
+    });
+
+    Store.get = origGet;
+  });
+
+  // ============================================================
+  // PARSER: rotacion_dc en _parseHorariosIS
+  // ============================================================
+  suite('Sync._parseHorariosIS — rotacion_dc', function () {
+    test('Parsea filas A/B en arrays separados con diaPat correcto', () => {
+      const rows = [
+        { tipo: 'rotacion_dc', dia: 'A_LXV', empleado: 'FRAN',   entrada: 7.5, salida: 11.5, notas: 'descarga' },
+        { tipo: 'rotacion_dc', dia: 'A_LJ',  empleado: 'ANDRÉS', entrada: 18.75, salida: 22.25, notas: 'cierre' },
+        { tipo: 'rotacion_dc', dia: 'B_MJ',  empleado: 'ANDRÉS', entrada: 7.5, salida: 10.5, notas: 'descarga' }
+      ];
+      const out = Sync._parseHorariosIS(rows);
+      assert(out.rotacionDC, 'debe devolver rotacionDC');
+      assertEq(out.rotacionDC.A.length, 2);
+      assertEq(out.rotacionDC.B.length, 1);
+      assertEq(out.rotacionDC.A[0].diaPat, 'LXV');
+      assertEq(out.rotacionDC.A[0].empleado, 'FRAN');
+      assertEq(out.rotacionDC.B[0].diaPat, 'MJ');
+    });
+
+    test('Ignora filas con dia mal formateado (sin _ o sem distinta de A/B)', () => {
+      const rows = [
+        { tipo: 'rotacion_dc', dia: 'C_LXV', empleado: 'X', entrada: 7, salida: 10, notas: '' },
+        { tipo: 'rotacion_dc', dia: 'NO_VALID', empleado: 'Y', entrada: 7, salida: 10, notas: '' }
+      ];
+      const out = Sync._parseHorariosIS(rows);
+      assertEq(out.rotacionDC.A.length, 0);
+      assertEq(out.rotacionDC.B.length, 0);
+    });
   });
 
   // ============================================================

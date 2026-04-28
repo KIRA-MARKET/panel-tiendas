@@ -191,8 +191,6 @@ function crearHorariosIS(ss) {
     ['fijo','LV','ANTONIO',10,13,''],
     ['fijo','LV','ABDEL',14.5,17.5,''],
     ['fijo','LV','ALEX',14.75,17.75,''],
-    ['fijo','LJ','MORILLA',18.75,22.25,'L a J'],
-    ['fijo','V','MORILLA',18.25,22.25,'Viernes'],
     // VANESA: L-X 6-10, M-J 7-10, V 5-9 (entrada adelantada por descarga V).
     ['fijo','LX','VANESA',6,10,''],
     ['fijo','MJ','VANESA',7,10,''],
@@ -200,9 +198,19 @@ function crearHorariosIS(ss) {
     // EDU: L-X 6-10, V 5-9 (entrada adelantada por descarga V).
     ['fijo','LX','EDU',6,10,''],
     ['fijo','V','EDU',5,9,'Viernes entrada 5h por descarga'],
-    // FRAN: contrato 18h Isabel. L-X-V 7:30-11:30 (4h), M-J 7:30-10:30 (3h). Total 18h.
-    ['fijo','LXV','FRAN',7.5,11.5,'Contrato 18h — descarga Isabel'],
-    ['fijo','MJ','FRAN',7.5,10.5,'Contrato 18h — descarga Isabel'],
+    // Rotación quincenal A/B descarga⇄cierre (FRAN/ANDRÉS, 18h cada uno):
+    //   sem A → FRAN descarga + ANDRÉS cierre.
+    //   sem B → ANDRÉS descarga + FRAN cierre.
+    // Cierre = horario antiguo de MORILLA (de baja). Sustituye al fijo previo
+    // de FRAN y al reemplazo MORILLA→ANDRÉS (cerrado el 03-05-2026).
+    ['rotacion_dc','A_LXV','FRAN',  7.5, 11.5,'descarga'],
+    ['rotacion_dc','A_MJ', 'FRAN',  7.5, 10.5,'descarga'],
+    ['rotacion_dc','A_LJ', 'ANDRÉS',18.75,22.25,'cierre'],
+    ['rotacion_dc','A_V',  'ANDRÉS',18.25,22.25,'cierre'],
+    ['rotacion_dc','B_LXV','ANDRÉS',7.5, 11.5,'descarga'],
+    ['rotacion_dc','B_MJ', 'ANDRÉS',7.5, 10.5,'descarga'],
+    ['rotacion_dc','B_LJ', 'FRAN',  18.75,22.25,'cierre'],
+    ['rotacion_dc','B_V',  'FRAN',  18.25,22.25,'cierre'],
     ['compartido','LXV','DAVID',11,15,'compartido con GranVia'],
     ['compartido','MJV','LETI',11,15,'compartido con GranVia'],
     ['fijo','L','ABEL',18.25,22.25,'solo Lunes'],
