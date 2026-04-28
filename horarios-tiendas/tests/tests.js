@@ -2483,6 +2483,176 @@
   });
 
   // ============================================================
+  // ROTACIONES Isabel L-V: FRAN nuevo + EDU/VANESA viernes (28-04-2026)
+  // ============================================================
+  suite('Rotaciones Isabel L-V: alta FRAN + EDU/VANESA viernes', function () {
+    // El fallback hardcoded vive en getHorariosIS cuando sheetsHorariosIS es null.
+    // Forzamos esa rama para no depender de datos cargados desde Sheets.
+    const origGet = Store.get;
+    Store.get = function (k) { return k === 'sheetsHorariosIS' ? null : origGet.call(Store, k); };
+
+    const lunes     = new Date(2026, 4, 4);  // L 4 mayo 2026
+    const martes    = new Date(2026, 4, 5);  // M
+    const miercoles = new Date(2026, 4, 6);  // X
+    const jueves    = new Date(2026, 4, 7);  // J
+    const viernes   = new Date(2026, 4, 8);  // V
+
+    test('FRAN aparece L-X-V con horario 7:30-11:30', () => {
+      assertDeep(Rotaciones.getHorariosIS(lunes).FRAN, [7.5, 11.5]);
+      assertDeep(Rotaciones.getHorariosIS(miercoles).FRAN, [7.5, 11.5]);
+      assertDeep(Rotaciones.getHorariosIS(viernes).FRAN, [7.5, 11.5]);
+    });
+    test('FRAN aparece M-J con horario 7:30-10:30', () => {
+      assertDeep(Rotaciones.getHorariosIS(martes).FRAN, [7.5, 10.5]);
+      assertDeep(Rotaciones.getHorariosIS(jueves).FRAN, [7.5, 10.5]);
+    });
+    test('FRAN suma 18h semanales (4+3+4+3+4)', () => {
+      const h = (d) => { const x = Rotaciones.getHorariosIS(d).FRAN; return x[1] - x[0]; };
+      const total = h(lunes) + h(martes) + h(miercoles) + h(jueves) + h(viernes);
+      assertEq(+total.toFixed(2), 18);
+    });
+
+    test('EDU L y X siguen 6-10, V cambia a 5-9', () => {
+      assertDeep(Rotaciones.getHorariosIS(lunes).EDU, [6, 10]);
+      assertDeep(Rotaciones.getHorariosIS(miercoles).EDU, [6, 10]);
+      assertDeep(Rotaciones.getHorariosIS(viernes).EDU, [5, 9]);
+      assert(!Rotaciones.getHorariosIS(martes).EDU, 'EDU no trabaja M');
+      assert(!Rotaciones.getHorariosIS(jueves).EDU, 'EDU no trabaja J');
+    });
+    test('VANESA L/X 6-10, M/J 7-10, V 5-9', () => {
+      assertDeep(Rotaciones.getHorariosIS(lunes).VANESA, [6, 10]);
+      assertDeep(Rotaciones.getHorariosIS(miercoles).VANESA, [6, 10]);
+      assertDeep(Rotaciones.getHorariosIS(martes).VANESA, [7, 10]);
+      assertDeep(Rotaciones.getHorariosIS(jueves).VANESA, [7, 10]);
+      assertDeep(Rotaciones.getHorariosIS(viernes).VANESA, [5, 9]);
+    });
+
+    Store.get = origGet;
+  });
+
+  // ============================================================
+  // CONFIG: ventana descarga IS variable por día (V acorta a 7:30-9)
+  // ============================================================
+  suite('CONFIG.getFranjaVentana descarga Isabel', function () {
+    test('L-J usan [7, 10]', () => {
+      assertDeep(CONFIG.getFranjaVentana('isabel', 'descarga', 1), [7, 10]);
+      assertDeep(CONFIG.getFranjaVentana('isabel', 'descarga', 2), [7, 10]);
+      assertDeep(CONFIG.getFranjaVentana('isabel', 'descarga', 3), [7, 10]);
+      assertDeep(CONFIG.getFranjaVentana('isabel', 'descarga', 4), [7, 10]);
+    });
+    test('V usa [7.5, 9] (pico descarga viernes con FRAN)', () => {
+      assertDeep(CONFIG.getFranjaVentana('isabel', 'descarga', 5), [7.5, 9]);
+    });
+  });
+
+  // ============================================================
+  // COBERTURA descarga Isabel viernes con FRAN
+  // ============================================================
+  suite('Cobertura Isabel viernes: descarga con FRAN no genera alerta falsa', function () {
+    const origGetH = Rotaciones.getHorariosLV;
+    const origAusIS = Store._state.ausenciasIS;
+    const origSusts = Store._state.sustituciones;
+    Store._state.ausenciasIS = [];
+    Store._state.sustituciones = [];
+
+    const viernes = new Date(2026, 4, 8); // V 8 mayo 2026
+
+    test('Plantilla viernes (EDU+VANESA 5-9, SILVIA 7-10, FRAN 7:30-11:30) cubre min descarga 3', () => {
+      Rotaciones.getHorariosLV = function () {
+        return {
+          EDU:    [5, 9],
+          VANESA: [5, 9],
+          SILVIA: [7, 10],
+          FRAN:   [7.5, 11.5]
+        };
+      };
+      const alertas = Cobertura.verificarMinimosLV(viernes, 'isabel');
+      const descAlerta = alertas.find(a => a.franja === 'descarga');
+      assert(!descAlerta, 'no debe haber alerta de descarga V; alertas=' + JSON.stringify(alertas));
+    });
+
+    test('Sin FRAN en viernes con plantilla recortada → SÍ alerta descarga (regresión)', () => {
+      Rotaciones.getHorariosLV = function () {
+        return {
+          EDU:    [5, 9],
+          VANESA: [5, 9],
+          SILVIA: [7, 10]
+          // sin FRAN → en [7.5,9] solo coexisten 3 (cumple), pero quitamos también
+          // a uno para forzar el fallo y verificar que el sweep lo detecta.
+        };
+      };
+      // Quitamos VANESA → solo EDU+SILVIA en [7.5, 9] = 2 < 3
+      Rotaciones.getHorariosLV = function () {
+        return { EDU: [5, 9], SILVIA: [7, 10] };
+      };
+      const alertas = Cobertura.verificarMinimosLV(viernes, 'isabel');
+      const descAlerta = alertas.find(a => a.franja === 'descarga');
+      assert(descAlerta, 'debe haber alerta de descarga V con solo 2 personas');
+      assertEq(descAlerta.minimo, 3);
+    });
+
+    Rotaciones.getHorariosLV = origGetH;
+    Store._state.ausenciasIS = origAusIS;
+    Store._state.sustituciones = origSusts;
+  });
+
+  // ============================================================
+  // CALENDARIO-UI: orden visual L-V por hora de entrada
+  // ============================================================
+  suite('CalendarioUI._renderTurnosLV: orden por entrada ASC, luego nombre', function () {
+    const fecha = new Date(2026, 4, 8); // V 8 mayo 2026
+    const fs = Utils.formatFecha(fecha);
+
+    const origGetH = Rotaciones.getHorariosLV;
+    const origAusIS = Store._state.ausenciasIS;
+    const origSusts = Store._state.sustituciones;
+    Store._state.ausenciasIS = [];
+    Store._state.sustituciones = [];
+
+    test('Descarga IS viernes ordenada: EDU/VANESA(5) → SILVIA(7) → FRAN(7:30)', () => {
+      Rotaciones.getHorariosLV = function () {
+        return {
+          // Inserto en orden caótico para forzar la prueba.
+          SILVIA: [7, 10],
+          EDU:    [5, 9],
+          VANESA: [5, 9],
+          FRAN:   [7.5, 11.5]
+        };
+      };
+      const html = CalendarioUI._renderTurnosLV(fecha, Rotaciones.getHorariosLV(), 'isabel');
+      // Extraer nombres de la franja descarga en orden de aparición.
+      const inicio = html.indexOf('franja-label descarga');
+      const fin    = html.indexOf('franja-label mañanas');
+      const descHtml = html.slice(inicio, fin > 0 ? fin : undefined);
+      const m = [...descHtml.matchAll(/turno-nombre">([A-ZÁÉÍÓÚÑ\. ]+?)(?:\s*[✎\u{1F504}])?</gu)].map(x => x[1].trim());
+      // EDU y VANESA empatan a las 5 → orden alfabético: EDU < VANESA.
+      assertDeep(m, ['EDU', 'VANESA', 'SILVIA', 'FRAN']);
+    });
+
+    test('Mañanas IS lunes ordenadas por entrada: ANTONIO/CAROLINA(10) → DAVID/LETI(11)', () => {
+      const lunes = new Date(2026, 4, 4);
+      Rotaciones.getHorariosLV = function () {
+        return {
+          DAVID:    [11, 15],
+          ANTONIO:  [10, 13],
+          LETI:     [11, 15],   // LETI no trabaja L en realidad pero stub para test
+          CAROLINA: [10, 14.5]
+        };
+      };
+      const html = CalendarioUI._renderTurnosLV(lunes, Rotaciones.getHorariosLV(), 'isabel');
+      const inicio = html.indexOf('franja-label mañanas');
+      const fin    = html.indexOf('franja-label tardes');
+      const seg = html.slice(inicio, fin > 0 ? fin : undefined);
+      const m = [...seg.matchAll(/turno-nombre">([A-ZÁÉÍÓÚÑ\. ]+?)(?:\s*[✎\u{1F504}])?</gu)].map(x => x[1].trim());
+      assertDeep(m, ['ANTONIO', 'CAROLINA', 'DAVID', 'LETI']);
+    });
+
+    Rotaciones.getHorariosLV = origGetH;
+    Store._state.ausenciasIS = origAusIS;
+    Store._state.sustituciones = origSusts;
+  });
+
+  // ============================================================
   // RESUMEN — espera a que terminen los tests async antes de pintar
   // ============================================================
   const sum = document.getElementById('summary');

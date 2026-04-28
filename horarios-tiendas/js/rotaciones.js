@@ -47,9 +47,19 @@ const Rotaciones = {
     // Compartidos con días específicos
     if (dow === 1 || dow === 3 || dow === 5) horarios['DAVID'] = [11, 15];
     if (dow === 2 || dow === 4 || dow === 5) horarios['LETI'] = [11, 15];
-    if (dow === 1 || dow === 3 || dow === 5) horarios['EDU'] = [6, 10];
+    // EDU: L y X 6-10 (4h). V cambia: 5-9 (4h, entrada adelantada por descarga V).
+    if (dow === 1 || dow === 3) horarios['EDU'] = [6, 10];
+    else if (dow === 5) horarios['EDU'] = [5, 9];
 
-    horarios['VANESA'] = (dow === 1 || dow === 3 || dow === 5) ? [6, 10] : [7, 10];
+    // VANESA: L y X 6-10. M y J 7-10. V 5-9 (entrada adelantada por descarga V).
+    if (dow === 1 || dow === 3) horarios['VANESA'] = [6, 10];
+    else if (dow === 5) horarios['VANESA'] = [5, 9];
+    else horarios['VANESA'] = [7, 10];
+
+    // FRAN: nuevo contrato 18h Isabel. L-X-V 7:30-11:30 (4h). M-J 7:30-10:30 (3h). Total 18h.
+    if (dow === 1 || dow === 3 || dow === 5) horarios['FRAN'] = [7.5, 11.5];
+    else horarios['FRAN'] = [7.5, 10.5];
+
     horarios['SILVIA'] = [7, 10];
     horarios['ANTONIO'] = [10, 13];
     horarios['ABDEL'] = [14.5, 17.5];

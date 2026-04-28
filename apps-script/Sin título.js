@@ -2,6 +2,75 @@
 function actualizarHorariosIS() { crearHorariosIS(SpreadsheetApp.getActiveSpreadsheet()); }
 function actualizarRotacionesFdS() { crearRotacionesFdS(SpreadsheetApp.getActiveSpreadsheet()); }
 
+/**
+ * Migración 2026-04-28: alta de FRAN en Isabel + traslado V de EDU/VANESA.
+ * Parche idempotente sobre HorariosIS sin tocar el resto de filas.
+ * Cambios:
+ *   - VANESA LXV [6,10] → LX [6,10] + V [5,9].
+ *   - EDU    LXV [6,10] → LX [6,10] + V [5,9].
+ *   - +FRAN  LXV [7.5,11.5] y MJ [7.5,10.5] (contrato 18h).
+ */
+function migrarHorariosIS_FRAN_2026_04_28() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('HorariosIS');
+  if (!sheet) throw new Error('HorariosIS no existe');
+  var rng = sheet.getDataRange();
+  var data = rng.getValues();
+  if (data.length < 2) throw new Error('HorariosIS vacío');
+  var headers = data[0];
+  var rows = data.slice(1);
+
+  var iTipo = headers.indexOf('tipo');
+  var iDia = headers.indexOf('dia');
+  var iEmp = headers.indexOf('empleado');
+  var iEnt = headers.indexOf('entrada');
+  var iSal = headers.indexOf('salida');
+  var iNot = headers.indexOf('notas');
+  if (iTipo<0||iDia<0||iEmp<0||iEnt<0||iSal<0||iNot<0) throw new Error('Cabecera HorariosIS inesperada');
+
+  // Paso 1: renombrar filas LXV→LX para EDU y VANESA si todavía existen.
+  var cambiados = 0;
+  for (var i=0; i<rows.length; i++) {
+    var row = rows[i];
+    if (row[iTipo] === 'fijo' && row[iDia] === 'LXV' &&
+        (row[iEmp] === 'EDU' || row[iEmp] === 'VANESA')) {
+      row[iDia] = 'LX';
+      cambiados++;
+    }
+  }
+
+  // Paso 2: añadir filas nuevas si no existen ya (idempotente).
+  function existe(tipo, dia, emp) {
+    for (var k=0; k<rows.length; k++) {
+      if (rows[k][iTipo] === tipo && rows[k][iDia] === dia && rows[k][iEmp] === emp) return true;
+    }
+    return false;
+  }
+  function vacia() { var a = []; for (var c=0; c<headers.length; c++) a.push(''); return a; }
+  function meter(tipo, dia, emp, ent, sal, notas) {
+    if (existe(tipo, dia, emp)) return false;
+    var a = vacia();
+    a[iTipo] = tipo; a[iDia] = dia; a[iEmp] = emp;
+    a[iEnt] = ent; a[iSal] = sal; a[iNot] = notas || '';
+    rows.push(a);
+    return true;
+  }
+  var añadidos = 0;
+  if (meter('fijo','V','EDU',5,9,'Viernes entrada 5h por descarga')) añadidos++;
+  if (meter('fijo','V','VANESA',5,9,'Viernes entrada 5h por descarga')) añadidos++;
+  if (meter('fijo','LXV','FRAN',7.5,11.5,'Contrato 18h — descarga Isabel')) añadidos++;
+  if (meter('fijo','MJ','FRAN',7.5,10.5,'Contrato 18h — descarga Isabel')) añadidos++;
+
+  // Reescribir
+  sheet.getRange(2, 1, sheet.getLastRow()-1 || 1, headers.length).clearContent();
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  }
+  SpreadsheetApp.flush();
+  Logger.log('Migración FRAN 2026-04-28: ' + cambiados + ' filas LXV→LX, ' + añadidos + ' filas nuevas');
+  return { cambiados: cambiados, añadidos: añadidos };
+}
+
 function inicializarTodo() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   crearEmpleadosGV(ss);
@@ -124,9 +193,16 @@ function crearHorariosIS(ss) {
     ['fijo','LV','ALEX',14.75,17.75,''],
     ['fijo','LJ','MORILLA',18.75,22.25,'L a J'],
     ['fijo','V','MORILLA',18.25,22.25,'Viernes'],
-    ['fijo','LXV','VANESA',6,10,''],
+    // VANESA: L-X 6-10, M-J 7-10, V 5-9 (entrada adelantada por descarga V).
+    ['fijo','LX','VANESA',6,10,''],
     ['fijo','MJ','VANESA',7,10,''],
-    ['fijo','LXV','EDU',6,10,''],
+    ['fijo','V','VANESA',5,9,'Viernes entrada 5h por descarga'],
+    // EDU: L-X 6-10, V 5-9 (entrada adelantada por descarga V).
+    ['fijo','LX','EDU',6,10,''],
+    ['fijo','V','EDU',5,9,'Viernes entrada 5h por descarga'],
+    // FRAN: contrato 18h Isabel. L-X-V 7:30-11:30 (4h), M-J 7:30-10:30 (3h). Total 18h.
+    ['fijo','LXV','FRAN',7.5,11.5,'Contrato 18h — descarga Isabel'],
+    ['fijo','MJ','FRAN',7.5,10.5,'Contrato 18h — descarga Isabel'],
     ['compartido','LXV','DAVID',11,15,'compartido con GranVia'],
     ['compartido','MJV','LETI',11,15,'compartido con GranVia'],
     ['fijo','L','ABEL',18.25,22.25,'solo Lunes'],

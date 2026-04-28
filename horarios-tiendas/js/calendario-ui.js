@@ -165,6 +165,10 @@ const CalendarioUI = {
       const t = franjas[fr];
       if (!esIsabel && t.length === 0) continue;
 
+      // Orden visual: hora de entrada ASC; a igualdad, nombre alfabético.
+      // Coherente con la lectura del horario "quien llega primero arriba".
+      t.sort((a, b) => a.e - b.e || a.nombre.localeCompare(b.nombre));
+
       html += '<div class="franja"><div class="franja-label ' + fr + '">' + fr + '</div>';
       for (const turno of t) {
         const cls = 'turno ' + fr +
@@ -311,13 +315,17 @@ const CalendarioUI = {
     const horariosAj = Rotaciones.aplicarModificacionesFds(horarios, dia, turnoKey, tienda);
     const fs = Utils.formatFecha(dia);
 
-    // Orden visual: fijos → descarga → rotación 7 por pos ASC (GV).
-    // Para Isabel mantenemos el orden de inserción (no hay rotación posicional
-    // equivalente). El criterio: quien entra al turno esa semana va primero
-    // y quien sale la siguiente va último.
+    // Orden visual:
+    //   GV   → fijos → descarga → rotación 7 por pos ASC (rueda).
+    //   IS   → hora de entrada ASC; a igualdad, alfabético.
+    // En GV la rueda de rotación es intencional (refleja el ciclo semanal).
+    // En IS no hay rueda equivalente: ordenar por hora de entrada lee mejor.
     const aliasesOrdenados = tienda === 'granvia'
       ? Rotaciones.ordenarEmpleadosFdsGV(Object.keys(horariosAj), dia)
-      : Object.keys(horariosAj);
+      : Object.keys(horariosAj).sort((a, b) => {
+          const ha = horariosAj[a], hb = horariosAj[b];
+          return (ha[0] - hb[0]) || a.localeCompare(b);
+        });
 
     for (const n of aliasesOrdenados) {
       const h = horariosAj[n];

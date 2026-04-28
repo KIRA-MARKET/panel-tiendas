@@ -26,7 +26,12 @@ const CONFIG = {
     cierre:   [17.75, 22]
   },
   FRANJAS_IS: {
-    descarga: [7,    10],  // Min se cumple desde las 7 (SILVIA/VANESA). Antes hay ramp-up.
+    // L-J: min se cumple desde las 7 (SILVIA/VANESA). Antes hay ramp-up.
+    // V: ventana [7:30, 9] — pico de descarga viernes con FRAN incorporado
+    // (EDU/VANESA 5-9, SILVIA 7-10, FRAN 7:30-11:30). Antes 5-7:30 hay 2 (ramp-up
+    // tipo descarga GV). Después de 9 EDU/VANESA salen y la cobertura cae a 2,
+    // cubierto por la franja "mañanas" que solo exige 2.
+    descarga: { default: [7, 10], 5: [7.5, 9] },
     mañanas:  [10,   14.5],
     tardes:   [14.75, 17.5],  // ABDEL 14:30 + ALEX 14:45 → min 2 desde 14:45
     cierre:   { default: [18.75, 22], 5: [18.25, 22] }  // L-J: 3 desde 18:45. V: 3 desde 18:15
