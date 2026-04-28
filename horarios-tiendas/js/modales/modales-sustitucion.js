@@ -594,6 +594,165 @@ Object.assign(Modales, {
     });
   },
 
+  // ── Modal: asignar empleado a hueco vacío (horas extra) ────
+
+  /**
+   * Modal para cubrir un hueco visual del calendario asignando a un
+   * empleado como horas EXTRA. Fecha/franja vienen del data-attr de la
+   * cápsula vacía. Pre-rellena entrada/salida con la ventana típica de
+   * la franja; el usuario puede editarlas. Al elegir candidato (válido
+   * o rechazado) crea Store.addSustitucion con tipo='extra' y ausente=''.
+   */
+  asignarSlotVacio(fecha, tienda, franja) {
+    return new Promise((resolve) => {
+      const overlay = Modales._crearOverlay();
+      const fechaDate = typeof fecha === 'string' ? Utils.parseFecha(fecha) : fecha;
+      const fs = typeof fecha === 'string' ? fecha : Utils.formatFecha(fecha);
+      const dow = fechaDate.getDay();
+      const tiendaTxt = tienda === 'granvia' ? 'Gran Vía' : 'Isabel';
+
+      // Default entrada/salida: la ventana de la franja para esa tienda+día.
+      // Si no hay (no debería), caer a 9-15 como placeholder seguro.
+      const ventana = CONFIG.getFranjaVentana(tienda, franja, dow) || [9, 15];
+      const eDefault = ventana[0], sDefault = ventana[1];
+
+      const renderCandidatos = (entrada, salida) => {
+        const debug = Motor.buscarCandidatosSlotVacio(fechaDate, tienda, franja, entrada, salida);
+        const validos = debug.validos;
+        const rechazados = debug.rechazados.filter(r => {
+          if (validos.some(c => c.alias === r.alias)) return false;
+          const mot = (r.errores && r.errores[0]) || '';
+          if (mot.indexOf('dado de baja') >= 0) return false;
+          if (mot.indexOf('Reemplazado') >= 0) return false;
+          if (mot.indexOf('ausente') >= 0) return false;
+          return true;
+        });
+
+        let h = '';
+        if (validos.length === 0 && rechazados.length === 0) {
+          h += `<p style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">Sin candidatos posibles para este horario.</p>`;
+        }
+        for (let i = 0; i < validos.length; i++) {
+          const c = validos[i];
+          h += `
+            <div class="cand-option" data-tipo="valido" data-idx="${i}"
+                 style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);margin-bottom:4px"
+                 onmouseover="this.style.background='var(--surface-hover, rgba(128,128,128,0.15))'"
+                 onmouseout="this.style.background='var(--surface)'">
+              <strong style="flex:1">${Utils.escapeHtml(c.alias)}</strong>
+              <span style="color:var(--text-muted);font-size:11px">${Utils.formatHora(c.entrada)}–${Utils.formatHora(c.salida)}</span>
+            </div>`;
+        }
+        if (rechazados.length > 0) {
+          h += '<details open style="margin-top:8px"><summary style="cursor:pointer;font-size:11px;color:var(--text-muted);padding:6px 0">'
+            + rechazados.length + ' rechazados — click para asignar como EXTRA</summary>';
+          for (let i = 0; i < rechazados.length; i++) {
+            const r = rechazados[i];
+            const motivo = Utils.escapeHtml(r.errores[0] || 'No válido');
+            h += `
+              <div class="cand-option" data-tipo="rechazado" data-idx="${i}"
+                   title="Asignar como horas EXTRA · ${motivo}"
+                   style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);margin-bottom:4px;opacity:0.85"
+                   onmouseover="this.style.background='rgba(230,81,0,0.10)';this.style.opacity='1'"
+                   onmouseout="this.style.background='transparent';this.style.opacity='0.85'">
+                <strong style="flex:1;font-weight:500">${Utils.escapeHtml(r.alias)}</strong>
+                <span style="color:#e65100;font-size:10px;font-weight:600">+ EXTRA</span>
+                <span style="color:var(--text-muted);font-size:10px;font-style:italic">${motivo}</span>
+              </div>`;
+          }
+          h += '</details>';
+        }
+        return { html: h, validos, rechazados };
+      };
+
+      let cache = renderCandidatos(eDefault, sDefault);
+
+      const html = `
+        <div class="modal" style="max-width:460px">
+          <div class="modal-header">
+            <h3>Asignar a hueco vacío — ${Utils.escapeHtml(franja.toUpperCase())}</h3>
+            <button class="modal-close" data-action="cancel">×</button>
+          </div>
+          <div class="modal-body" style="max-height:65vh;overflow-y:auto">
+            <p class="sub" style="font-size:12px;margin-bottom:8px">${Utils.escapeHtml(Utils.formatFechaES ? Utils.formatFechaES(fs) : fs)} · ${Utils.escapeHtml(tiendaTxt)} · ${Utils.escapeHtml(franja)}</p>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Se creará como <strong>HORAS EXTRA</strong>. Ajusta el horario si es distinto del estándar de la franja.</p>
+            <div class="form-row" style="display:flex;gap:8px;margin-bottom:12px">
+              <div class="form-group" style="flex:1">
+                <label style="font-size:11px">Entrada</label>
+                <input type="number" step="0.25" id="slot-entrada" value="${eDefault}">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label style="font-size:11px">Salida</label>
+                <input type="number" step="0.25" id="slot-salida" value="${sDefault}">
+              </div>
+              <button class="btn btn-secondary" data-action="recalcular" style="align-self:flex-end;font-size:11px;padding:6px 10px">Recalcular</button>
+            </div>
+            <div id="slot-candidatos">${cache.html}</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+          </div>
+        </div>
+      `;
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const close = (val) => { Modales._cerrarOverlay(overlay); resolve(val); };
+      overlay.querySelectorAll('[data-action="cancel"]').forEach(b => b.onclick = () => close(null));
+      overlay.onclick = (e) => { if (e.target === overlay) close(null); };
+
+      const wireClicks = () => {
+        overlay.querySelectorAll('.cand-option').forEach(el => {
+          el.onclick = () => {
+            const i = parseInt(el.dataset.idx);
+            const tipo = el.dataset.tipo;
+            const lista = tipo === 'valido' ? cache.validos : cache.rechazados;
+            const elegido = lista[i];
+            if (!elegido) return;
+            const e = parseFloat(overlay.querySelector('#slot-entrada').value);
+            const s = parseFloat(overlay.querySelector('#slot-salida').value);
+            if (!(s > e)) {
+              CalendarioUI.toast && CalendarioUI.toast('Horario inválido', 'error');
+              return;
+            }
+            Store.addSustitucion({
+              fecha: fs,
+              ausente: '',
+              sustituto: elegido.alias,
+              entrada: e,
+              salida: s,
+              franja: Utils.getFranja(e, s, tienda),
+              turnoFds: '',
+              tienda,
+              tipo: 'extra'
+            });
+            if (Sync && Sync.syncSustituciones) Sync.syncSustituciones();
+            const motivo = (tipo === 'rechazado' && elegido.errores && elegido.errores[0])
+              ? ' (' + elegido.errores[0] + ')' : '';
+            CalendarioUI.toast && CalendarioUI.toast(
+              'Asignado ' + elegido.alias + ' como EXTRA' + motivo, 'success');
+            close('asignado');
+          };
+        });
+      };
+      wireClicks();
+
+      const btnRecalc = overlay.querySelector('[data-action="recalcular"]');
+      btnRecalc.onclick = () => {
+        const e = parseFloat(overlay.querySelector('#slot-entrada').value);
+        const s = parseFloat(overlay.querySelector('#slot-salida').value);
+        if (!(s > e)) {
+          CalendarioUI.toast && CalendarioUI.toast('Horario inválido', 'error');
+          return;
+        }
+        cache = renderCandidatos(e, s);
+        overlay.querySelector('#slot-candidatos').innerHTML = cache.html;
+        wireClicks();
+      };
+    });
+  },
+
   // ── Modal: modificar horario puntual de un día ─────────────
 
   modificarHorario(alias, fecha, tienda, ctx) {

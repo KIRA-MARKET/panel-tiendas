@@ -227,6 +227,32 @@
   box-shadow: 0 2px 8px rgba(255,105,180,0.5);
 }
 
+/* Cápsula vacía: alinea las franjas entre días de la semana. Invisible
+   por defecto; al hover se oscurece para indicar que es clicable y abre
+   el modal de asignación a hueco vacío (horas extra). */
+.turno.vacio {
+  background: transparent !important;
+  color: transparent;
+  border: 1px dashed transparent;
+  box-shadow: none;
+  min-height: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.turno.vacio:hover {
+  background: rgba(128, 128, 128, 0.18) !important;
+  border-color: var(--border);
+  color: var(--text-muted);
+  transform: none;
+}
+[data-theme="dark"] .turno.vacio:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+.turno.vacio .turno-nombre {
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .turno-nombre { font-weight: 600; }
 .turno-hora { font-family: var(--font-mono); font-size: 8px; }
 

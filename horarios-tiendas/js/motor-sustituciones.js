@@ -690,6 +690,29 @@ const Motor = {
   },
 
   /**
+   * Busca candidatos para CUBRIR UN HUECO VACÍO (sin ausente).
+   * Pensado para el modal "asignar slot vacío" — cuando Nacho pincha
+   * en una cápsula vacía del calendario y quiere meter a alguien como
+   * horas extra. La validación es la misma que para sustituir, pero
+   * sin "ausente": no descontamos a nadie de su turno original.
+   * Devuelve { validos: [...], rechazados: [{alias, errores}] }
+   */
+  buscarCandidatosSlotVacio(fecha, tienda, franja, entrada, salida) {
+    const turnoObj = {
+      tienda, fecha,
+      fechaStr: Utils.formatFecha(fecha),
+      emp: '__VACIO__',  // marcador interno, no es un empleado real
+      franja,
+      turnoFds: '',
+      entrada, salida,
+      bajoMinimos: true
+    };
+    const rechazados = [];
+    const validos = Motor._obtenerCandidatos(turnoObj, [], rechazados);
+    return { validos, rechazados };
+  },
+
+  /**
    * Variante de buscarCandidatosManual que devuelve también los
    * candidatos rechazados con sus motivos, para que la UI pueda
    * mostrárselos al usuario y él entienda por qué faltan.

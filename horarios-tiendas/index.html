@@ -237,6 +237,17 @@ const App = {
       Modales.accionesEmpleado(alias, fecha, tienda, { entrada, salida, turnoFds });
     });
 
+    // Click en cápsula vacía → asignar empleado al hueco como horas extra
+    document.addEventListener('click', (e) => {
+      const vacioEl = e.target.closest('.turno.vacio');
+      if (!vacioEl) return;
+      const fecha = vacioEl.getAttribute('data-fecha');
+      const franja = vacioEl.getAttribute('data-franja');
+      const tienda = vacioEl.getAttribute('data-tienda');
+      if (!fecha || !franja || !tienda) return;
+      Modales.asignarSlotVacio(fecha, tienda, franja).then(() => CalendarioUI.render());
+    });
+
     // Cerrar modales con Escape
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {

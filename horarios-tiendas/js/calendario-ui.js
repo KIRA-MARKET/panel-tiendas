@@ -41,6 +41,10 @@ const CalendarioUI = {
       html += '<div class="week-row">';
       html += '<div class="col-sem"><div class="num">' + numSem + '</div></div>';
 
+      // Pre-cálculo: max de empleados por franja en la semana → reservar
+      // huecos vacíos en cada día para alinear visualmente las columnas.
+      const maxFranjasSem = CalendarioUI._maxFranjasSemana(fecha, tienda);
+
       // L-V (5 días)
       for (let d = 0; d < 5; d++) {
         const dia = new Date(fecha);
@@ -97,7 +101,7 @@ const CalendarioUI = {
           }
         } else {
           const horarios = Rotaciones.getHorariosLV(dia, tienda);
-          html += CalendarioUI._renderTurnosLV(dia, horarios, tienda);
+          html += CalendarioUI._renderTurnosLV(dia, horarios, tienda, maxFranjasSem);
           html += CalendarioUI._renderAvisosLV(dia, tienda);
         }
         html += '</div>';
@@ -128,33 +132,69 @@ const CalendarioUI = {
 
   // ── Turnos L-V ─────────────────────────────────────────────
 
-  _renderTurnosLV(dia, horarios, tienda) {
-    if (!horarios) return '';
-
+  /**
+   * Calcula los turnos visibles de un día agrupados por franja.
+   * Aplica modificaciones, ausencias, sustituciones y filtra a quien sustituye
+   * solapando (ya aparece en otra franja). Devuelve {descarga, mañanas, tardes, cierre}.
+   */
+  _franjasVisiblesLV(dia, horarios, tienda) {
+    const franjas = { descarga: [], mañanas: [], tardes: [], cierre: [] };
+    if (!horarios) return franjas;
     const horariosAj = Rotaciones.aplicarModificaciones(horarios, dia, tienda);
     const fs = Utils.formatFecha(dia);
-
-    const franjas = { descarga: [], mañanas: [], tardes: [], cierre: [] };
-
     for (const n in horariosAj) {
       const h = horariosAj[n];
       const fr = Utils.getFranja(h[0], h[1], tienda);
       const aus = Store.estaAusente(n, fs, tienda);
       const sust = Store.getSustituto(fs, n, tienda);
       const tieneModificacion = Store.getModificacion(n, fs, tienda, '') !== null;
-
       // Si este empleado está sustituyendo a otro y los turnos se SOLAPAN,
-      // no aparece en su franja base (cambio de turno, ej: CAROLINA).
-      // Si NO se solapan (consecutivos, ej: EDU comodín), sí aparece en ambas.
-      if (CalendarioUI._sustituyeSolapado(n, fs, tienda, h)) {
-        continue;
-      }
-
+      // no aparece en su franja base. Si NO se solapan, sí aparece en ambas.
+      if (CalendarioUI._sustituyeSolapado(n, fs, tienda, h)) continue;
       franjas[fr].push({
         nombre: n, e: h[0], s: h[1],
         ausente: aus, sustData: sust, modificado: tieneModificacion
       });
     }
+    return franjas;
+  },
+
+  /**
+   * Calcula el máximo de empleados por franja en una semana (5 días L-V
+   * desde lunesFecha) para alinear visualmente las columnas. Cuenta también
+   * los refuerzos extra (sin ausente). Si ningún día tiene a nadie en una
+   * franja, su max es 0 → la franja no se pinta esa semana.
+   */
+  _maxFranjasSemana(lunesFecha, tienda) {
+    const max = { descarga: 0, mañanas: 0, tardes: 0, cierre: 0 };
+    const susts = Store.getSustituciones();
+    for (let d = 0; d < 5; d++) {
+      const dia = new Date(lunesFecha);
+      dia.setDate(dia.getDate() + d);
+      const fs = Utils.formatFecha(dia);
+      const horarios = Rotaciones.getHorariosLV(dia, tienda);
+      const franjas = CalendarioUI._franjasVisiblesLV(dia, horarios, tienda);
+      // Sumar refuerzos extra del día (no aparecen en franjas, van aparte).
+      const extras = { descarga: 0, mañanas: 0, tardes: 0, cierre: 0 };
+      for (const s of susts) {
+        if (s.fecha !== fs || s.tienda !== tienda || s.turnoFds) continue;
+        if (s.tipo !== 'extra' || s.ausente) continue;
+        const sFr = Utils.getFranja(s.entrada, s.salida, tienda);
+        if (extras[sFr] !== undefined) extras[sFr]++;
+      }
+      for (const fr in max) {
+        const total = franjas[fr].length + extras[fr];
+        if (total > max[fr]) max[fr] = total;
+      }
+    }
+    return max;
+  },
+
+  _renderTurnosLV(dia, horarios, tienda, maxPorFranja) {
+    if (!horarios) return '';
+
+    const fs = Utils.formatFecha(dia);
+    const franjas = CalendarioUI._franjasVisiblesLV(dia, horarios, tienda);
 
     const esIsabel = tienda === 'isabel';
     const gridClass = esIsabel ? 'franjas-grid-is' : 'franjas-grid-gv';
@@ -163,7 +203,22 @@ const CalendarioUI = {
     const orden = ['descarga', 'mañanas', 'tardes', 'cierre'];
     for (const fr of orden) {
       const t = franjas[fr];
-      if (!esIsabel && t.length === 0) continue;
+      // Cuántos huecos pintar en esta franja para alinear con el resto de
+      // la semana. Si maxPorFranja viene, usar ese; si no, solo lo que hay.
+      const objetivo = (maxPorFranja && typeof maxPorFranja[fr] === 'number')
+        ? maxPorFranja[fr] : t.length;
+      // Si no hay nadie real ni hueco objetivo en esta franja → omitir
+      // (en GV se sigue colapsando franjas sin gente; en IS antes siempre
+      // se pintaba, ahora también si objetivo>0).
+      if (objetivo === 0 && t.length === 0) {
+        if (!esIsabel) continue;
+        // En Isabel sin maxPorFranja explícito, mantener el comportamiento previo
+        if (!maxPorFranja) {
+          // Pintar la franja vacía como antes (etiqueta + nada)
+        } else {
+          continue;
+        }
+      }
 
       // Orden visual: hora de entrada ASC; a igualdad, nombre alfabético.
       // Coherente con la lectura del horario "quien llega primero arriba".
@@ -198,6 +253,7 @@ const CalendarioUI = {
         }
       }
       // Refuerzos (tipo extra, sin ausente) en esta franja
+      let extrasEnFranja = 0;
       const susts = Store.getSustituciones();
       for (const s of susts) {
         if (s.fecha !== fs || s.tienda !== tienda || s.turnoFds || !s.tipo || s.tipo !== 'extra' || s.ausente) continue;
@@ -208,6 +264,19 @@ const CalendarioUI = {
         html += '<span class="turno-nombre">+ ' + refSafe + '</span>';
         html += '<span class="turno-hora">' + Utils.formatHora(s.entrada) + '-' + Utils.formatHora(s.salida) + '</span>';
         html += '</div>';
+        extrasEnFranja++;
+      }
+      // Cápsulas vacías para alinear con el max de la semana. Cada una es
+      // un slot clicable que abre el modal "asignar a hueco vacío" → crea
+      // sustitución tipo='extra' sin ausente. Visualmente son invisibles
+      // hasta hover (CSS .turno.vacio).
+      const ocupados = t.length + extrasEnFranja;
+      const huecos = Math.max(0, objetivo - ocupados);
+      for (let k = 0; k < huecos; k++) {
+        html += '<div class="turno vacio" data-fecha="' + fs +
+                '" data-franja="' + fr + '" data-tienda="' + tienda +
+                '" title="Click para asignar empleado a este hueco (horas extra)">' +
+                '<span class="turno-nombre">+</span></div>';
       }
       html += '</div>';
     }

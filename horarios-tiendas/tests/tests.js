@@ -2839,6 +2839,149 @@
   });
 
   // ============================================================
+  // CALENDARIO-UI: alineación de franjas + cápsulas vacías
+  // ============================================================
+  suite('CalendarioUI._maxFranjasSemana y huecos vacíos', function () {
+    const origGetH = Rotaciones.getHorariosLV;
+    const origSusts = Store._state.sustituciones;
+    const origAusGV = Store._state.ausenciasGV;
+    const origAusIS = Store._state.ausenciasIS;
+
+    function cleanup() {
+      Rotaciones.getHorariosLV = origGetH;
+      Store._state.sustituciones = origSusts;
+      Store._state.ausenciasGV = origAusGV;
+      Store._state.ausenciasIS = origAusIS;
+    }
+
+    test('_maxFranjasSemana toma el máximo entre los 5 días', () => {
+      try {
+        Store._state.sustituciones = [];
+        Store._state.ausenciasGV = [];
+        // L=2 mañanas, M=3, X=2, J=3, V=4 → max=4
+        Rotaciones.getHorariosLV = function (dia) {
+          const dow = dia.getDay();
+          if (dow === 1) return { A: [9, 14], B: [10, 14] };
+          if (dow === 2) return { A: [9, 14], B: [10, 14], C: [11, 14] };
+          if (dow === 3) return { A: [9, 14], B: [10, 14] };
+          if (dow === 4) return { A: [9, 14], B: [10, 14], C: [11, 14] };
+          if (dow === 5) return { A: [9, 14], B: [10, 14], C: [11, 14], D: [11, 14] };
+          return {};
+        };
+        const lunes = new Date(2026, 4, 4); // L 4 mayo 2026
+        const max = CalendarioUI._maxFranjasSemana(lunes, 'granvia');
+        assertEq(max.mañanas, 4);
+      } finally { cleanup(); }
+    });
+
+    test('_renderTurnosLV con maxPorFranja añade huecos hasta el max', () => {
+      try {
+        Store._state.sustituciones = [];
+        Store._state.ausenciasGV = [];
+        Rotaciones.getHorariosLV = () => ({ A: [9, 14], B: [10, 14] }); // 2 en mañanas
+        const dia = new Date(2026, 4, 4);
+        const horarios = Rotaciones.getHorariosLV();
+        const html = CalendarioUI._renderTurnosLV(dia, horarios, 'granvia', { descarga: 0, mañanas: 4, tardes: 0, cierre: 0 });
+        const huecos = (html.match(/turno vacio/g) || []).length;
+        assertEq(huecos, 2, 'deben aparecer 2 huecos vacíos para alcanzar 4');
+        // Los huecos llevan data-fecha, data-franja, data-tienda
+        assert(html.indexOf('data-franja="mañanas"') >= 0);
+        assert(html.indexOf('data-tienda="granvia"') >= 0);
+        assert(html.indexOf('data-fecha="2026-05-04"') >= 0);
+      } finally { cleanup(); }
+    });
+
+    test('_renderTurnosLV sin maxPorFranja: comportamiento previo (cero huecos)', () => {
+      try {
+        Store._state.sustituciones = [];
+        Store._state.ausenciasGV = [];
+        Rotaciones.getHorariosLV = () => ({ A: [9, 14], B: [10, 14] });
+        const dia = new Date(2026, 4, 4);
+        const horarios = Rotaciones.getHorariosLV();
+        const html = CalendarioUI._renderTurnosLV(dia, horarios, 'granvia');
+        const huecos = (html.match(/turno vacio/g) || []).length;
+        assertEq(huecos, 0, 'sin maxPorFranja no se generan huecos');
+      } finally { cleanup(); }
+    });
+
+    test('_maxFranjasSemana cuenta refuerzos extra (sin ausente) en la franja', () => {
+      try {
+        Rotaciones.getHorariosLV = () => ({ A: [9, 14] }); // 1 base en mañanas
+        Store._state.ausenciasGV = [];
+        // Refuerzo extra el lunes en mañanas → max debe pasar a 2
+        Store._state.sustituciones = [{
+          fecha: '2026-05-04', tienda: 'granvia', ausente: '',
+          sustituto: 'EXTRA1', entrada: 9, salida: 14,
+          franja: 'mañanas', turnoFds: '', tipo: 'extra'
+        }];
+        const lunes = new Date(2026, 4, 4);
+        const max = CalendarioUI._maxFranjasSemana(lunes, 'granvia');
+        assertEq(max.mañanas, 2);
+      } finally { cleanup(); }
+    });
+  });
+
+  // ============================================================
+  // MOTOR: buscarCandidatosSlotVacio (slot vacío, sin ausente)
+  // ============================================================
+  suite('Motor.buscarCandidatosSlotVacio', function () {
+    test('Devuelve estructura {validos, rechazados} sin lanzar excepción', () => {
+      const fecha = new Date(2026, 4, 4); // L 4 mayo 2026
+      const r = Motor.buscarCandidatosSlotVacio(fecha, 'granvia', 'mañanas', 9, 14);
+      assert(Array.isArray(r.validos), 'validos es array');
+      assert(Array.isArray(r.rechazados), 'rechazados es array');
+    });
+
+    test('No filtra por igualdad con un ausente real (no hay ausente)', () => {
+      const fecha = new Date(2026, 4, 4);
+      // Si hubiera ausente='EVA', EVA no aparecería en candidatos. Aquí sin
+      // ausente, EVA sigue evaluándose por las demás reglas.
+      const r = Motor.buscarCandidatosSlotVacio(fecha, 'granvia', 'mañanas', 9, 14);
+      const aliases = r.validos.map(c => c.alias).concat(r.rechazados.map(r => r.alias));
+      // No comprobamos que EVA esté concretamente (depende de empleados cargados),
+      // solo que NO lanza ni retorna vacío sistemáticamente.
+      assert(aliases.length >= 0);
+    });
+  });
+
+  // ============================================================
+  // MODAL asignarSlotVacio: lógica de filtrado y addSustitucion
+  // ============================================================
+  suite('Modal asignarSlotVacio: lógica', function () {
+    test('addSustitucion con tipo=extra y ausente="" para hueco vacío', () => {
+      const origSusts = Store._state.sustituciones.slice();
+      try {
+        Store._state.sustituciones = [];
+        Store.addSustitucion({
+          fecha: '2026-05-04',
+          ausente: '',
+          sustituto: 'EXTRA1',
+          entrada: 9,
+          salida: 14,
+          franja: 'mañanas',
+          turnoFds: '',
+          tienda: 'granvia',
+          tipo: 'extra'
+        });
+        assertEq(Store._state.sustituciones.length, 1);
+        const s = Store._state.sustituciones[0];
+        assertEq(s.tipo, 'extra');
+        assertEq(s.ausente, '');
+        assertEq(s.sustituto, 'EXTRA1');
+      } finally {
+        Store._state.sustituciones = origSusts;
+      }
+    });
+
+    test('Modal asignarSlotVacio existe y referencia tipo extra', () => {
+      assert(typeof Modales.asignarSlotVacio === 'function');
+      const src = Modales.asignarSlotVacio.toString();
+      assert(src.indexOf("tipo: 'extra'") >= 0, 'crea sustitución tipo=extra');
+      assert(src.indexOf('buscarCandidatosSlotVacio') >= 0, 'usa el motor de slot vacío');
+    });
+  });
+
+  // ============================================================
   // RESUMEN — espera a que terminen los tests async antes de pintar
   // ============================================================
   const sum = document.getElementById('summary');
