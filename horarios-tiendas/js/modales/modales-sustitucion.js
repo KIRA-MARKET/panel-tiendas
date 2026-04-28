@@ -331,19 +331,35 @@ Object.assign(Modales, {
 
       // Candidatos vía motor (aplica las 33 reglas). Usamos la variante
       // debug para poder mostrar también los rechazados con el motivo.
+      const fechaDate = fecha instanceof Date ? fecha : Utils.parseFecha(fecha);
       const debug = Motor.buscarCandidatosManualDebug(
-        fecha instanceof Date ? fecha : Utils.parseFecha(fecha),
-        ausente, tienda, ctx.turnoFds || ''
+        fechaDate, ausente, tienda, ctx.turnoFds || ''
       );
       const candidatos = debug.validos;
-      // Quitar al propio ausente y quitar los que son definitivamente no-empleados
-      // (dados de baja, reemplazados por otro) — no aportan información útil.
+
+      // Horario del slot del ausente (lo usamos para asignar a un rechazado
+      // como "extra" — cubre exactamente el hueco del ausente).
+      let slotEntrada = null, slotSalida = null;
+      if (ctx.turnoFds) {
+        const fdsData = Rotaciones.getFds(fechaDate, tienda);
+        const t = fdsData && fdsData[ctx.turnoFds] && fdsData[ctx.turnoFds][ausente];
+        if (t) { slotEntrada = t[0]; slotSalida = t[1]; }
+      } else {
+        const horarios = Rotaciones.getHorariosLV(fechaDate, tienda);
+        const t = horarios && horarios[ausente];
+        if (t) { slotEntrada = t[0]; slotSalida = t[1]; }
+      }
+
+      // Rechazados: quitar al propio ausente, los que ya son válidos,
+      // los baja/reemplazados (no son empleados activos) y los que están
+      // ausentes ese día (no se les puede pedir horas extra estando de baja).
       const rechazados = debug.rechazados.filter(r => {
         if (r.alias === ausente) return false;
         if (candidatos.some(c => c.alias === r.alias)) return false;
         const mot = (r.errores && r.errores[0]) || '';
         if (mot.indexOf('dado de baja') >= 0) return false;
         if (mot.indexOf('Reemplazado') >= 0) return false;
+        if (mot.indexOf('ausente') >= 0) return false;  // 'También está ausente'
         return true;
       });
       const sustActual = Store.getSustituto(fecha, ausente, tienda, ctx.turnoFds || '');
@@ -374,17 +390,40 @@ Object.assign(Modales, {
         }
       }
 
-      // ── Rechazados (informativo, no clicables) ────────────────
+      // ── Rechazados (clicables como EXTRA forzado) ─────────────
+      // Click en un rechazado → asigna como sustituto con tipo='extra' y
+      // horario del slot del ausente. Útil cuando alguien quiere hacer
+      // horas extra aunque no le tocara (ya trabaja otro turno, etc.).
+      // No se ofrecen los baja/reemplazados/también-ausentes (filtrados arriba).
+      const puedeAsignarExtra = (slotEntrada !== null && slotSalida !== null);
       if (rechazados.length > 0) {
+        const cabecera = puedeAsignarExtra
+          ? rechazados.length + ' rechazados — click para asignar como EXTRA'
+          : rechazados.length + ' rechazados — ver por qué';
         listaHtml += '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:11px;color:var(--text-muted);padding:6px 0">'
-          + rechazados.length + ' rechazados — ver por qué</summary>';
-        for (const r of rechazados) {
+          + cabecera + '</summary>';
+        for (let i = 0; i < rechazados.length; i++) {
+          const r = rechazados[i];
           const motivo = Utils.escapeHtml(r.errores[0] || 'No válido');
-          listaHtml += `
-            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--text-muted);margin-bottom:4px;opacity:0.75">
-              <strong style="flex:1;font-weight:500">${Utils.escapeHtml(r.alias)}</strong>
-              <span style="font-size:10px;font-style:italic">${motivo}</span>
-            </div>`;
+          if (puedeAsignarExtra) {
+            const bgNormal = 'transparent';
+            const bgHover = 'rgba(230,81,0,0.10)';
+            listaHtml += `
+              <div class="rech-option" data-idx="${i}" title="Asignar como horas EXTRA · ${motivo}"
+                   style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-radius:6px;border:1px solid var(--border);background:${bgNormal};color:var(--text);margin-bottom:4px;opacity:0.85"
+                   onmouseover="this.style.background='${bgHover}';this.style.opacity='1'"
+                   onmouseout="this.style.background='${bgNormal}';this.style.opacity='0.85'">
+                <strong style="flex:1;font-weight:500">${Utils.escapeHtml(r.alias)}</strong>
+                <span style="color:#e65100;font-size:10px;font-weight:600">+ EXTRA</span>
+                <span style="color:var(--text-muted);font-size:10px;font-style:italic">${motivo}</span>
+              </div>`;
+          } else {
+            listaHtml += `
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--text-muted);margin-bottom:4px;opacity:0.75">
+                <strong style="flex:1;font-weight:500">${Utils.escapeHtml(r.alias)}</strong>
+                <span style="font-size:10px;font-style:italic">${motivo}</span>
+              </div>`;
+          }
         }
         listaHtml += '</details>';
       }
@@ -499,6 +538,43 @@ Object.assign(Modales, {
             CalendarioUI.toast && CalendarioUI.toast(msg, 'success');
           }
           close('asignado');
+        };
+      });
+
+      // Click en rechazado → asignar como EXTRA (forzado, ignora radio).
+      // Horario = el del slot del ausente (cubre exactamente el hueco).
+      overlay.querySelectorAll('.rech-option').forEach(el => {
+        el.onclick = () => {
+          const i = parseInt(el.dataset.idx);
+          const r = rechazados[i];
+          if (!r || slotEntrada === null || slotSalida === null) return;
+          const fs = typeof fecha === 'string' ? fecha : Utils.formatFecha(fecha);
+
+          if (sustActual && sustActual.sustituto !== r.alias) {
+            Store.removeSustitucion(s =>
+              s.fecha === fs && s.ausente === ausente && s.tienda === tienda &&
+              (ctx.turnoFds ? s.turnoFds === ctx.turnoFds : !s.turnoFds)
+            );
+          }
+          if (!(sustActual && sustActual.sustituto === r.alias)) {
+            Store.addSustitucion({
+              fecha: fs,
+              ausente,
+              sustituto: r.alias,
+              entrada: slotEntrada,
+              salida: slotSalida,
+              franja: ctx.turnoFds ? '' : Utils.getFranja(slotEntrada, slotSalida, tienda),
+              turnoFds: ctx.turnoFds || '',
+              tienda,
+              tipo: 'extra'
+            });
+            if (Sync && Sync.syncSustituciones) Sync.syncSustituciones();
+            CalendarioUI.toast && CalendarioUI.toast(
+              'Asignado ' + r.alias + ' como EXTRA (' + (r.errores[0] || 'rechazado por motor') + ')',
+              'success'
+            );
+          }
+          close('asignado-extra');
         };
       });
 

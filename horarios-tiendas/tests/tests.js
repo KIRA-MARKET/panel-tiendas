@@ -2765,6 +2765,80 @@
   });
 
   // ============================================================
+  // MODAL elegirSustitutoManual: rechazados clicables como EXTRA
+  //
+  // El modal mete los rechazados (con motivo) en una lista clicable. Click
+  // en uno → Store.addSustitucion con tipo='extra' y horario del slot del
+  // ausente. Aquí testeo el filtro y la addSustitucion (sin abrir el modal,
+  // que en el runner async crea race conditions con el suite siguiente).
+  // ============================================================
+  suite('Modal sustitución: rechazados clicables como EXTRA — lógica', function () {
+    test('Filtro descarta baja/reemplazado/también-ausente; mantiene el resto', () => {
+      const ausente = 'AUSENTE';
+      const candidatos = [{ alias: 'VALIDA' }];
+      const rechazadosCrudo = [
+        { alias: 'AUSENTE',     errores: ['Es el propio ausente'] },          // self
+        { alias: 'VALIDA',      errores: ['Aparece también como válido'] },   // dup
+        { alias: 'BAJA',        errores: ['No está activo en esa fecha (dado de baja)'] },
+        { alias: 'REEMP',       errores: ['Reemplazado por otro'] },
+        { alias: 'AUSENTE_HOY', errores: ['También está ausente'] },
+        { alias: 'YA_TRABAJA',  errores: ['Ya trabaja en mañanas'] },
+        { alias: 'OTRO',        errores: ['DOM_T protegido'] }
+      ];
+      // Replica del filtro en el modal (modales-sustitucion.js).
+      const rechazados = rechazadosCrudo.filter(r => {
+        if (r.alias === ausente) return false;
+        if (candidatos.some(c => c.alias === r.alias)) return false;
+        const mot = (r.errores && r.errores[0]) || '';
+        if (mot.indexOf('dado de baja') >= 0) return false;
+        if (mot.indexOf('Reemplazado') >= 0) return false;
+        if (mot.indexOf('ausente') >= 0) return false;
+        return true;
+      });
+      const aliases = rechazados.map(r => r.alias);
+      assertDeep(aliases, ['YA_TRABAJA', 'OTRO']);
+    });
+
+    test('Asignación como EXTRA usa horario del ausente y tipo=extra', () => {
+      const origSusts = Store._state.sustituciones.slice();
+      try {
+        Store._state.sustituciones = [];
+        // Slot del ausente: 9-15 (mañanas GV).
+        const slotEntrada = 9, slotSalida = 15;
+        const ausente = 'X', sustituto = 'EXTRADOR', fs = '2026-05-04';
+        Store.addSustitucion({
+          fecha: fs,
+          ausente,
+          sustituto,
+          entrada: slotEntrada,
+          salida: slotSalida,
+          franja: Utils.getFranja(slotEntrada, slotSalida, 'granvia'),
+          turnoFds: '',
+          tienda: 'granvia',
+          tipo: 'extra'
+        });
+        assertEq(Store._state.sustituciones.length, 1);
+        const s = Store._state.sustituciones[0];
+        assertEq(s.sustituto, 'EXTRADOR');
+        assertEq(s.tipo, 'extra');
+        assertEq(s.entrada, 9);
+        assertEq(s.salida, 15);
+        assertEq(s.franja, 'mañanas');
+      } finally {
+        Store._state.sustituciones = origSusts;
+      }
+    });
+
+    test('El modal expone .rech-option (smoke)', () => {
+      // Solo verificamos que el código del modal contiene la clase nueva
+      // sin abrirlo, para evitar race con tests async posteriores.
+      const src = Modales.elegirSustitutoManual.toString();
+      assert(src.indexOf('rech-option') >= 0, 'modal renderiza .rech-option');
+      assert(src.indexOf("tipo: 'extra'") >= 0, 'modal asigna tipo=extra al rechazado');
+    });
+  });
+
+  // ============================================================
   // RESUMEN — espera a que terminen los tests async antes de pintar
   // ============================================================
   const sum = document.getElementById('summary');
