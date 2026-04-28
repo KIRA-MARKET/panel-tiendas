@@ -474,15 +474,17 @@ const PDFExport = {
     css += '.turno.sustituto .turno-nombre { color: #bf360c; font-weight: 800; } .turno.sustituto .turno-hora { color: #333; font-weight: 700; }';
 
     if (modo === 'whatsapp') {
-      css += '@media print { @page { size: A4 portrait; margin: 5mm; } body { width: 200mm; padding: 0 !important; margin: 0 !important; } .btn-print-bar { display: none !important; } }';
+      css += '@media print { @page { size: A4 portrait; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; overflow-x: hidden; } .btn-print-bar { display: none !important; } }';
     } else if (modo === 'lv') {
-      // Safari redondea márgenes con menos precisión que Chrome: dejamos
-      // 5mm de @page + width 285mm (en lugar de 291mm a pelo) para que
-      // siempre quepa dentro del área imprimible aunque la impresora
-      // añada un mm extra de margen físico.
-      css += '@media print { @page { size: A3 portrait; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; } body { width: 285mm; max-width: 285mm; max-height: 410mm; overflow: hidden; } .btn-print-bar { display: none !important; } }';
+      // Estrategia A3 robusta: NO fijamos width en mm. Usamos width:100%
+      // con box-sizing y overflow-x:hidden. Si el usuario imprime en A3
+      // (lo deseado) el body ocupa los 287mm útiles. Si Safari ignora
+      // @page size y mete A4, el contenido se comprime con flex:1 pero
+      // nunca se sale por la derecha. Mejor "denso pero completo" que
+      // "espacioso pero cortado".
+      css += '@media print { @page { size: A3 portrait; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; overflow-x: hidden; } body { max-height: 410mm; overflow-y: hidden; } .btn-print-bar { display: none !important; } }';
     } else {
-      css += '@media print { @page { size: A3 landscape; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; } body { width: 410mm; max-width: 410mm; max-height: 287mm; overflow: hidden; } .btn-print-bar { display: none !important; } }';
+      css += '@media print { @page { size: A3 landscape; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; overflow-x: hidden; } body { max-height: 287mm; overflow-y: hidden; } .btn-print-bar { display: none !important; } }';
     }
 
     css += '.btn-print-bar { position: fixed; top: 0; left: 0; right: 0; background: #1a1a2e; padding: 8px 20px; display: flex; gap: 10px; align-items: center; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }';
