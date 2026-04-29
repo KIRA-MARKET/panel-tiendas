@@ -102,7 +102,10 @@ const PDFExport = {
       f.setDate(f.getDate() + 7);
     }
 
-    html += '<div class="fds-grid" style="grid-template-columns: repeat(' + numSemanas + ', 1fr);">';
+    // Máximo 3 columnas: en A4 landscape (287mm) no caben 4-5 semanas en
+    // horizontal sin recorte. Si hay más de 3, hacen wrap a una 2ª fila.
+    const colsGrid = Math.min(numSemanas, 3);
+    html += '<div class="fds-grid" style="grid-template-columns: repeat(' + colsGrid + ', 1fr);">';
 
     while (fecha <= ultimoDia || fecha.getMonth() === mes) {
       const sab = new Date(fecha);
@@ -451,19 +454,21 @@ const PDFExport = {
       css += '.turno-nombre { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }';
       css += '.turno-hora { white-space: nowrap; font-size: 6px; font-weight: 600; flex-shrink: 0; }';
     } else {
-      css += '.fds-grid { display: grid; gap: 10px; width: 100%; }';
-      css += '.fds-card { background: #fff; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; }';
-      css += '.fds-card-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 10px 12px; font-weight: 600; font-size: 14px; text-align: center; }';
-      css += '.fds-card-body { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; padding: 10px; flex: 1; }';
-      css += '.fds-turno { border-radius: 6px; padding: 8px; display: flex; flex-direction: column; }';
-      css += '.fds-turno.sab-m { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 2px solid #1976d2; }';
-      css += '.fds-turno.dom-m { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 2px solid #388e3c; }';
-      css += '.fds-turno.sab-t { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #f57c00; }';
-      css += '.fds-turno.dom-t { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border: 2px solid #7b1fa2; }';
-      css += '.fds-turno-header { font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,0.1); }';
-      css += '.turno { padding: 3px 6px; margin-bottom: 1px; font-size: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid transparent; min-width: 0; gap: 4px; }';
+      // Layout compacto A4 landscape: máx 3 columnas × 2 filas (= 6 cards
+      // si hay 5-6 fines de semana). Cada card ~80mm × 95mm máx.
+      css += '.fds-grid { display: grid; gap: 4mm; width: 100%; align-content: start; }';
+      css += '.fds-card { background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; }';
+      css += '.fds-card-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 4px 8px; font-weight: 600; font-size: 11px; text-align: center; }';
+      css += '.fds-card-body { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 3px; padding: 4px; flex: 1; }';
+      css += '.fds-turno { border-radius: 4px; padding: 4px; display: flex; flex-direction: column; min-width: 0; }';
+      css += '.fds-turno.sab-m { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 1px solid #1976d2; }';
+      css += '.fds-turno.dom-m { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 1px solid #388e3c; }';
+      css += '.fds-turno.sab-t { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 1px solid #f57c00; }';
+      css += '.fds-turno.dom-t { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border: 1px solid #7b1fa2; }';
+      css += '.fds-turno-header { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; padding-bottom: 2px; border-bottom: 1px solid rgba(0,0,0,0.1); }';
+      css += '.turno { padding: 0 4px; margin-bottom: 0; font-size: 7px; line-height: 1.4; display: flex; justify-content: space-between; align-items: center; border-left: 2px solid transparent; min-width: 0; gap: 4px; }';
       css += '.turno-nombre { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }';
-      css += '.turno-hora { white-space: nowrap; font-size: 9px; font-weight: 600; flex-shrink: 0; }';
+      css += '.turno-hora { white-space: nowrap; font-size: 6px; font-weight: 600; flex-shrink: 0; }';
     }
 
     css += '.turno.descarga { background: #bbcfea; border-left-color: #1a4a8a; color: #0d2b52; }';
