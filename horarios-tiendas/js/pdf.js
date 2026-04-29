@@ -422,32 +422,34 @@ const PDFExport = {
       css += 'body { height: 100%; padding: 10px; background: #f5f5f5; display: flex; flex-direction: column; margin: 0; }';
     }
 
-    css += '.header { background: #1a1a2e; color: white; padding: 8px 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; width: 100%; }';
-    css += '.header h1 { font-size: 16px; font-weight: 700; }';
-    css += '.header .tienda { font-size: 18px; font-weight: 700; letter-spacing: 1px; }';
-    css += '.header .info { display: flex; gap: 15px; align-items: center; }';
-    css += '.header .mes { font-size: 12px; opacity: 0.9; }';
-    css += '.header .modo { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 4px; font-size: 10px; }';
+    css += '.header { background: #1a1a2e; color: white; padding: 4px 10px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; width: 100%; }';
+    css += '.header h1 { font-size: 12px; font-weight: 700; }';
+    css += '.header .tienda { font-size: 14px; font-weight: 700; letter-spacing: 1px; }';
+    css += '.header .info { display: flex; gap: 10px; align-items: center; }';
+    css += '.header .mes { font-size: 10px; opacity: 0.9; }';
+    css += '.header .modo { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 9px; }';
 
     if (modo === 'lv') {
-      css += '.week-view { background: #fff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 6px; }';
-      css += '.week-header { display: flex; background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%); border-bottom: 2px solid #dee2e6; font-weight: 600; font-size: 9px; text-transform: uppercase; }';
-      css += '.week-header .col-sem { width: 30px; padding: 6px 2px; text-align: center; border-right: 1px solid #dee2e6; color: #e53935; }';
-      css += '.week-header .col-dia { flex: 1; padding: 6px 2px; text-align: center; border-right: 1px solid #dee2e6; color: #495057; }';
+      css += '.week-view { background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 0; }';
+      css += '.week-header { display: flex; background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%); border-bottom: 1px solid #dee2e6; font-weight: 600; font-size: 8px; text-transform: uppercase; }';
+      css += '.week-header .col-sem { width: 22px; padding: 2px 1px; text-align: center; border-right: 1px solid #dee2e6; color: #e53935; }';
+      css += '.week-header .col-dia { flex: 1; padding: 2px 1px; text-align: center; border-right: 1px solid #dee2e6; color: #495057; }';
       css += '.week-row { display: flex; border-bottom: 1px solid #e9ecef; }';
-      css += '.col-sem { width: 30px; padding: 3px 2px; background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%); border-right: 1px solid #dee2e6; display: flex; flex-direction: column; align-items: center; justify-content: center; }';
-      css += '.col-sem .num { font-size: 12px; font-weight: 700; color: #e53935; }';
-      css += '.col-sem .letra { font-size: 9px; color: #6c757d; font-weight: 600; }';
-      // min-width:0 + overflow:hidden en .col-dia evita que un nombre largo
-      // con white-space:nowrap empuje la columna fuera del A3 (causa típica
-      // del "PDF cortado por la derecha" en Safari).
-      css += '.col-dia { flex: 1 1 0; min-width: 0; overflow: hidden; border-right: 1px solid #f0f0f0; padding: 2px 3px; display: flex; flex-direction: column; }';
-      css += '.dia-num { font-size: 9px; font-weight: 800; color: #1a1a2e; margin-bottom: 2px; }';
+      css += '.col-sem { width: 22px; padding: 1px; background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%); border-right: 1px solid #dee2e6; display: flex; flex-direction: column; align-items: center; justify-content: center; }';
+      css += '.col-sem .num { font-size: 10px; font-weight: 700; color: #e53935; }';
+      css += '.col-sem .letra { font-size: 7px; color: #6c757d; font-weight: 600; }';
+      // Layout compacto pensado para caber en A4 landscape (Mac sin A3).
+      // En el mes más denso (mayo 2026: viernes 1 con ~13 empleados visibles)
+      // cada empleado debe ocupar ≤ 11px para que las 5 filas semanales
+      // quepan en los 200mm útiles. min-width:0 + overflow:hidden + ellipsis
+      // evita corte horizontal por nombres largos.
+      css += '.col-dia { flex: 1 1 0; min-width: 0; overflow: hidden; border-right: 1px solid #f0f0f0; padding: 1px 2px; display: flex; flex-direction: column; }';
+      css += '.dia-num { font-size: 8px; font-weight: 800; color: #1a1a2e; margin-bottom: 1px; line-height: 1.1; }';
       css += '.turnos-wrap { display: flex; flex-direction: column; flex: 1; min-width: 0; }';
-      css += '.franja-pdf { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; min-width: 0; }';
-      css += '.turno { padding: 2px 5px; margin-bottom: 1px; font-size: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid transparent; min-width: 0; gap: 4px; }';
+      css += '.franja-pdf { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: flex-start; min-width: 0; }';
+      css += '.turno { padding: 0 4px; margin-bottom: 0; font-size: 7px; line-height: 1.4; display: flex; justify-content: space-between; align-items: center; border-left: 2px solid transparent; min-width: 0; gap: 4px; }';
       css += '.turno-nombre { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }';
-      css += '.turno-hora { white-space: nowrap; font-size: 7px; font-weight: 600; flex-shrink: 0; }';
+      css += '.turno-hora { white-space: nowrap; font-size: 6px; font-weight: 600; flex-shrink: 0; }';
     } else {
       css += '.fds-grid { display: grid; gap: 10px; width: 100%; }';
       css += '.fds-card { background: #fff; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; }';
@@ -476,15 +478,15 @@ const PDFExport = {
     if (modo === 'whatsapp') {
       css += '@media print { @page { size: A4 portrait; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; overflow-x: hidden; } .btn-print-bar { display: none !important; } }';
     } else if (modo === 'lv') {
-      // Estrategia A3 robusta: NO fijamos width en mm. Usamos width:100%
-      // con box-sizing y overflow-x:hidden. Si el usuario imprime en A3
-      // (lo deseado) el body ocupa los 287mm útiles. Si Safari ignora
-      // @page size y mete A4, el contenido se comprime con flex:1 pero
-      // nunca se sale por la derecha. Mejor "denso pero completo" que
-      // "espacioso pero cortado".
-      css += '@media print { @page { size: A3 portrait; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; overflow-x: hidden; } body { max-height: 410mm; overflow-y: hidden; } .btn-print-bar { display: none !important; } }';
+      // A4 landscape: el A3 no está disponible en macOS sin impresora A3.
+      // Layout pensado para caber en 1 sola página A4 horizontal:
+      // 297×210mm con 5mm margen = 287×200mm útiles. Header ~15mm + 5
+      // filas × ~35mm = 200mm justo. page-break-inside:avoid en
+      // .week-row evita que una fila se parta entre páginas.
+      css += '@media print { @page { size: A4 landscape; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; overflow-x: hidden; } body { max-height: 200mm; overflow-y: hidden; } .week-row, .week-view, .header { page-break-inside: avoid; break-inside: avoid; } .btn-print-bar { display: none !important; } }';
     } else {
-      css += '@media print { @page { size: A3 landscape; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; overflow-x: hidden; } body { max-height: 287mm; overflow-y: hidden; } .btn-print-bar { display: none !important; } }';
+      // FdS: misma estrategia A4 landscape para impresoras estándar.
+      css += '@media print { @page { size: A4 landscape; margin: 5mm; } html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; overflow-x: hidden; } body { max-height: 200mm; overflow-y: hidden; } .fds-card, .fds-grid, .header { page-break-inside: avoid; break-inside: avoid; } .btn-print-bar { display: none !important; } }';
     }
 
     css += '.btn-print-bar { position: fixed; top: 0; left: 0; right: 0; background: #1a1a2e; padding: 8px 20px; display: flex; gap: 10px; align-items: center; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }';
